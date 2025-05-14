@@ -1,0 +1,68 @@
+package com.example.simpleoa.repository;
+
+import com.example.simpleoa.model.Project;
+import com.example.simpleoa.model.User;
+import com.example.simpleoa.model.WorkTimeRecord;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDate;
+import java.util.List;
+
+public interface WorkTimeRecordRepository extends JpaRepository<WorkTimeRecord, Long> {
+    List<WorkTimeRecord> findByUser(User user);
+    List<WorkTimeRecord> findByProject(Project project);
+
+    // 按用户和日期范围查询工时记录
+    List<WorkTimeRecord> findByUserAndDateBetween(User user, LocalDate startDate, LocalDate endDate);
+
+    // 按项目和日期范围查询工时记录
+    List<WorkTimeRecord> findByProjectAndDateBetween(Project project, LocalDate startDate, LocalDate endDate);
+
+    // 按日期范围查询所有工时记录
+    List<WorkTimeRecord> findByDateBetween(LocalDate startDate, LocalDate endDate);
+
+    // 按用户、项目和日期查询工时记录（用于检查重复记录）
+    List<WorkTimeRecord> findByUserAndProjectAndDate(User user, Project project, LocalDate date);
+
+    // 统计项目总工时
+    @Query("SELECT SUM(w.hours) FROM WorkTimeRecord w WHERE w.project = :project")
+    Double sumHoursByProject(@Param("project") Project project);
+
+    // 统计用户总工时
+    @Query("SELECT SUM(w.hours) FROM WorkTimeRecord w WHERE w.user = :user")
+    Double sumHoursByUser(@Param("user") User user);
+
+    // 统计用户在指定日期范围内的总工时
+    @Query("SELECT SUM(w.hours) FROM WorkTimeRecord w WHERE w.user = :user AND w.date BETWEEN :startDate AND :endDate")
+    Double sumHoursByUserAndDateBetween(@Param("user") User user, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    // 统计项目在指定日期范围内的总工时
+    @Query("SELECT SUM(w.hours) FROM WorkTimeRecord w WHERE w.project = :project AND w.date BETWEEN :startDate AND :endDate")
+    Double sumHoursByProjectAndDateBetween(@Param("project") Project project, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    // 按用户、日期范围和项目查询工时记录
+    List<WorkTimeRecord> findByUserAndDateBetweenAndProject(User user, LocalDate startDate, LocalDate endDate, Project project);
+
+    // 按用户、日期范围和审批状态查询工时记录
+    List<WorkTimeRecord> findByUserAndDateBetweenAndApproved(User user, LocalDate startDate, LocalDate endDate, Boolean approved);
+
+    // 按用户、日期范围、项目和审批状态查询工时记录
+    List<WorkTimeRecord> findByUserAndDateBetweenAndProjectAndApproved(User user, LocalDate startDate, LocalDate endDate, Project project, Boolean approved);
+
+    // 分页查询方法
+    Page<WorkTimeRecord> findByUserAndDateBetween(User user, LocalDate startDate, LocalDate endDate, Pageable pageable);
+    Page<WorkTimeRecord> findByUserAndDateBetweenAndProject(User user, LocalDate startDate, LocalDate endDate, Project project, Pageable pageable);
+    Page<WorkTimeRecord> findByUserAndDateBetweenAndApproved(User user, LocalDate startDate, LocalDate endDate, Boolean approved, Pageable pageable);
+    Page<WorkTimeRecord> findByUserAndDateBetweenAndProjectAndApproved(User user, LocalDate startDate, LocalDate endDate, Project project, Boolean approved, Pageable pageable);
+
+    // 按项目、日期范围和审批状态查询工时记录
+    List<WorkTimeRecord> findByProjectAndDateBetweenAndApproved(Project project, LocalDate startDate, LocalDate endDate, Boolean approved);
+
+    // 按项目、日期范围和审批状态查询工时记录（分页）
+    Page<WorkTimeRecord> findByProjectAndDateBetween(Project project, LocalDate startDate, LocalDate endDate, Pageable pageable);
+    Page<WorkTimeRecord> findByProjectAndDateBetweenAndApproved(Project project, LocalDate startDate, LocalDate endDate, Boolean approved, Pageable pageable);
+}

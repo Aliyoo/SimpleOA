@@ -1,0 +1,383 @@
+<template>
+  <div class="time-management-container">
+    <h1>工时管理</h1>
+
+    <el-tabs v-model="activeTab" v-if="tabsReady">
+      <el-tab-pane label="工时填报" name="report">
+        <el-form :model="timeReportForm" label-width="100px" class="report-form">
+          <el-form-item label="项目名称" prop="project">
+            <el-select v-model="timeReportForm.project.id" placeholder="请选择项目">
+              <el-option
+                v-for="project in projectList"
+                :key="project.id"
+                :label="project.name"
+                :value="project.id"
+              />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="工作日期" prop="date">
+            <el-date-picker
+              v-model="timeReportForm.date"
+              type="date"
+              placeholder="选择日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+            />
+          </el-form-item>
+
+          <el-form-item label="工时(小时)" prop="hours">
+            <el-input-number v-model="timeReportForm.hours" :min="0.5" :max="24" :step="0.5" />
+          </el-form-item>
+
+          <el-form-item label="工作类型" prop="workType">
+            <el-select v-model="timeReportForm.workType" placeholder="请选择工作类型">
+              <el-option label="开发" value="开发" />
+              <el-option label="测试" value="测试" />
+              <el-option label="设计" value="设计" />
+              <el-option label="文档" value="文档" />
+              <el-option label="会议" value="会议" />
+              <el-option label="其他" value="其他" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="工作内容" prop="description">
+            <el-input
+              v-model="timeReportForm.description"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入工作内容"
+            />
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" @click="submitTimeReport">提交</el-button>
+          </el-form-item>
+        </el-form>
+      </el-tab-pane>
+
+      <el-tab-pane label="审批列表" name="approval">
+        <div class="approval-container">
+          <!-- 搜索和筛选区域 -->
+          <div class="search-bar">
+            <el-form :inline="true" :model="approvalSearchForm" class="search-form">
+              <el-form-item label="项目">
+                <el-select v-model="approvalSearchForm.projectId" placeholder="选择项目" clearable style="width: 200px;">
+                  <el-option
+                    v-for="project in projectList"
+                    :key="project.id"
+                    :label="project.name"
+                    :value="project.id"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="日期范围">
+                <el-date-picker
+                  v-model="approvalSearchForm.dateRange"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
+                  clearable
+                  style="width: 300px;"
+                />
+              </el-form-item>
+              <el-form-item label="状态">
+                <el-select v-model="approvalSearchForm.status" placeholder="选择状态" clearable style="width: 150px;">
+                  <el-option label="待审批" value="pending" />
+                  <el-option label="已通过" value="approved" />
+                </el-select>
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="searchApprovalList">查询</el-button>
+                <el-button @click="resetApprovalSearch">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- 查询结果提示 -->
+          <div class="query-result-info" v-if="!approvalLoading && approvalList.length > 0">
+            当前显示 <span class="highlight">{{ approvalList.length }}</span> 条记录，
+            时间范围： <span class="highlight">{{ approvalSearchForm.dateRange[0] || '-' }}</span> 至 <span class="highlight">{{ approvalSearchForm.dateRange[1] || '-' }}</span>
+          </div>
+
+          <!-- 工时记录列表 -->
+          <el-table
+            :data="approvalList"
+            style="width: 100%"
+            v-loading="approvalLoading"
+            :row-key="row => row.id"
+          >
+            <el-table-column label="项目" width="180">
+              <template #default="scope">
+                {{ scope.row.project?.name || '未知项目' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="date" label="工作日期" width="120">
+              <template #default="scope">
+                <span>{{ scope.row.date }}</span>
+                <el-tooltip content="工作日期" placement="top">
+                  <el-icon class="ml-1"><Calendar /></el-icon>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+            <el-table-column prop="hours" label="工时" width="100" />
+            <el-table-column prop="workType" label="工作类型" width="100" />
+            <el-table-column prop="description" label="工作内容" show-overflow-tooltip />
+            <el-table-column label="状态" width="120">
+              <template #default="scope">
+                <el-tag :type="getStatusTagType(scope.row.approved)">
+                  {{ scope.row.approved ? '已通过' : '待审批' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="180">
+              <template #default="scope">
+                <el-button
+                  size="small"
+                  type="success"
+                  @click="approveTimeReport(scope.row)"
+                  v-if="!scope.row.approved && isApprover"
+                >
+                  通过
+                </el-button>
+                <el-button
+                  size="small"
+                  type="warning"
+                  @click="rejectTimeReport(scope.row)"
+                  v-if="!scope.row.approved && isApprover"
+                >
+                  驳回
+                </el-button>
+                <el-button
+                  size="small"
+                  type="danger"
+                  @click="deleteTimeReport(scope.row)"
+                  v-if="!scope.row.approved"
+                >
+                  删除
+                </el-button>
+                <el-button
+                  size="small"
+                  type="info"
+                  @click="viewTimeReportDetail(scope.row)"
+                >
+                  详情
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <!-- 分页控件 -->
+          <div class="pagination-container">
+            <el-pagination
+              :current-page="approvalPagination.currentPage"
+              :page-size="approvalPagination.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="approvalPagination.total"
+              @size-change="handleApprovalSizeChange"
+              @current-change="handleApprovalCurrentChange"
+              @update:current-page="val => approvalPagination.currentPage = val"
+              @update:page-size="val => approvalPagination.pageSize = val"
+            />
+          </div>
+
+          <!-- 详情对话框 -->
+          <el-dialog v-model="timeReportDetailVisible" title="工时记录详情" width="50%">
+            <div v-if="selectedTimeReport">
+              <el-descriptions :column="2" border>
+                <el-descriptions-item label="项目">{{ selectedTimeReport.project?.name || '未知项目' }}</el-descriptions-item>
+                <el-descriptions-item label="工作日期">{{ selectedTimeReport.date }}</el-descriptions-item>
+                <el-descriptions-item label="工时">{{ selectedTimeReport.hours }}</el-descriptions-item>
+                <el-descriptions-item label="工作类型">{{ selectedTimeReport.workType }}</el-descriptions-item>
+                <el-descriptions-item label="状态">
+                  <el-tag :type="getStatusTagType(selectedTimeReport.approved)">
+                    {{ selectedTimeReport.approved ? '已通过' : '待审批' }}
+                  </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="工作内容" :span="2">{{ selectedTimeReport.description }}</el-descriptions-item>
+              </el-descriptions>
+            </div>
+            <template #footer>
+              <span class="dialog-footer">
+                <el-button @click="timeReportDetailVisible = false">关闭</el-button>
+                <el-button type="success" @click="approveTimeReport(selectedTimeReport)" v-if="selectedTimeReport && !selectedTimeReport.approved && isApprover">通过</el-button>
+                <el-button type="warning" @click="rejectTimeReport(selectedTimeReport)" v-if="selectedTimeReport && !selectedTimeReport.approved && isApprover">驳回</el-button>
+                <el-button type="danger" @click="deleteTimeReport(selectedTimeReport)" v-if="selectedTimeReport && !selectedTimeReport.approved">删除</el-button>
+              </span>
+            </template>
+          </el-dialog>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="批量填写" name="batch">
+        <div class="batch-container">
+          <div class="batch-header">
+            <el-date-picker
+              v-model="batchDateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              format="YYYY-MM-DD"
+              value-format="YYYY-MM-DD"
+              :default-value="APP_CONFIG.DEFAULT_DATE_RANGE.getRangeDates()"
+              @change="generateBatchTable"
+            />
+            <el-button type="primary" @click="submitBatchTimeRecords">批量提交</el-button>
+          </div>
+
+          <div class="batch-table-container" v-loading="batchLoading">
+            <el-table
+              :data="batchProjects"
+              style="width: 100%"
+              border
+              :max-height="500"
+              :cell-class-name="getCellClass"
+            >
+              <!-- 固定列 -->
+              <el-table-column type="index" label="序号" width="60" fixed="left" />
+              <el-table-column prop="name" label="项目名称" width="200" fixed="left" />
+              <el-table-column prop="managerName" label="项目经理" width="120" fixed="left" />
+
+              <!-- 动态日期列 -->
+              <el-table-column
+                v-for="date in batchDates"
+                :key="date"
+                :label="formatDateLabel(date)"
+                :prop="date"
+                width="80"
+                align="center"
+              >
+                <template #default="scope">
+                  <el-input-number
+                    v-model="scope.row.hours[date]"
+                    :min="0"
+                    :max="8"
+                    :step="1"
+                    :precision="0"
+                    :controls="false"
+                    size="small"
+                    style="width: 60px"
+                    @change="validateHours(scope.row.hours[date])"
+                  />
+                </template>
+              </el-table-column>
+
+              <!-- 合计列 -->
+              <el-table-column label="合计" width="80" fixed="right" align="center">
+                <template #default="scope">
+                  {{ calculateTotalHours(scope.row.hours) }}
+                </template>
+              </el-table-column>
+            </el-table>
+
+            <div class="batch-empty" v-if="batchProjects.length === 0 && !batchLoading">
+              <el-empty description="暂无项目数据" />
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="统计报表" name="statistics">
+        <div class="statistics-container">
+          <div class="statistics-header">
+            <div class="statistics-filters">
+              <el-date-picker
+                v-model="statisticsDateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                :default-value="APP_CONFIG.DEFAULT_DATE_RANGE.getRangeDates()"
+                @change="onDateRangeChange"
+                style="width: 300px;"
+              />
+              <el-select
+                v-model="selectedProjectId"
+                placeholder="选择项目"
+                clearable
+                style="width: 200px; margin-left: 10px;"
+              >
+                <el-option
+                  key="all"
+                  label="所有项目"
+                  value=""
+                />
+                <el-option
+                  v-for="project in projectList"
+                  :key="project.id"
+                  :label="project.name"
+                  :value="project.id"
+                />
+              </el-select>
+            </div>
+            <el-button type="primary" @click="fetchStatisticsData" :disabled="!statisticsDateRange || statisticsDateRange.length !== 2">刷新数据</el-button>
+          </div>
+
+          <div class="statistics-summary">
+            <el-card shadow="hover">
+              <template #header>
+                <div class="clearfix">
+                  <span>工时汇总</span>
+                </div>
+              </template>
+              <div class="summary-content">
+                <div class="summary-item">
+                  <span class="summary-label">总工时：</span>
+                  <span class="summary-value">{{ summaryData.totalHours }} 小时</span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">加班时长：</span>
+                  <span class="summary-value">{{ summaryData.overtimeHours }} 小时</span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">工作负荷：</span>
+                  <span class="summary-value">{{ summaryData.workload }}%</span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">记录数量：</span>
+                  <span class="summary-value">{{ summaryData.recordCount }} 条</span>
+                </div>
+                <div class="summary-item">
+                  <span class="summary-label">平均工时：</span>
+                  <span class="summary-value">{{ summaryData.averageHoursPerRecord }} 小时/条</span>
+                </div>
+              </div>
+            </el-card>
+          </div>
+
+          <!-- 项目统计表格 -->
+          <div class="statistics-section">
+            <h3 class="section-title">项目工时统计</h3>
+            <el-table :data="statisticsData" style="width: 100%;" :row-class-name="tableRowClassName">
+              <el-table-column prop="projectName" label="项目" />
+              <el-table-column prop="totalHours" label="总工时" sortable>
+                <template #default="scope">
+                  {{ scope.row.totalHours.toFixed(2) }} 小时
+                </template>
+              </el-table-column>
+              <el-table-column prop="percentage" label="占比" sortable />
+            </el-table>
+          </div>
+
+          <!-- 图表展示 -->
+          <div class="statistics-section">
+            <h3 class="section-title">工时分布图表</h3>
+            <div class="chart-container">
+              <el-empty description="暂无数据" v-if="!statisticsData.length" />
+              <div v-else>
+                <div id="timeStatisticsChart" style="width: 100%; height: 400px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
+  </div>
+</template>

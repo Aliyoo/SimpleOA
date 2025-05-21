@@ -41,7 +41,10 @@
                   @change="onShowAllProjectsChange"
                 />
               </div>
-              <el-button type="primary" @click="refreshProjects">刷新数据</el-button>
+              <div>
+                <el-button type="primary" @click="refreshProjects">刷新数据</el-button>
+                <el-button type="success" :icon="DocumentDownload" @click="exportBatchFillData">导出Excel</el-button>
+              </div>
             </div>
 
             <div class="batch-projects-container" v-loading="batchLoading">
@@ -137,7 +140,10 @@
                   @change="onStatsDateRangeChange"
                 />
               </div>
-              <el-button type="primary" @click="fetchProjectsStats">刷新统计</el-button>
+              <div>
+                <el-button type="primary" @click="fetchProjectsStats">刷新统计</el-button>
+                <el-button type="success" :icon="DocumentDownload" @click="exportStatisticalReportData">导出Excel</el-button>
+              </div>
             </div>
 
             <div class="stats-content" v-loading="statsLoading">
@@ -298,6 +304,7 @@ import { ref, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
+import { DocumentDownload } from '@element-plus/icons-vue'
 
 export default {
   setup() {
@@ -1252,6 +1259,120 @@ export default {
       return managedProjects.value.some(p => p.id === project.id)
     }
 
+    // 导出工时批量填写Excel
+    const exportBatchFillData = async () => {
+      console.log('导出工时批量填写Excel')
+      if (!batchDateRange.value || batchDateRange.value.length !== 2) {
+        ElMessage.warning('请选择有效的日期范围')
+        return
+      }
+
+      if (!displayProjects.value || displayProjects.value.length === 0) {
+        ElMessage.warning('没有可导出的项目数据')
+        return
+      }
+
+      batchLoading.value = true
+      try {
+        const projectsData = displayProjects.value.map(project => ({
+          projectId: project.id,
+          projectName: project.name,
+          members: project.members.map(member => ({
+            userId: member.id,
+            username: member.username,
+            realName: member.realName,
+            hours: member.hours
+          }))
+        }))
+
+        const payload = {
+          startDate: batchDateRange.value[0],
+          endDate: batchDateRange.value[1],
+          projectsData
+        }
+
+        console.log('Export payload:', payload)
+
+        const response = await api.post('/api/export/batch-fill', payload, {
+          responseType: 'blob' // Important for file download
+        })
+
+        const blob = new Blob([response.data], { type: response.headers['content-type'] })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        // Extract filename from content-disposition header if available
+        const contentDisposition = response.headers['content-disposition']
+        let filename = 'batch_fill_export.xlsx' // Default filename
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="?(.+)"?/)
+          if (filenameMatch && filenameMatch.length > 1) {
+            filename = filenameMatch[1]
+          }
+        }
+        link.setAttribute('download', filename)
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+
+        ElMessage.success('成功导出批量填写数据')
+      } catch (error) {
+        console.error('导出工时批量填写Excel失败:', error)
+        ElMessage.error('导出工时批量填写Excel失败: ' + (error.response?.data?.message || error.message))
+      } finally {
+        batchLoading.value = false
+      }
+    }
+
+    // 导出统计报表Excel
+    const exportStatisticalReportData = async () => {
+      console.log('导出统计报表Excel')
+      if (!statsDateRange.value || statsDateRange.value.length !== 2) {
+        ElMessage.warning('请选择有效的日期范围')
+        return
+      }
+
+      statsLoading.value = true
+      try {
+        const params = {
+          startDate: statsDateRange.value[0],
+          endDate: statsDateRange.value[1]
+        }
+
+        const response = await api.get('/api/export/statistical-report', {
+          params,
+          responseType: 'blob' // Important for file download
+        })
+
+        const blob = new Blob([response.data], { type: response.headers['content-type'] })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        // Extract filename from content-disposition header if available
+        const contentDisposition = response.headers['content-disposition']
+        let filename = 'statistical_report_export.xlsx' // Default filename
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="?(.+)"?/)
+          if (filenameMatch && filenameMatch.length > 1) {
+            filename = filenameMatch[1]
+          }
+        }
+        link.setAttribute('download', filename)
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+
+        ElMessage.success('成功导出统计报表数据')
+      } catch (error) {
+        console.error('导出统计报表Excel失败:', error)
+        ElMessage.error('导出统计报表Excel失败: ' + (error.response?.data?.message || error.message))
+      } finally {
+        statsLoading.value = false
+      }
+    }
+
     onMounted(async () => {
       // 在页面加载时确保从缓存中获取用户信息，如果没有则从服务器获取
       if (!currentUser.value || !currentUser.value.id) {
@@ -1311,7 +1432,10 @@ export default {
       fetchProjectsStats,
       viewProjectDetail,
       formatNumber,
-      isProjectManager
+      isProjectManager,
+      exportBatchFillData,
+      exportStatisticalReportData,
+      DocumentDownload // 确保图标组件在模板中可用
     }
   }
 }
@@ -1340,6 +1464,7 @@ h1 {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  gap: 10px; /* Added to provide spacing for multiple buttons */
 }
 
 .batch-filters {
@@ -1445,6 +1570,7 @@ h1 {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  gap: 10px; /* Added to provide spacing for multiple buttons */
 }
 
 .stats-filters {

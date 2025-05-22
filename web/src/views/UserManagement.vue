@@ -294,9 +294,7 @@ const handleAssignRoles = async (user) => {
 
 const submitRoleForm = async () => {
   try {
-    await api.put(`/api/users/${roleForm.value.id}/roles`, {
-      roleIds: roleForm.value.roles
-    })
+    await api.put(`/api/users/${roleForm.value.id}/roles`, roleForm.value.roles)
     ElMessage.success('角色分配成功')
     roleDialogVisible.value = false
     fetchUsers()

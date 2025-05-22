@@ -64,7 +64,7 @@ public class ExportController {
 
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"batch_fill_export.xlsx\"");
-            headers.setContentType(MediaType.APPLICATION_VND_OPENXMLFORMATS_OFFICEDOCUMENT_SPREADSHEETML_SHEET);
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
 
             logger.info("Successfully generated batch fill Excel for dates: {} to {}. File size: {} bytes", startDate, endDate, bytes.length);
 
@@ -101,7 +101,7 @@ public class ExportController {
 
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"statistical_report_export.xlsx\"");
-            headers.setContentType(MediaType.APPLICATION_VND_OPENXMLFORMATS_OFFICEDOCUMENT_SPREADSHEETML_SHEET);
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
 
             logger.info("Successfully generated statistical report Excel for dates: {} to {}. File size: {} bytes", parsedStartDate, parsedEndDate, bytes.length);
 

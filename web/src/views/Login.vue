@@ -81,7 +81,7 @@ const handleLogin = () => {
       try {
         await userStore.login(loginForm.value)
         // 获取跳转地址，如果没有则跳转到仪表盘页面
-        const redirect = route.query.redirect || '/projects'
+        const redirect = route.query.redirect || '/dashboard'
         router.push(redirect)
       } finally {
         loading.value = false

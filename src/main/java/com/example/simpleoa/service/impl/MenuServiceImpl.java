@@ -35,9 +35,19 @@ public class MenuServiceImpl implements MenuService {
     @Override
     public List<Map<String, Object>> getMenuTreeByUserId(Long userId) {
         List<Menu> userMenus = menuRepository.findMenusByUserId(userId);
-        // 过滤出顶级菜单
-        List<Menu> rootMenus = userMenus.stream()
-                .filter(menu -> menu.getParent() == null)
+        // 获取所有顶级菜单
+        List<Menu> allRootMenus = menuRepository.findByParentIsNullOrderBySortOrderAsc();
+        // 过滤出用户有权限访问的顶级菜单或包含有权限子菜单的顶级菜单
+        List<Menu> rootMenus = allRootMenus.stream()
+                .filter(rootMenu -> {
+                    // 如果顶级菜单本身在用户菜单中，则包含它
+                    if (userMenus.contains(rootMenu)) {
+                        return true;
+                    }
+                    // 否则检查是否有子菜单在用户菜单中
+                    return userMenus.stream()
+                            .anyMatch(menu -> menu.getParent() != null && menu.getParent().getId().equals(rootMenu.getId()));
+                })
                 .sorted(Comparator.comparing(Menu::getSortOrder))
                 .collect(Collectors.toList());
         

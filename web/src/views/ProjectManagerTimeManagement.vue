@@ -43,7 +43,7 @@
               </div>
               <div>
                 <el-button type="primary" @click="refreshProjects">刷新数据</el-button>
-                <el-button type="success" :icon="DocumentDownload" @click="exportBatchFillData">导出Excel</el-button>
+                <el-button type="success" :icon="Download" @click="exportBatchFillData">导出Excel</el-button>
               </div>
             </div>
 
@@ -142,7 +142,7 @@
               </div>
               <div>
                 <el-button type="primary" @click="fetchProjectsStats">刷新统计</el-button>
-                <el-button type="success" :icon="DocumentDownload" @click="exportStatisticalReportData">导出Excel</el-button>
+                <el-button type="success" :icon="Download" @click="exportStatisticalReportData">导出Excel</el-button>
               </div>
             </div>
 
@@ -304,7 +304,7 @@ import { ref, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
-import { DocumentDownload } from '@element-plus/icons-vue'
+import { Download } from '@element-plus/icons-vue'
 
 export default {
   setup() {
@@ -1435,7 +1435,7 @@ export default {
       isProjectManager,
       exportBatchFillData,
       exportStatisticalReportData,
-      DocumentDownload // 确保图标组件在模板中可用
+      Download // 确保图标组件在模板中可用
     }
   }
 }

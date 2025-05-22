@@ -56,6 +56,9 @@ export const useUserStore = defineStore('user', {
             this.user = response.data.user
             this.token = response.data.token
             localStorage.setItem('token', this.token)
+            // 在登录成功后立即获取用户权限和菜单
+            await this.fetchUserPermissions()
+            await this.fetchUserMenus()
             ElMessage.success('登录成功')
             return Promise.resolve(response.data)
         } else {

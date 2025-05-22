@@ -1,5 +1,8 @@
 package com.example.simpleoa.service;
 
+import com.example.simpleoa.model.Project;
+import com.example.simpleoa.model.User;
+import com.example.simpleoa.model.WorkTimeRecord;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.ss.util.CellRangeAddress; // If merging cells, not used in this specific impl but good to have
@@ -11,13 +14,12 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Collections;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 // Assume WorkTimeService and ProjectService will be created or exist
@@ -172,15 +174,6 @@ public class ExportService {
             }
             throw new IOException("Failed to generate batch fill Excel: " + e.getMessage(), e);
         }
-import com.example.simpleoa.model.Project; // Assuming Project model exists
-import com.example.simpleoa.model.User;     // Assuming User model exists
-import com.example.simpleoa.model.WorkTime; // Assuming WorkTime model exists
-
-import java.util.HashMap;
-import java.text.DecimalFormat;
-import java.util.Comparator;
-import java.util.stream.Collectors;
-
     }
 
     public ByteArrayInputStream generateStatisticalReportExcel(LocalDate startDate, LocalDate endDate) throws IOException {
@@ -388,18 +381,18 @@ import java.util.stream.Collectors;
             }
             String projectName = project.getName();
 
-            List<User> members = projectService.getProjectMembers(projectId);
+            Set<User> members = projectService.getProjectMembers(projectId);
             if (members == null || members.isEmpty()) {
                 continue;
             }
 
             for (User member : members) {
-                List<WorkTime> records = workTimeService.getWorkTimeRecordsByUserAndDateRangeFiltered(
+                List<WorkTimeRecord> records = workTimeService.getWorkTimeRecordsByUserAndDateRangeFiltered(
                         member, startDate, endDate, project, null); // Status null to get all
 
                 if (records == null || records.isEmpty()) continue;
 
-                double memberTotalHoursInProject = records.stream().mapToDouble(WorkTime::getHours).sum();
+                double memberTotalHoursInProject = records.stream().mapToDouble(WorkTimeRecord::getHours).sum();
                 long recordCountInProject = records.size();
                 double avgHoursPerRecord = (recordCountInProject > 0) ? (memberTotalHoursInProject / recordCountInProject) : 0.0;
                 double percentageOfProjectTotal = (projectTotalHoursForCalc > 0) ? (memberTotalHoursInProject / projectTotalHoursForCalc) : 0.0;

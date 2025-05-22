@@ -75,7 +75,38 @@ public class MenuController {
                 return basicMenus;
             }
 
-            return menuService.getMenuTreeByUserId(user.getId());
+            List<Map<String, Object>> userMenus = menuService.getMenuTreeByUserId(user.getId());
+            // 如果用户的菜单列表为空，也返回基本菜单
+            if (userMenus == null || userMenus.isEmpty()) {
+                List<Map<String, Object>> basicMenus = new ArrayList<>();
+
+                // 仪表盘
+                Map<String, Object> dashboard = new HashMap<>();
+                dashboard.put("id", 1L);
+                dashboard.put("name", "仪表盘");
+                dashboard.put("path", "/dashboard");
+                dashboard.put("component", "Dashboard");
+                dashboard.put("icon", "Odometer");
+                dashboard.put("sortOrder", 1);
+                dashboard.put("isHidden", false);
+
+                // 个人资料
+                Map<String, Object> profile = new HashMap<>();
+                profile.put("id", 40L);
+                profile.put("name", "个人资料");
+                profile.put("path", "/profile");
+                profile.put("component", "Profile");
+                profile.put("icon", "User");
+                profile.put("sortOrder", 5);
+                profile.put("isHidden", false);
+
+                basicMenus.add(dashboard);
+                basicMenus.add(profile);
+
+                return basicMenus;
+            }
+
+            return userMenus;
         }
         return List.of();
     }

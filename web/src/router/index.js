@@ -302,6 +302,19 @@ router.beforeEach((to, from, next) => {
     return;
   }
 
+  // 如果token存在但user对象为空，尝试重新获取用户信息
+  if (userStore.isAuthenticated && !userStore.user) {
+    userStore.fetchUser().then(() => {
+      // 继续导航
+      next();
+    }).catch((error) => {
+      console.error("重新获取用户信息失败:", error);
+      // 如果获取失败，跳转到登录页
+      next({ name: 'Login', query: { redirect: to.fullPath } });
+    });
+    return;
+  }
+
   // 如果是admin用户，允许访问所有路由
   if (userStore.isAdmin) {
     next();

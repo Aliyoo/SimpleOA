@@ -51,64 +51,6 @@
           </el-table-column>
         </el-table>
       </el-tab-pane>
-
-      <el-tab-pane label="角色权限分配" name="rolePermission">
-        <div class="role-permission-container">
-          <el-row :gutter="20">
-            <el-col :span="8">
-              <div class="role-list">
-                <h3>角色列表</h3>
-                <el-input
-                  v-model="roleSearch"
-                  placeholder="搜索角色"
-                  style="margin-bottom: 15px"
-                  clearable
-                />
-                <el-table :data="filteredRoles" @row-click="handleRoleSelect" highlight-current-row ref="roleTableRef">
-                  <el-table-column prop="name" label="角色名称" />
-                  <el-table-column prop="description" label="角色描述" />
-                </el-table>
-              </div>
-            </el-col>
-            <el-col :span="16">
-              <div class="permission-assignment" v-if="selectedRole">
-                <h3>为角色 "{{ selectedRole.name }}" 分配权限</h3>
-                <el-input
-                  v-model="assignPermissionSearch"
-                  placeholder="搜索权限"
-                  style="margin-bottom: 15px"
-                  clearable
-                />
-                <el-button
-                  type="primary"
-                  @click="handleSaveRolePermissions"
-                  :loading="savingRolePermissions"
-                  style="margin-bottom: 15px; margin-left: 10px"
-                >保存权限设置</el-button>
-
-                <el-table :data="filteredAssignPermissions" style="width: 100%" ref="permissionAssignTableRef">
-                  <el-table-column type="selection" width="55"
-                    :selectable="(row) => true"
-                    :reserve-selection="false"
-                  />
-                  <el-table-column prop="name" label="权限名称" />
-                  <el-table-column prop="description" label="权限描述" />
-                  <el-table-column prop="permissionType" label="权限类型">
-                    <template #default="scope">
-                      <el-tag :type="getPermissionTypeTag(scope.row.permissionType)">
-                        {{ scope.row.permissionType === 'FUNCTIONAL' ? '功能权限' : '数据权限' }}
-                      </el-tag>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </div>
-              <div v-else class="no-role-selected">
-                <el-empty description="请先选择一个角色"></el-empty>
-              </div>
-            </el-col>
-          </el-row>
-        </div>
-      </el-tab-pane>
     </el-tabs>
 
     <!-- 权限表单对话框 -->
@@ -249,16 +191,6 @@ const initialPermissionFormState = () => ({
 });
 const permissionForm = reactive(initialPermissionFormState());
 
-// Role Permission Assignment
-const roles = ref([])
-const roleSearch = ref('')
-const selectedRole = ref(null)
-const savingRolePermissions = ref(false)
-const assignPermissionSearch = ref('')
-const roleTableRef = ref(null) // Ref for role table
-const permissionAssignTableRef = ref(null) // Ref for permission assignment table
-const rolePermissionsMap = ref({}); // To store original permissions for comparison
-
 // Permission Configuration Dialog
 const permissionConfigDialogVisible = ref(false)
 const selectedPermission = ref(null)
@@ -277,26 +209,6 @@ const filteredPermissions = computed(() => {
     p.name.toLowerCase().includes(permissionSearch.value.toLowerCase()) ||
     p.description.toLowerCase().includes(permissionSearch.value.toLowerCase())
   );
-});
-
-const filteredRoles = computed(() => {
-    if (!roleSearch.value) {
-        return roles.value;
-    }
-    return roles.value.filter(r =>
-        r.name.toLowerCase().includes(roleSearch.value.toLowerCase())
-    );
-});
-
-// Use all permissions for assignment filtering
-const filteredAssignPermissions = computed(() => {
-    if (!assignPermissionSearch.value) {
-        return permissions.value; // Use the main permissions list
-    }
-    return permissions.value.filter(p =>
-        p.name.toLowerCase().includes(assignPermissionSearch.value.toLowerCase()) ||
-        p.description.toLowerCase().includes(assignPermissionSearch.value.toLowerCase())
-    );
 });
 
 // --- Validation Rules ---
@@ -322,15 +234,6 @@ const fetchPermissions = async () => {
         permissions.value = response.data;
     } catch (error) {
         ElMessage.error('获取权限列表失败: ' + error.message);
-    }
-};
-
-const fetchRoles = async () => {
-    try {
-        const response = await api.get('/api/roles');
-        roles.value = response.data;
-    } catch (error) {
-        ElMessage.error('获取角色列表失败: ' + error.message);
     }
 };
 
@@ -396,66 +299,6 @@ const handleDeletePermission = async (permission) => {
     }
 };
 
-// Role Permission Assignment
-const handleRoleSelect = async (role) => {
-    if (!role || selectedRole.value?.id === role.id) return;
-    selectedRole.value = role;
-    // Fetch permissions for the selected role
-    try {
-        const response = await api.get(`/api/roles/${role.id}/permissions`);
-        const currentPermissionIds = Array.isArray(response.data) ? response.data.map(p => p.id) : [];
-        rolePermissionsMap.value[role.id] = new Set(currentPermissionIds); // Store original permissions
-        // Set table selection
-        await nextTick(); // Wait for table data to potentially update
-        if (permissionAssignTableRef.value) {
-             permissionAssignTableRef.value.clearSelection(); // Clear previous
-             filteredAssignPermissions.value.forEach(row => {
-                 if (currentPermissionIds.includes(row.id)) {
-                     permissionAssignTableRef.value.toggleRowSelection(row, true);
-                 }
-             });
-        }
-    } catch (error) {
-        ElMessage.error(`获取角色 ${role.name} 的权限失败: ` + error.message);
-        rolePermissionsMap.value[role.id] = new Set(); // Set empty on error
-         await nextTick();
-         permissionAssignTableRef.value?.clearSelection();
-    }
-};
-
-// Watcher needed to update selection when filtered permissions change
-watch(filteredAssignPermissions, async (newVal, oldVal) => {
-    if (selectedRole.value && permissionAssignTableRef.value) {
-        const currentPermissionIds = rolePermissionsMap.value[selectedRole.value.id] || new Set();
-        await nextTick();
-         permissionAssignTableRef.value.clearSelection();
-         newVal.forEach(row => {
-             if (currentPermissionIds.has(row.id)) {
-                 permissionAssignTableRef.value.toggleRowSelection(row, true);
-             }
-         });
-    }
-});
-
-
-const handleSaveRolePermissions = async () => {
-    if (!selectedRole.value) return;
-    savingRolePermissions.value = true;
-    try {
-        const selectedRows = permissionAssignTableRef.value?.getSelectionRows?.() ||
-                      permissionAssignTableRef.value?.getSelection?.() || [];
-        const selectedPermissionIds = selectedRows.map(row => row.id);
-
-        await api.put(`/api/roles/${selectedRole.value.id}/permissions`, { permissionIds: selectedPermissionIds });
-        rolePermissionsMap.value[selectedRole.value.id] = new Set(selectedPermissionIds); // Update stored map
-        ElMessage.success(`角色 "${selectedRole.value.name}" 的权限已更新`);
-    } catch (error) {
-        ElMessage.error('保存角色权限失败: ' + error.message);
-    } finally {
-        savingRolePermissions.value = false;
-    }
-};
-
 // Permission Configuration Dialog (Example structure - needs specific API endpoints)
 const handleConfigurePermission = async (permission) => {
     selectedPermission.value = permission;
@@ -505,7 +348,6 @@ const saveDataPermission = async () => {
 // --- Lifecycle Hook ---
 onMounted(() => {
     fetchPermissions();
-    fetchRoles();
 });
 
 </script>

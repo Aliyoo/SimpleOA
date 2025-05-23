@@ -72,14 +72,6 @@ public class Permission {
     @Column
     private Boolean isActive;
 
-    // 关联的所有角色
-    @ManyToMany
-    @JoinTable(name = "permission_role_mapping",
-        joinColumns = @JoinColumn(name = "permission_id"),
-        inverseJoinColumns = @JoinColumn(name = "role_id"))
-    @JsonIgnore
-    private Set<Role> roles;
-
     // 关联的所有用户
     //@ManyToMany
     //@JoinTable(name = "permission_user_mapping",

@@ -40,14 +40,11 @@ public class User implements UserDetails {
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
-        name = "user_roles",
+        name = "role_user",
         joinColumns = @JoinColumn(name = "user_id"),
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private List<Role> roles;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    private Role role;
 
     @ManyToOne
     @JoinColumn(name = "position_id")
@@ -66,9 +63,11 @@ public class User implements UserDetails {
     @Override
     @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return role.getPermissions().stream()
-                .map(permission -> new SimpleGrantedAuthority(permission.getName()))
-                .collect(Collectors.toList());
+        return roles.stream()
+            .flatMap(role -> role.getPermissions().stream())
+            .map(permission -> new SimpleGrantedAuthority(permission.getName()))
+            .distinct() //确保权限不重复
+            .collect(Collectors.toList());
     }
 
     @Override

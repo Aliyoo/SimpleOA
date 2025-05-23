@@ -18,11 +18,11 @@ public interface PermissionRepository extends JpaRepository<Permission, Long> {
     boolean existsByName(String name);
     
     // 查询角色的所有权限
-    @Query("SELECT p FROM Permission p JOIN p.roles r WHERE r.id = :roleId")
-    List<Permission> findByRoleId(@Param("roleId") Long roleId);
+    // @Query("SELECT p FROM Permission p JOIN p.roles r WHERE r.id = :roleId")
+    // List<Permission> findByRoleId(@Param("roleId") Long roleId);
     
     // 查询用户的所有权限
-    @Query("SELECT p FROM Permission p JOIN p.roles r JOIN r.users u WHERE u.id = :userId")
+    @Query("SELECT DISTINCT p FROM User u JOIN u.roles r JOIN r.permissions p WHERE u.id = :userId")
     List<Permission> findByUserId(@Param("userId") Long userId);
     
     // 按模块查询权限
@@ -32,6 +32,6 @@ public interface PermissionRepository extends JpaRepository<Permission, Long> {
     //List<Permission> findByOperation(String operation);
     
     // 检查用户是否拥有特定权限
-    @Query("SELECT COUNT(p) > 0 FROM Permission p JOIN p.roles r JOIN r.users u WHERE u.id = :userId AND p.name = :permissionName")
+    @Query("SELECT COUNT(DISTINCT p) > 0 FROM User u JOIN u.roles r JOIN r.permissions p WHERE u.id = :userId AND p.name = :permissionName")
     boolean hasPermission(@Param("userId") Long userId, @Param("permissionName") String permissionName);
 }

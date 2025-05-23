@@ -116,7 +116,7 @@ public class PermissionServiceImpl implements PermissionService {
         //// Check if any permission matches the requested name
         //return permissions.stream()
         //        .anyMatch(p -> p.getName().equals(permissionName));
-        return true;
+        return permissionRepository.hasPermission(userId, permissionName);
     }
 
     @Override

@@ -79,13 +79,6 @@ public class UserService implements UserDetailsService {
         userRepository.deleteById(id);
     }
 
-    public User assignRoleToUser(Long userId, Long roleId) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("用户不存在"));
-        Role role = roleRepository.findById(roleId).orElseThrow(() -> new RuntimeException("角色不存在"));
-        user.setRole(role);
-        return userRepository.save(user);
-    }
-
     //public boolean hasPermission(Long userId, String permissionName) {
     //    User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("用户不存在"));
     //    if (user.getRole() == null) {

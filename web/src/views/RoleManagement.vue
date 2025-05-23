@@ -77,7 +77,7 @@ const rules = {
 
 const defaultProps = {
   children: 'children',
-  label: 'label'
+  label: 'name'
 }
 
 const fetchRoles = async () => {
@@ -115,9 +115,13 @@ const handleEdit = async (role) => {
   dialogTitle.value = '编辑角色'
   isEdit.value = true
   roleForm.value.id = role.id;
-  roleForm.value.name = Array.isArray(role.name) ? (role.name[0] || '') : (role.name || '');
-  roleForm.value.description = Array.isArray(role.description) ? (role.description[0] || '') : (role.description || '');
-  roleForm.value.permissions = Array.isArray(role.permissions) ? role.permissions : [];
+  roleForm.value.name = role.name || '';
+  roleForm.value.description = role.description || '';
+  if (Array.isArray(role.permissions)) {
+    roleForm.value.permissions = role.permissions.map(p => p.id);
+  } else {
+    roleForm.value.permissions = [];
+  }
   dialogVisible.value = true;
   await nextTick();
   roleTreeRef.value?.setCheckedKeys(roleForm.value.permissions || []);

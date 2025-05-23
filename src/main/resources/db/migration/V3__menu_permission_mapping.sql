@@ -84,11 +84,11 @@ INSERT INTO menu_permission (menu_id, permission_id)
 SELECT 40, id FROM permission WHERE name IN ('profile:view', 'profile:edit');
 
 -- 为管理员角色分配所有权限
-INSERT INTO permission_role_mapping (permission_id, role_id)
-SELECT id, 1 FROM permission WHERE id NOT IN (SELECT permission_id FROM permission_role_mapping WHERE role_id = 1);
+INSERT INTO role_permission (permission_id, role_id)
+SELECT id, 1 FROM permission WHERE id NOT IN (SELECT permission_id FROM role_permission WHERE role_id = 1);
 
 -- 为普通用户角色分配基本权限
-INSERT INTO permission_role_mapping (permission_id, role_id)
+INSERT INTO role_permission (permission_id, role_id)
 SELECT id, 2 FROM permission
 WHERE name IN (
     'dashboard:view',
@@ -100,10 +100,10 @@ WHERE name IN (
     'project:view',
     'task:view',
     'profile:view', 'profile:edit'
-) AND id NOT IN (SELECT permission_id FROM permission_role_mapping WHERE role_id = 2);
+) AND id NOT IN (SELECT permission_id FROM role_permission WHERE role_id = 2);
 
 -- 为部门经理角色分配管理权限
-INSERT INTO permission_role_mapping (permission_id, role_id)
+INSERT INTO role_permission (permission_id, role_id)
 SELECT id, 3 FROM permission
 WHERE name IN (
     'dashboard:view',
@@ -117,4 +117,4 @@ WHERE name IN (
     'task:view', 'task:add', 'task:edit',
     'performance:view', 'performance:evaluate',
     'profile:view', 'profile:edit'
-) AND id NOT IN (SELECT permission_id FROM permission_role_mapping WHERE role_id = 3);
+) AND id NOT IN (SELECT permission_id FROM role_permission WHERE role_id = 3);

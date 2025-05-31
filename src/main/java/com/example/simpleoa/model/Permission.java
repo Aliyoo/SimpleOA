@@ -92,13 +92,6 @@ public class Permission {
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastUpdateTime;
 
-    // 关联角色
-    @ManyToMany
-    @JoinTable(name = "role_permission",
-        joinColumns = @JoinColumn(name = "permission_id"),
-        inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles;
-
     @ElementCollection
     @CollectionTable(name = "permission_function_mapping",
         joinColumns = @JoinColumn(name = "permission_id"))

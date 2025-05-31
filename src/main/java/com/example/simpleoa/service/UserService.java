@@ -6,10 +6,11 @@ import com.example.simpleoa.repository.PermissionRepository;
 import com.example.simpleoa.repository.RoleRepository;
 import com.example.simpleoa.repository.UserRepository;
 
+import org.springframework.beans.factory.annotation.Autowired; // Ensure Autowired is imported if not already
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder; // Import PasswordEncoder
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,14 +18,17 @@ import java.util.List;
 @Service
 public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
-    // private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder; // Changed type to PasswordEncoder and removed local initialization
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
 
-    public UserService(UserRepository userRepository, RoleRepository roleRepository, PermissionRepository permissionRepository) {
+    @Autowired // Added Autowired for constructor injection consistency
+    public UserService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder, // Injected PasswordEncoder
+                       RoleRepository roleRepository,
+                       PermissionRepository permissionRepository) {
         this.userRepository = userRepository;
-        this.passwordEncoder = new BCryptPasswordEncoder();
+        this.passwordEncoder = passwordEncoder; // Use injected instance
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
     }
@@ -35,7 +39,7 @@ public class UserService implements UserDetailsService {
             throw new RuntimeException("用户名已存在");
         }
         // 加密密码
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        user.setPassword(this.passwordEncoder.encode(user.getPassword())); // Use this.passwordEncoder
         return userRepository.save(user);
     }
 
@@ -57,7 +61,7 @@ public class UserService implements UserDetailsService {
         
         // 2. 验证密码是否匹配
         String storedEncodedPassword = user.getPassword(); // 数据库中存储的加密密码
-        if (!passwordEncoder.matches(password, storedEncodedPassword)) {
+        if (!this.passwordEncoder.matches(password, storedEncodedPassword)) { // Use this.passwordEncoder
             throw new RuntimeException("用户名或密码错误");
         }
         

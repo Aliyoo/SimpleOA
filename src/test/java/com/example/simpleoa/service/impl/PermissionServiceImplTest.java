@@ -23,7 +23,7 @@ class PermissionServiceImplTest {
     void checkUserPermission_whenRepositoryReturnsTrue_shouldReturnTrue() {
         Long userId = 1L;
         String permissionName = "VIEW_DATA";
-        
+
         // Mocking the repository call
         when(permissionRepository.hasPermission(userId, permissionName)).thenReturn(true);
 
@@ -32,7 +32,7 @@ class PermissionServiceImplTest {
 
         // Assertions
         assertTrue(result, "checkUserPermission should return true when repository.hasPermission returns true");
-        
+
         // Verify that permissionRepository.hasPermission was called exactly once with the correct arguments
         verify(permissionRepository, times(1)).hasPermission(userId, permissionName);
     }
@@ -50,7 +50,7 @@ class PermissionServiceImplTest {
 
         // Assertions
         assertFalse(result, "checkUserPermission should return false when repository.hasPermission returns false");
-        
+
         // Verify that permissionRepository.hasPermission was called exactly once with the correct arguments
         verify(permissionRepository, times(1)).hasPermission(userId, permissionName);
     }
@@ -62,13 +62,13 @@ class PermissionServiceImplTest {
 
         // We don't care about the return value for this test, just the interaction.
         // We can let it return default false (or true, doesn't matter for this verification)
-        when(permissionRepository.hasPermission(specificUserId, specificPermissionName)).thenReturn(false); 
+        when(permissionRepository.hasPermission(specificUserId, specificPermissionName)).thenReturn(false);
 
         permissionService.checkUserPermission(specificUserId, specificPermissionName);
 
         // Verify that permissionRepository.hasPermission was called with the specific userId and permissionName
         verify(permissionRepository).hasPermission(eq(specificUserId), eq(specificPermissionName));
-        
+
         // Verify it was called once
         verify(permissionRepository, times(1)).hasPermission(specificUserId, specificPermissionName);
     }

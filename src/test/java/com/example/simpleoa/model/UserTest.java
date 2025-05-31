@@ -45,7 +45,7 @@ class UserTest {
         perm1.setName("EDIT_DOCUMENT");
         Permission perm2 = new Permission();
         perm2.setName("DELETE_DOCUMENT");
-        
+
         Set<Permission> permissions = new HashSet<>();
         permissions.add(perm1);
         permissions.add(perm2);
@@ -86,7 +86,7 @@ class UserTest {
         assertTrue(authorityStrings.contains("MANAGE_USERS"), "Should contain MANAGE_USERS authority.");
         assertTrue(authorityStrings.contains("MANAGE_SETTINGS"), "Should contain MANAGE_SETTINGS authority.");
     }
-    
+
     @Test
     void getAuthorities_multipleRolesWithOverlappingPermissions_shouldReturnDistinctAuthorities() {
         User user = new User();
@@ -114,13 +114,13 @@ class UserTest {
 
         Collection<? extends GrantedAuthority> authorities = user.getAuthorities();
         assertNotNull(authorities, "Authorities collection should not be null.");
-        
+
         // Expected: VIEW_REPORTS, EDIT_REPORTS, APPROVE_REPORTS (3 distinct permissions)
         List<String> authorityStrings = authorities.stream()
                                                    .map(GrantedAuthority::getAuthority)
                                                    .sorted() // Sort for consistent assertion order if needed
                                                    .collect(Collectors.toList());
-        
+
         assertEquals(3, authorities.size(), "Should have three distinct authorities after merging overlapping permissions.");
         assertTrue(authorityStrings.contains("VIEW_REPORTS"), "Should contain VIEW_REPORTS authority.");
         assertTrue(authorityStrings.contains("EDIT_REPORTS"), "Should contain EDIT_REPORTS authority.");

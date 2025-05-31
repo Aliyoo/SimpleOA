@@ -76,7 +76,7 @@ class PermissionRepositoryTest {
         Set<Permission> managerPermissions = new HashSet<>(Arrays.asList(perm1, perm2, perm3));
         role2.setPermissions(managerPermissions);
         entityManager.persist(role2);
-        
+
         role3 = new Role();
         role3.setName("EmptyRole");
         role3.setDescription("Role with no permissions");
@@ -100,7 +100,7 @@ class PermissionRepositoryTest {
         user2.setEmail("user2@example.com");
         user2.setRoles(Collections.emptyList()); // User2 has no roles
         entityManager.persist(user2);
-        
+
         user3 = new User();
         user3.setUsername("user3");
         user3.setRealName("User Three");
@@ -136,7 +136,7 @@ class PermissionRepositoryTest {
     void hasPermission_userRoleHasNoPermissions_shouldReturnFalse() {
         assertFalse(permissionRepository.hasPermission(user3.getId(), "VIEW_TASK"));
     }
-    
+
     @Test
     void hasPermission_permissionNameDoesNotExist_shouldReturnFalse() {
         assertFalse(permissionRepository.hasPermission(user1.getId(), "NON_EXISTENT_PERMISSION"));
@@ -167,7 +167,7 @@ class PermissionRepositoryTest {
         Set<String> updatedPermissionNames = updatedPermissions.stream().map(Permission::getName).collect(Collectors.toSet());
         assertThat(updatedPermissionNames).containsExactlyInAnyOrder("VIEW_TASK", "EDIT_TASK", "DELETE_TASK");
     }
-    
+
     @Test
     void findByUserId_userWithOneRoleMultiplePermissions_shouldReturnPermissions() {
         // User1 has role1 (VIEW_TASK, EDIT_TASK)
@@ -184,7 +184,7 @@ class PermissionRepositoryTest {
         List<Permission> foundPermissions = permissionRepository.findByUserId(user2.getId());
         assertThat(foundPermissions).isEmpty();
     }
-    
+
     @Test
     void findByUserId_userHasNoPermissions_roleHasNoPermissions_shouldReturnEmptyList() {
         // user3 has role3 (EmptyRole with no permissions)

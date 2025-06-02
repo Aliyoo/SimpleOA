@@ -1,6 +1,6 @@
 <template>
   <div class="time-management-container">
-    <h1>工时管理</h1>
+    <h1>我的工时</h1>
 
     <!-- 自定义 Tab 导航 -->
     <div class="custom-tabs">
@@ -409,7 +409,7 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { APP_CONFIG } from '../utils/config.js'
 import { ref, reactive, onMounted, watch } from 'vue'
 import api from '../utils/axios.js'
@@ -418,86 +418,81 @@ import * as echarts from 'echarts'
 import { useUserStore } from '../stores/user'
 import { Calendar } from '@element-plus/icons-vue'
 
-export default {
-  components: {
-    Calendar
-  },
-  setup() {
-    // 定义 tabs 数组，用于自定义 tabs 导航
-    const tabs = [
-      { name: 'report', label: '工时填报' },
-      { name: 'batch', label: '批量填写' },
-      { name: 'approval', label: '审批列表' },
-      { name: 'statistics', label: '统计报表' }
-    ]
+// 定义 tabs 数组，用于自定义 tabs 导航
+const tabs = [
+  { name: 'report', label: '工时填报' },
+  { name: 'batch', label: '批量填写' },
+  { name: 'approval', label: '审批列表' },
+  { name: 'statistics', label: '统计报表' }
+]
 
-    // 添加日志以检查默认日期范围是否正确设置
-    console.log('默认日期范围(字符串):', APP_CONFIG.DEFAULT_DATE_RANGE.getRange());
-    console.log('默认日期范围(Date对象):', APP_CONFIG.DEFAULT_DATE_RANGE.getRangeDates());
-    const statisticsDateRange = ref([])
-    console.log('statisticsDateRange initial value:', statisticsDateRange.value);
-    const batchDateRange = ref([])
-    const activeTab = ref('report')
-    const userStore = useUserStore()
-    const currentUser = ref(userStore.user)
+// 添加日志以检查默认日期范围是否正确设置
+console.log('默认日期范围(字符串):', APP_CONFIG.DEFAULT_DATE_RANGE.getRange());
+console.log('默认日期范围(Date对象):', APP_CONFIG.DEFAULT_DATE_RANGE.getRangeDates());
+const statisticsDateRange = ref([])
+console.log('statisticsDateRange initial value:', statisticsDateRange.value);
+const batchDateRange = ref([])
+const activeTab = ref('report')
+const userStore = useUserStore()
+const currentUser = ref(userStore.user)
 
-    const summaryData = ref({
-      totalHours: '0.00',
-      overtimeHours: '0.00',
-      workload: '0',
-      recordCount: 0,
-      averageHoursPerRecord: '0.00'
-    });
+const summaryData = ref({
+  totalHours: '0.00',
+  overtimeHours: '0.00',
+  workload: '0',
+  recordCount: 0,
+  averageHoursPerRecord: '0.00'
+});
 
-    const timeReportForm = reactive({
-      project: { id: '' },
-      user: { id: '' },
-      date: '',
-      hours: 8,
-      workType: '开发',
-      description: '',
-      approved: false
-    })
+const timeReportForm = reactive({
+  project: { id: '' },
+  user: { id: '' },
+  date: '',
+  hours: 8,
+  workType: '开发',
+  description: '',
+  approved: false
+})
 
-    const projectList = ref([])
-    const approvalList = ref([])
-    const statisticsData = ref([])
-    const selectedProjectId = ref('') // 默认为空字符串，表示所有项目
-    const isApprover = ref(false)
+const projectList = ref([])
+const approvalList = ref([])
+const statisticsData = ref([])
+const selectedProjectId = ref('') // 默认为空字符串，表示所有项目
+const isApprover = ref(false)
 
-    // 批量填写相关数据
-    const batchDates = ref([])
-    const batchProjects = ref([])
-    const batchLoading = ref(false)
+// 批量填写相关数据
+const batchDates = ref([])
+const batchProjects = ref([])
+const batchLoading = ref(false)
 
-    // 审批列表相关数据
-    const approvalLoading = ref(false)
-    const approvalSearchForm = reactive({
-      projectId: '',
-      // 设置默认日期范围
-      dateRange: [],
-      status: ''
-    })
+// 审批列表相关数据
+const approvalLoading = ref(false)
+const approvalSearchForm = reactive({
+  projectId: '',
+  // 设置默认日期范围
+  dateRange: [],
+  status: ''
+})
 
-    // 初始化函数
-    const initApprovalSearchForm = () => {
-      approvalSearchForm.dateRange = getDefaultDateRange()
-    }
-    const approvalPagination = reactive({
-      currentPage: 1,
-      pageSize: 20, // 增加默认分页大小，显示更多记录
-      total: 0
-    })
-    const timeReportDetailVisible = ref(false)
-    const selectedTimeReport = ref(null)
+// 初始化函数
+const initApprovalSearchForm = () => {
+  approvalSearchForm.dateRange = getDefaultDateRange()
+}
+const approvalPagination = reactive({
+  currentPage: 1,
+  pageSize: 20, // 增加默认分页大小，显示更多记录
+  total: 0
+})
+const timeReportDetailVisible = ref(false)
+const selectedTimeReport = ref(null)
 
-    const fetchProjects = async () => {
-      if (!currentUser.value || !currentUser.value.id) {
-        // 如果没有用户信息，尝试从缓存中获取
-        if (userStore.user && userStore.user.id) {
-          // 用户信息存在于缓存中
-          currentUser.value = userStore.user
-        } else {
+const fetchProjects = async () => {
+  if (!currentUser.value || !currentUser.value.id) {
+    // 如果没有用户信息，尝试从缓存中获取
+    if (userStore.user && userStore.user.id) {
+      // 用户信息存在于缓存中
+      currentUser.value = userStore.user
+    } else {
           ElMessage.warning('未获取到当前用户信息')
           return
         }
@@ -1521,55 +1516,6 @@ export default {
         fetchApprovalList()
       }
     })
-
-    return {
-      activeTab,
-      timeReportForm,
-      projectList,
-      approvalList,
-      statisticsData,
-      statisticsDateRange,
-      isApprover,
-      batchDateRange,
-      batchDates,
-      batchProjects,
-      batchLoading,
-      approvalLoading,
-      approvalSearchForm,
-      approvalPagination,
-      timeReportDetailVisible,
-      selectedTimeReport,
-      tabs,
-      getDefaultDateRange,
-      getDefaultDateRangeDates,
-      submitTimeReport,
-      approveTimeReport,
-      rejectTimeReport,
-      deleteTimeReport,
-      viewTimeReportDetail,
-      searchApprovalList,
-      resetApprovalSearch,
-      handleApprovalSizeChange,
-      handleApprovalCurrentChange,
-      submitBatchTimeRecords,
-      generateBatchTable,
-      loadSubmittedWorkTime,
-      formatDateLabel,
-      calculateTotalHours,
-      validateHours,
-      getCellClass,
-      getStatusTagType,
-      getDefaultDateRange,
-      fetchStatisticsData,
-      onDateRangeChange,
-      onBatchDateRangeChange,
-      initStatisticsChart,
-      summaryData,
-      tableRowClassName,
-      selectedProjectId
-    }
-  }
-}
 </script>
 
 <style scoped>

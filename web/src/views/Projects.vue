@@ -22,88 +22,74 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted } from 'vue'
 import api from '../utils/axios'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
-export default {
-  setup() {
-    const router = useRouter()
-    const projects = ref([])
+const router = useRouter()
+const projects = ref([])
 
-    const fetchProjects = async () => {
-      try {
-        const response = await api.get('/api/projects')
-        projects.value = response.data
-      } catch (error) {
-        console.error('获取项目列表失败:', error)
-      }
-    }
-
-    const handleCreate = () => {
-      router.push('/projects/new')
-    }
-
-    const handleEdit = (project) => {
-      router.push(`/projects/edit/${project.id}`)
-    }
-
-    const handleDelete = async (project) => {
-      try {
-        await api.delete(`/api/projects/${project.id}`)
-        await fetchProjects()
-      } catch (error) {
-        console.error('删除项目失败:', error)
-      }
-    }
-
-    const formatStatus = (row, col, status) => {
-      const statusMap = {
-        PLANNING: '规划中',
-        IN_PROGRESS: '进行中',
-        COMPLETED: '已完成',
-        CANCELLED: '已取消'
-      }
-      return statusMap[status] || status;
-    }
-
-    const formatDate = (row, col, date) => {
-      if (!date) return '';
-
-      // 打印调试信息
-      console.log('原始日期:', date);
-
-      // 尝试将日期字符串转换为 Date 对象
-      const d = new Date(date);
-      
-      // 检查日期是否有效
-      if (isNaN(d.getTime())) {
-        console.error('无效日期:', date);
-        return '无效日期';
-      }
-
-      // 格式化为可读的日期格式，例如 'YYYY-MM-DD'
-      return d.toISOString().split('T')[0]; // 只返回日期部分
-    }
-
-    onMounted(() => {
-      fetchProjects()
-    })
-
-    return {
-      projects,
-      handleCreate,
-      handleEdit,
-      handleDelete,
-      formatStatus,
-      formatDate,
-      fetchProjects
-    }
+const fetchProjects = async () => {
+  try {
+    const response = await api.get('/api/projects')
+    projects.value = response.data
+  } catch (error) {
+    console.error('获取项目列表失败:', error)
   }
 }
-</script>
+
+const handleCreate = () => {
+  router.push('/projects/new')
+}
+
+const handleEdit = (project) => {
+  router.push(`/projects/edit/${project.id}`)
+}
+
+const handleDelete = async (project) => {
+  try {
+    await api.delete(`/api/projects/${project.id}`)
+    await fetchProjects()
+  } catch (error) {
+    console.error('删除项目失败:', error)
+  }
+}
+
+const formatStatus = (row, col, status) => {
+  const statusMap = {
+    PLANNING: '规划中',
+    IN_PROGRESS: '进行中',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消'
+  }
+  return statusMap[status] || status;
+}
+
+const formatDate = (row, col, date) => {
+  if (!date) return '';
+
+  // 打印调试信息
+  console.log('原始日期:', date);
+
+  // 尝试将日期字符串转换为 Date 对象
+  const d = new Date(date);
+  
+  // 检查日期是否有效
+  if (isNaN(d.getTime())) {
+    console.error('无效日期:', date);
+    return '无效日期';
+  }
+
+  // 格式化为可读的日期格式，例如 'YYYY-MM-DD'
+  return d.toISOString().split('T')[0]; // 只返回日期部分
+}
+
+onMounted(() => {
+  fetchProjects()
+})
+</script setup>
 
 <style scoped>
 .projects-container {

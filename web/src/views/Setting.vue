@@ -23,49 +23,40 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 
-export default {
-  setup() {
-    const settingForm = ref({
-      companyName: '',
-      companyAddress: '',
-      phone: '',
-      systemName: ''
-    })
-    
-    const fetchSettings = async () => {
-      try {
-        const response = await api.get('/api/settings')
-        settingForm.value = response.data
-      } catch (error) {
-        ElMessage.error('获取设置失败: ' + error.message)
-      }
-    }
-    
-    const submitForm = async () => {
-      try {
-        await api.post('/api/settings', settingForm.value)
-        ElMessage.success('设置保存成功')
-      } catch (error) {
-        ElMessage.error('保存失败: ' + error.message)
-      }
-    }
-    
-    onMounted(() => {
-      fetchSettings()
-    })
-    
-    return {
-      settingForm,
-      submitForm
-    }
+const settingForm = ref({
+  companyName: '',
+  companyAddress: '',
+  phone: '',
+  systemName: ''
+})
+
+const fetchSettings = async () => {
+  try {
+    const response = await api.get('/api/settings')
+    settingForm.value = response.data
+  } catch (error) {
+    ElMessage.error('获取设置失败: ' + error.message)
   }
 }
-</script>
+
+const submitForm = async () => {
+  try {
+    await api.post('/api/settings', settingForm.value)
+    ElMessage.success('设置保存成功')
+  } catch (error) {
+    ElMessage.error('保存失败: ' + error.message)
+  }
+}
+
+onMounted(() => {
+  fetchSettings()
+})
+</script setup>
 
 <style scoped>
 .setting-container {

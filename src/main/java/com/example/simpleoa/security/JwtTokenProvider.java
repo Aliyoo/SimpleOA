@@ -10,6 +10,9 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtTokenProvider {
@@ -27,7 +30,16 @@ public class JwtTokenProvider {
     public String generateToken(User user) {
         Claims claims = Jwts.claims().setSubject(user.getUsername());
         claims.put("id", user.getId());
-        claims.put("role", user.getRole().getName());
+
+        // Only include essential role information to reduce token size
+        claims.put("roles", user.getRoles().stream()
+                .map(role -> {
+                    Map<String, Object> roleMap = new HashMap<>();
+                    roleMap.put("id", role.getId());
+                    roleMap.put("name", role.getName());
+                    return roleMap;
+                })
+                .collect(Collectors.toList()));
 
         Date now = new Date();
         Date validity = new Date(now.getTime() + validityInMilliseconds);

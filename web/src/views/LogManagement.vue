@@ -22,57 +22,44 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 
-export default {
-  setup() {
-    const logList = ref([])
-    const currentPage = ref(1)
-    const pageSize = ref(10)
-    const total = ref(0)
-    
-    const fetchLogs = async () => {
-      try {
-        const response = await api.get('/api/logs', {
-          params: {
-            page: currentPage.value,
-            size: pageSize.value
-          }
-        })
-        logList.value = response.data.items
-        total.value = response.data.total
-      } catch (error) {
-        ElMessage.error('获取日志失败: ' + error.message)
+const logList = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+
+const fetchLogs = async () => {
+  try {
+    const response = await api.get('/api/logs', {
+      params: {
+        page: currentPage.value,
+        size: pageSize.value
       }
-    }
-    
-    const handleSizeChange = (val) => {
-      pageSize.value = val
-      fetchLogs()
-    }
-    
-    const handleCurrentChange = (val) => {
-      currentPage.value = val
-      fetchLogs()
-    }
-    
-    onMounted(() => {
-      fetchLogs()
     })
-    
-    return {
-      logList,
-      currentPage,
-      pageSize,
-      total,
-      handleSizeChange,
-      handleCurrentChange
-    }
+    logList.value = response.data.items
+    total.value = response.data.total
+  } catch (error) {
+    ElMessage.error('获取日志失败: ' + error.message)
   }
 }
+
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  fetchLogs()
+}
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+  fetchLogs()
+}
+
+onMounted(() => {
+  fetchLogs()
+})
 </script>
 
 <style scoped>

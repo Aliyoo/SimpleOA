@@ -68,10 +68,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String getJwtFromRequest(HttpServletRequest request) {
+        // 首先尝试从 Cookie 中获取 JWT
+        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("jwt".equals(cookie.getName())) {
+                    String token = cookie.getValue();
+                    log.debug("JWT token extracted from cookie: {}", token);
+                    return token;
+                }
+            }
+        }
+        // 如果 Cookie 中没有找到，尝试从 Authorization 头获取（作为备用）
         String bearerToken = request.getHeader("Authorization");
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             String token = bearerToken.substring(7);
-            log.debug("JWT token extracted from request: {}", token);
+            log.debug("JWT token extracted from Authorization header: {}", token);
             return token;
         }
         return null;

@@ -98,6 +98,13 @@ public class ReimbursementServiceImpl implements ReimbursementService {
                 approvalFlowService.notifyStatusChange(latestFlow.getId(), status);
             }
             
+            // 如果审批通过，更新项目预算成本
+            if ("APPROVED".equals(status)) {
+                // 假设有项目ID与报销申请关联，需要更新项目预算
+                // 这里需要调用预算服务来更新成本
+                // budgetService.updateProjectCost(request.getProjectId(), request.getAmount());
+            }
+            
             return savedRequest;
         }
         return null;

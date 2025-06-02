@@ -121,169 +121,151 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, reactive, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { APP_CONFIG } from '../utils/config.js'
 
-export default {
-  setup() {
-    const activeTab = ref('apply')
-    
-    const travelForm = reactive({
-      destination: '',
-      startTime: '',
-      endTime: '',
-      days: 1,
-      reason: '',
-      budget: 0
-    })
-    
-    const approvalList = ref([])
-    const statisticsData = ref([])
-    const statisticsDateRange = ref([])
-    const isApprover = ref(false)
-    
-    const fetchApprovalList = async () => {
-      try {
-        const response = await api.get('/api/travel/approval-list')
-        approvalList.value = response.data
-      } catch (error) {
-        ElMessage.error('获取审批列表失败: ' + error.message)
-      }
-    }
-    
-    const fetchStatisticsData = async () => {
-      if (!statisticsDateRange.value || statisticsDateRange.value.length !== 2) {
-        return
-      }
-      
-      try {
-        const response = await api.get('/api/travel/statistics', {
-          params: {
-            startDate: statisticsDateRange.value[0],
-            endDate: statisticsDateRange.value[1]
-          }
-        })
-        statisticsData.value = response.data
-        renderChart()
-      } catch (error) {
-        ElMessage.error('获取统计数据失败: ' + error.message)
-      }
-    }
-    
-    const renderChart = () => {
-      const chartDom = document.getElementById('travelStatisticsChart')
-      if (!chartDom) return
-      
-      const myChart = echarts.init(chartDom)
-      const option = {
-        tooltip: {
-          trigger: 'item'
-        },
-        legend: {
-          orient: 'vertical',
-          left: 'left'
-        },
-        series: [
-          {
-            name: '出差预算分布',
-            type: 'pie',
-            radius: '50%',
-            data: statisticsData.value.map(item => ({
-              value: item.totalBudget,
-              name: item.destination
-            })),
-            emphasis: {
-              itemStyle: {
-                shadowBlur: 10,
-                shadowOffsetX: 0,
-                shadowColor: 'rgba(0, 0, 0, 0.5)'
-              }
-            }
-          }
-        ]
-      }
-      
-      myChart.setOption(option)
-    }
-    
-    const submitTravel = async () => {
-      try {
-        await api.post('/api/travel/apply', travelForm)
-        ElMessage.success('出差申请提交成功')
-        travelForm.reason = ''
-        fetchApprovalList()
-      } catch (error) {
-        ElMessage.error('提交失败: ' + error.message)
-      }
-    }
-    
-    const approveTravel = async (row) => {
-      try {
-        await api.post(`/api/travel/approve/${row.id}`)
-        ElMessage.success('已通过审批')
-        fetchApprovalList()
-      } catch (error) {
-        ElMessage.error('操作失败: ' + error.message)
-      }
-    }
-    
-    const rejectTravel = async (row) => {
-      try {
-        await api.post(`/api/travel/reject/${row.id}`)
-        ElMessage.success('已拒绝审批')
-        fetchApprovalList()
-      } catch (error) {
-        ElMessage.error('操作失败: ' + error.message)
-      }
-    }
-    
-    const getStatusTagType = (status) => {
-      switch (status) {
-        case '已通过': return 'success'
-        case '已拒绝': return 'danger'
-        case '待审批': return 'warning'
-        default: return 'info'
-      }
-    }
-    
-    const checkApproverRole = async () => {
-      try {
-        const response = await api.get('/api/user/is-approver')
-        isApprover.value = response.data
-      } catch (error) {
-        console.error('检查审批权限失败:', error)
-      }
-    }
-    
-    onMounted(async () => {
-      fetchApprovalList()
-      checkApproverRole()
-      
-      // 从全局配置获取默认日期范围
-      statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange();
-      fetchStatisticsData()
-    })
-    
-    return {
-      activeTab,
-      travelForm,
-      approvalList,
-      statisticsData,
-      statisticsDateRange,
-      isApprover,
-      submitTravel,
-      approveTravel,
-      rejectTravel,
-      getStatusTagType,
-      fetchStatisticsData
-    }
+const activeTab = ref('apply')
+
+const travelForm = reactive({
+  destination: '',
+  startTime: '',
+  endTime: '',
+  days: 1,
+  reason: '',
+  budget: 0
+})
+
+const approvalList = ref([])
+const statisticsData = ref([])
+const statisticsDateRange = ref([])
+const isApprover = ref(false)
+
+const fetchApprovalList = async () => {
+  try {
+    const response = await api.get('/api/travel/approval-list')
+    approvalList.value = response.data
+  } catch (error) {
+    ElMessage.error('获取审批列表失败: ' + error.message)
   }
 }
-</script>
+
+const fetchStatisticsData = async () => {
+  if (!statisticsDateRange.value || statisticsDateRange.value.length !== 2) {
+    return
+  }
+  
+  try {
+    const response = await api.get('/api/travel/statistics', {
+      params: {
+        startDate: statisticsDateRange.value[0],
+        endDate: statisticsDateRange.value[1]
+      }
+    })
+    statisticsData.value = response.data
+    renderChart()
+  } catch (error) {
+    ElMessage.error('获取统计数据失败: ' + error.message)
+  }
+}
+
+const renderChart = () => {
+  const chartDom = document.getElementById('travelStatisticsChart')
+  if (!chartDom) return
+  
+  const myChart = echarts.init(chartDom)
+  const option = {
+    tooltip: {
+      trigger: 'item'
+    },
+    legend: {
+      orient: 'vertical',
+      left: 'left'
+    },
+    series: [
+      {
+        name: '出差预算分布',
+        type: 'pie',
+        radius: '50%',
+        data: statisticsData.value.map(item => ({
+          value: item.totalBudget,
+          name: item.destination
+        })),
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        }
+      }
+    ]
+  }
+  
+  myChart.setOption(option)
+}
+
+const submitTravel = async () => {
+  try {
+    await api.post('/api/travel/apply', travelForm)
+    ElMessage.success('出差申请提交成功')
+    travelForm.reason = ''
+    fetchApprovalList()
+  } catch (error) {
+    ElMessage.error('提交失败: ' + error.message)
+  }
+}
+
+const approveTravel = async (row) => {
+  try {
+    await api.post(`/api/travel/approve/${row.id}`)
+    ElMessage.success('已通过审批')
+    fetchApprovalList()
+  } catch (error) {
+    ElMessage.error('操作失败: ' + error.message)
+  }
+}
+
+const rejectTravel = async (row) => {
+  try {
+    await api.post(`/api/travel/reject/${row.id}`)
+    ElMessage.success('已拒绝审批')
+    fetchApprovalList()
+  } catch (error) {
+    ElMessage.error('操作失败: ' + error.message)
+  }
+}
+
+const getStatusTagType = (status) => {
+  switch (status) {
+    case '已通过': return 'success'
+    case '已拒绝': return 'danger'
+    case '待审批': return 'warning'
+    default: return 'info'
+  }
+}
+
+const checkApproverRole = async () => {
+  try {
+    const response = await api.get('/api/user/is-approver')
+    isApprover.value = response.data
+  } catch (error) {
+    console.error('检查审批权限失败:', error)
+  }
+}
+
+onMounted(async () => {
+  fetchApprovalList()
+  checkApproverRole()
+  
+  // 从全局配置获取默认日期范围
+  statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange();
+  fetchStatisticsData()
+})
+</script setup>
 
 <style scoped>
 .travel-management-container {

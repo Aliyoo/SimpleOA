@@ -51,113 +51,97 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 
-export default {
-  setup() {
-    const notificationList = ref([])
-    const userList = ref([])
-    const dialogVisible = ref(false)
-    const dialogTitle = ref('')
-    const isEdit = ref(false)
-    const currentId = ref('')
-    
-    const notificationForm = ref({
+const notificationList = ref([])
+const userList = ref([])
+const dialogVisible = ref(false)
+const dialogTitle = ref('')
+const isEdit = ref(false)
+const currentId = ref('')
+
+const notificationForm = ref({
+  title: '',
+  content: '',
+  receiverIds: []
+})
+
+const fetchNotifications = async () => {
+  try {
+    const response = await api.get('/api/notifications')
+    notificationList.value = response.data
+  } catch (error) {
+    ElMessage.error('获取通知列表失败: ' + error.message)
+  }
+}
+
+const fetchUsers = async () => {
+  try {
+    const response = await api.get('/api/users')
+    userList.value = response.data
+  } catch (error) {
+    ElMessage.error('获取用户列表失败: ' + error.message)
+  }
+}
+
+const showDialog = (type) => {
+  if (type === 'edit') {
+    dialogTitle.value = '编辑通知'
+    isEdit.value = true
+  } else {
+    dialogTitle.value = '发送通知'
+    isEdit.value = false
+    notificationForm.value = {
       title: '',
       content: '',
       receiverIds: []
-    })
-    
-    const fetchNotifications = async () => {
-      try {
-        const response = await api.get('/api/notifications')
-        notificationList.value = response.data
-      } catch (error) {
-        ElMessage.error('获取通知列表失败: ' + error.message)
-      }
-    }
-    
-    const fetchUsers = async () => {
-      try {
-        const response = await api.get('/api/users')
-        userList.value = response.data
-      } catch (error) {
-        ElMessage.error('获取用户列表失败: ' + error.message)
-      }
-    }
-    
-    const showDialog = (type) => {
-      if (type === 'edit') {
-        dialogTitle.value = '编辑通知'
-        isEdit.value = true
-      } else {
-        dialogTitle.value = '发送通知'
-        isEdit.value = false
-        notificationForm.value = {
-          title: '',
-          content: '',
-          receiverIds: []
-        }
-      }
-      dialogVisible.value = true
-    }
-    
-    const submitForm = async () => {
-      try {
-        if (isEdit.value) {
-          await api.put(`/api/notifications/${currentId.value}`, notificationForm.value)
-        } else {
-          await api.post('/api/notifications', notificationForm.value)
-        }
-        ElMessage.success('操作成功')
-        dialogVisible.value = false
-        fetchNotifications()
-      } catch (error) {
-        ElMessage.error('操作失败: ' + error.message)
-      }
-    }
-    
-    const markAsRead = async (id) => {
-      try {
-        await api.patch(`/api/notifications/${id}/read`)
-        ElMessage.success('标记已读成功')
-        fetchNotifications()
-      } catch (error) {
-        ElMessage.error('标记已读失败: ' + error.message)
-      }
-    }
-    
-    const deleteNotification = async (id) => {
-      try {
-        await api.delete(`/api/notifications/${id}`)
-        ElMessage.success('删除成功')
-        fetchNotifications()
-      } catch (error) {
-        ElMessage.error('删除失败: ' + error.message)
-      }
-    }
-    
-    onMounted(() => {
-      fetchNotifications()
-      fetchUsers()
-    })
-    
-    return {
-      notificationList,
-      userList,
-      notificationForm,
-      dialogVisible,
-      dialogTitle,
-      showDialog,
-      submitForm,
-      markAsRead,
-      deleteNotification
     }
   }
+  dialogVisible.value = true
 }
+
+const submitForm = async () => {
+  try {
+    if (isEdit.value) {
+      await api.put(`/api/notifications/${currentId.value}`, notificationForm.value)
+    } else {
+      await api.post('/api/notifications', notificationForm.value)
+    }
+    ElMessage.success('操作成功')
+    dialogVisible.value = false
+    fetchNotifications()
+  } catch (error) {
+    ElMessage.error('操作失败: ' + error.message)
+  }
+}
+
+const markAsRead = async (id) => {
+  try {
+    await api.patch(`/api/notifications/${id}/read`)
+    ElMessage.success('标记已读成功')
+    fetchNotifications()
+  } catch (error) {
+    ElMessage.error('标记已读失败: ' + error.message)
+  }
+}
+
+const deleteNotification = async (id) => {
+  try {
+    await api.delete(`/api/notifications/${id}`)
+    ElMessage.success('删除成功')
+    fetchNotifications()
+  } catch (error) {
+    ElMessage.error('删除失败: ' + error.message)
+  }
+}
+
+onMounted(() => {
+  fetchNotifications()
+  fetchUsers()
+})
 </script>
 
 <style scoped>

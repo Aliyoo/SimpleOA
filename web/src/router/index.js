@@ -297,21 +297,31 @@ router.beforeEach((to, from, next) => {
   const userStore = useUserStore();
 
   // 检查是否需要登录
-  if (to.matched.some(record => record.meta.requiresAuth) && !userStore.isAuthenticated) {
-    next({ name: 'Login', query: { redirect: to.fullPath } });
-    return;
-  }
-
-  // 如果token存在但user对象为空，尝试重新获取用户信息
-  if (userStore.isAuthenticated && !userStore.user) {
-    userStore.fetchUser().then(() => {
-      // 继续导航
-      next();
-    }).catch((error) => {
-      console.error("重新获取用户信息失败:", error);
-      // 如果获取失败，跳转到登录页
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    if (!userStore.isAuthenticated) {
       next({ name: 'Login', query: { redirect: to.fullPath } });
-    });
+      return;
+    }
+    // 即使有 token，也要验证其有效性，但避免不必要的重复验证
+    if (userStore.user) {
+      // 如果已经有用户信息，继续导航
+      next();
+    } else {
+      userStore.fetchUser().then(() => {
+        // 继续导航
+        next();
+      }).catch((error) => {
+        console.error("验证用户信息失败:", error);
+        // 不要立即登出，检查是否为临时错误
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          console.error("认证错误，但不立即登出，可能是临时问题:", error.response);
+          next({ name: 'Login', query: { redirect: to.fullPath } });
+        } else {
+          userStore.logout();
+          next({ name: 'Login', query: { redirect: to.fullPath } });
+        }
+      });
+    }
     return;
   }
 

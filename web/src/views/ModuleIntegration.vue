@@ -398,94 +398,98 @@
   </div>
 </template>
 
-<script>
-export default {
-  data() {
-    return {
-      activeTab: 'dashboard',
-      // Existing data properties
-      // ...
-      
-      // New data properties for reimbursement/payment
-      selectedProjectForReimbursement: null,
-      reimbursementPaymentData: null,
-      
-      // New data properties for approval flow
-      selectedProjectForApproval: null,
-      approvalFlowData: null
-    };
-  },
-  methods: {
-    // Existing methods
-    // ...
-    
-    // New methods for reimbursement/payment
-    fetchReimbursementPaymentData() {
-      // TODO: Implement API call to fetch reimbursement/payment data
-      console.log('Fetching reimbursement/payment data for project:', this.selectedProjectForReimbursement);
-    },
-    handleEditAssociation(row) {
-      // TODO: Implement edit functionality
-      console.log('Editing association:', row);
-    },
-    handleDeleteAssociation(row) {
-      // TODO: Implement delete functionality
-      console.log('Deleting association:', row);
-    },
-    getReimbursementStatusType(status) {
-      const statusMap = {
-        pending: 'warning',
-        approved: 'success',
-        rejected: 'danger',
-        paid: ''
-      };
-      return statusMap[status] || '';
-    },
-    getReimbursementStatusText(status) {
-      const statusTextMap = {
-        pending: '待审批',
-        approved: '已批准',
-        rejected: '已拒绝',
-        paid: '已付款'
-      };
-      return statusTextMap[status] || status;
-    },
-    
-    // New methods for approval flow
-    fetchApprovalFlowData() {
-      // TODO: Implement API call to fetch approval flow data
-      console.log('Fetching approval flow data for project:', this.selectedProjectForApproval);
-    },
-    handleCreateApprovalFlow() {
-      // TODO: Implement create functionality
-      console.log('Creating new approval flow');
-    },
-    handleEditApprovalFlow(row) {
-      // TODO: Implement edit functionality
-      console.log('Editing approval flow:', row);
-    },
-    handleDeleteApprovalFlow(row) {
-      // TODO: Implement delete functionality
-      console.log('Deleting approval flow:', row);
-    },
-    getApprovalFlowStatusType(status) {
-      const statusMap = {
-        active: 'success',
-        inactive: 'danger',
-        draft: 'warning'
-      };
-      return statusMap[status] || '';
-    },
-    getApprovalFlowStatusText(status) {
-      const statusTextMap = {
-        active: '启用',
-        inactive: '禁用',
-        draft: '草稿'
-      };
-      return statusTextMap[status] || status;
-    }
-  }
-};
+<script setup>
+import { ref } from 'vue'
+
+const activeTab = ref('dashboard')
+// Existing data properties
+// ...
+
+// New data properties for reimbursement/payment
+const selectedProjectForReimbursement = ref(null)
+const reimbursementPaymentData = ref(null)
+
+// New data properties for approval flow
+const selectedProjectForApproval = ref(null)
+const approvalFlowData = ref(null)
+
+// Existing methods
+// ...
+
+// New methods for reimbursement/payment
+const fetchReimbursementPaymentData = () => {
+  // TODO: Implement API call to fetch reimbursement/payment data
+  console.log('Fetching reimbursement/payment data for project:', selectedProjectForReimbursement.value);
+}
+
+const handleEditAssociation = (row) => {
+  // TODO: Implement edit functionality
+  console.log('Editing association:', row);
+}
+
+const handleDeleteAssociation = (row) => {
+  // TODO: Implement delete functionality
+  console.log('Deleting association:', row);
+}
+
+const getReimbursementStatusType = (status) => {
+  const statusMap = {
+    pending: 'warning',
+    approved: 'success',
+    rejected: 'danger',
+    paid: ''
+  };
+  return statusMap[status] || '';
+}
+
+const getReimbursementStatusText = (status) => {
+  const statusTextMap = {
+    pending: '待审批',
+    approved: '已批准',
+    rejected: '已拒绝',
+    paid: '已付款'
+  };
+  return statusTextMap[status] || status;
+}
+
+// New methods for approval flow
+const fetchApprovalFlowData = () => {
+  // TODO: Implement API call to fetch approval flow data
+  console.log('Fetching approval flow data for project:', selectedProjectForApproval.value);
+}
+
+const handleCreateApprovalFlow = () => {
+  // TODO: Implement create functionality
+  console.log('Creating new approval flow');
+}
+
+const handleEditApprovalFlow = (row) => {
+  // TODO: Implement edit functionality
+  console.log('Editing approval flow:', row);
+}
+
+const handleDeleteApprovalFlow = (row) => {
+  // TODO: Implement delete functionality
+  console.log('Deleting approval flow:', row);
+}
+
+const getApprovalFlowStatusType = (status) => {
+  const statusMap = {
+    active: 'success',
+    inactive: 'danger',
+    draft: 'warning'
+  };
+  return statusMap[status] || '';
+}
+
+const getApprovalFlowStatusText = (status) => {
+  const statusTextMap = {
+    active: '启用',
+    inactive: '禁用',
+    draft: '草稿'
+  };
+  return statusTextMap[status] || status;
+}
 </script>
 
 <style scoped>

@@ -34,52 +34,41 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 
-export default {
-  setup() {
-    const leaveForm = ref({
-      type: '',
-      startTime: '',
-      endTime: '',
-      reason: ''
-    })
+const leaveForm = ref({
+  type: '',
+  startTime: '',
+  endTime: '',
+  reason: ''
+})
 
-    const rules = {
-      type: [{ required: true, message: '请选择请假类型', trigger: 'change' }],
-      startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
-      endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
-      reason: [{ required: true, message: '请输入请假原因', trigger: 'blur' }]
-    }
+const rules = {
+  type: [{ required: true, message: '请选择请假类型', trigger: 'change' }],
+  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
+  reason: [{ required: true, message: '请输入请假原因', trigger: 'blur' }]
+}
 
-    const submitForm = async () => {
-      try {
-        await api.post('/api/leave-applications', leaveForm.value)
-        ElMessage.success('请假申请提交成功')
-        resetForm()
-      } catch (error) {
-        ElMessage.error('提交失败：' + error.message)
-      }
-    }
+const submitForm = async () => {
+  try {
+    await api.post('/api/leave-applications', leaveForm.value)
+    ElMessage.success('请假申请提交成功')
+    resetForm()
+  } catch (error) {
+    ElMessage.error('提交失败：' + error.message)
+  }
+}
 
-    const resetForm = () => {
-      leaveForm.value = {
-        type: '',
-        startTime: '',
-        endTime: '',
-        reason: ''
-      }
-    }
-
-    return {
-      leaveForm,
-      rules,
-      submitForm,
-      resetForm
-    }
+const resetForm = () => {
+  leaveForm.value = {
+    type: '',
+    startTime: '',
+    endTime: '',
+    reason: ''
   }
 }
 </script>

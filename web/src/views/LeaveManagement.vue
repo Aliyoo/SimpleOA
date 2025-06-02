@@ -123,180 +123,159 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, reactive, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { APP_CONFIG } from '../utils/config.js'
 
-export default {
-  setup() {
-    const activeTab = ref('apply')
-    
-    const leaveForm = reactive({
-      type: '',
-      startTime: '',
-      endTime: '',
-      days: 1,
-      reason: ''
-    })
-    
-    const leaveTypes = ref([
-      { value: 'annual', label: '年假' },
-      { value: 'sick', label: '病假' },
-      { value: 'personal', label: '事假' },
-      { value: 'marriage', label: '婚假' },
-      { value: 'maternity', label: '产假' },
-      { value: 'paternity', label: '陪产假' },
-      { value: 'other', label: '其他' }
-    ])
-    
-    const approvalList = ref([])
-    const statisticsData = ref([])
-    const statisticsDateRange = ref([])
-    const isApprover = ref(false)
-    
-    const fetchApprovalList = async () => {
-      try {
-        const response = await api.get('/api/leave/approval-list')
-        approvalList.value = response.data
-      } catch (error) {
-        ElMessage.error('获取审批列表失败: ' + error.message)
-      }
-    }
-    
-    const fetchStatisticsData = async () => {
-      if (!statisticsDateRange.value || statisticsDateRange.value.length !== 2) {
-        return
-      }
-      
-      try {
-        const response = await api.get('/api/leave/statistics', {
-          params: {
-            startDate: statisticsDateRange.value[0],
-            endDate: statisticsDateRange.value[1]
-          }
-        })
-        statisticsData.value = response.data
-        renderChart()
-      } catch (error) {
-        ElMessage.error('获取统计数据失败: ' + error.message)
-      }
-    }
-    
-    const renderChart = () => {
-      const chartDom = document.getElementById('leaveStatisticsChart')
-      if (!chartDom) return
-      
-      const myChart = echarts.init(chartDom)
-      const option = {
-        tooltip: {
-          trigger: 'item'
-        },
-        legend: {
-          orient: 'vertical',
-          left: 'left'
-        },
-        series: [
-          {
-            name: '请假分布',
-            type: 'pie',
-            radius: '50%',
-            data: statisticsData.value.map(item => ({
-              value: item.totalDays,
-              name: item.type
-            })),
-            emphasis: {
-              itemStyle: {
-                shadowBlur: 10,
-                shadowOffsetX: 0,
-                shadowColor: 'rgba(0, 0, 0, 0.5)'
-              }
-            }
-          }
-        ]
-      }
-      
-      myChart.setOption(option)
-    }
-    
-    const submitLeave = async () => {
-      try {
-        await api.post('/api/leave/apply', leaveForm)
-        ElMessage.success('请假申请提交成功')
-        leaveForm.reason = ''
-        fetchApprovalList()
-      } catch (error) {
-        ElMessage.error('提交失败: ' + error.message)
-      }
-    }
-    
-    const approveLeave = async (row) => {
-      try {
-        await api.post(`/api/leave/approve/${row.id}`)
-        ElMessage.success('已通过审批')
-        fetchApprovalList()
-      } catch (error) {
-        ElMessage.error('操作失败: ' + error.message)
-      }
-    }
-    
-    const rejectLeave = async (row) => {
-      try {
-        await api.post(`/api/leave/reject/${row.id}`)
-        ElMessage.success('已拒绝审批')
-        fetchApprovalList()
-      } catch (error) {
-        ElMessage.error('操作失败: ' + error.message)
-      }
-    }
-    
-    const getStatusTagType = (status) => {
-      switch (status) {
-        case '已通过': return 'success'
-        case '已拒绝': return 'danger'
-        case '待审批': return 'warning'
-        default: return 'info'
-      }
-    }
-    
-    const checkApproverRole = async () => {
-      try {
-        const response = await api.get('/api/user/is-approver')
-        isApprover.value = response.data
-      } catch (error) {
-        console.error('检查审批权限失败:', error)
-      }
-    }
-    
-    onMounted(async () => {
-      fetchApprovalList()
-      checkApproverRole()
-      
-      // 从全局配置获取默认日期范围
-// 从全局配置获取默认日期范围
-      // 从全局配置获取默认日期范围
-      statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange();
-      fetchStatisticsData()
-    })
-    
-    return {
-      activeTab,
-      leaveForm,
-      leaveTypes,
-      approvalList,
-      statisticsData,
-      statisticsDateRange,
-      isApprover,
-      submitLeave,
-      approveLeave,
-      rejectLeave,
-      getStatusTagType,
-      fetchStatisticsData
-    }
+const activeTab = ref('apply')
+
+const leaveForm = reactive({
+  type: '',
+  startTime: '',
+  endTime: '',
+  days: 1,
+  reason: ''
+})
+
+const leaveTypes = ref([
+  { value: 'annual', label: '年假' },
+  { value: 'sick', label: '病假' },
+  { value: 'personal', label: '事假' },
+  { value: 'marriage', label: '婚假' },
+  { value: 'maternity', label: '产假' },
+  { value: 'paternity', label: '陪产假' },
+  { value: 'other', label: '其他' }
+])
+
+const approvalList = ref([])
+const statisticsData = ref([])
+const statisticsDateRange = ref([])
+const isApprover = ref(false)
+
+const fetchApprovalList = async () => {
+  try {
+    const response = await api.get('/api/leave/approval-list')
+    approvalList.value = response.data
+  } catch (error) {
+    ElMessage.error('获取审批列表失败: ' + error.message)
   }
 }
+
+const fetchStatisticsData = async () => {
+  if (!statisticsDateRange.value || statisticsDateRange.value.length !== 2) {
+    return
+  }
+  
+  try {
+    const response = await api.get('/api/leave/statistics', {
+      params: {
+        startDate: statisticsDateRange.value[0],
+        endDate: statisticsDateRange.value[1]
+      }
+    })
+    statisticsData.value = response.data
+    renderChart()
+  } catch (error) {
+    ElMessage.error('获取统计数据失败: ' + error.message)
+  }
+}
+
+const renderChart = () => {
+  const chartDom = document.getElementById('leaveStatisticsChart')
+  if (!chartDom) return
+  
+  const myChart = echarts.init(chartDom)
+  const option = {
+    tooltip: {
+      trigger: 'item'
+    },
+    legend: {
+      orient: 'vertical',
+      left: 'left'
+    },
+    series: [
+      {
+        name: '请假分布',
+        type: 'pie',
+        radius: '50%',
+        data: statisticsData.value.map(item => ({
+          value: item.totalDays,
+          name: item.type
+        })),
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        }
+      }
+    ]
+  }
+  
+  myChart.setOption(option)
+}
+
+const submitLeave = async () => {
+  try {
+    await api.post('/api/leave/apply', leaveForm)
+    ElMessage.success('请假申请提交成功')
+    leaveForm.reason = ''
+    fetchApprovalList()
+  } catch (error) {
+    ElMessage.error('提交失败: ' + error.message)
+  }
+}
+
+const approveLeave = async (row) => {
+  try {
+    await api.post(`/api/leave/approve/${row.id}`)
+    ElMessage.success('已通过审批')
+    fetchApprovalList()
+  } catch (error) {
+    ElMessage.error('操作失败: ' + error.message)
+  }
+}
+
+const rejectLeave = async (row) => {
+  try {
+    await api.post(`/api/leave/reject/${row.id}`)
+    ElMessage.success('已拒绝审批')
+    fetchApprovalList()
+  } catch (error) {
+    ElMessage.error('操作失败: ' + error.message)
+  }
+}
+
+const getStatusTagType = (status) => {
+  switch (status) {
+    case '已通过': return 'success'
+    case '已拒绝': return 'danger'
+    case '待审批': return 'warning'
+    default: return 'info'
+  }
+}
+
+const checkApproverRole = async () => {
+  try {
+    const response = await api.get('/api/user/is-approver')
+    isApprover.value = response.data
+  } catch (error) {
+    console.error('检查审批权限失败:', error)
+  }
+}
+
+onMounted(async () => {
+  fetchApprovalList()
+  checkApproverRole()
+  
+  // 从全局配置获取默认日期范围
+  statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange();
+  fetchStatisticsData()
+})
 </script>
 
 <style scoped>

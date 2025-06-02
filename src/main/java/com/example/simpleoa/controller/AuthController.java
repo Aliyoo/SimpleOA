@@ -37,10 +37,17 @@ public class AuthController {
             User user = userService.login(loginRequest.getUsername(), loginRequest.getPassword());
             String token = jwtTokenProvider.generateToken(user);
 
+            // 设置 HttpOnly Cookie
+            jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie("jwt", token);
+            cookie.setHttpOnly(true);
+            cookie.setSecure(false); // 在生产环境中应设置为 true，使用 HTTPS
+            cookie.setPath("/");
+            cookie.setMaxAge(60 * 60 * 24); // 24小时有效期
+
             Map<String, Object> response = new HashMap<>();
             response.put("user", user);
-            response.put("token", token);
-            return ResponseEntity.ok(response);
+            response.put("token", token); // 仍然返回 token 作为标识，但实际认证通过 Cookie
+            return ResponseEntity.ok().header("Set-Cookie", String.format("jwt=%s; HttpOnly; Path=/; Max-Age=%d", token, 60 * 60 * 24)).body(response);
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
             response.put("status", "error");

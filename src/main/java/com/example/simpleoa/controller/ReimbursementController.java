@@ -6,9 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/api/reimbursements")
+@RequestMapping("/api/oa/reimbursement")
 public class ReimbursementController {
     private final ReimbursementService reimbursementService;
 
@@ -17,7 +18,7 @@ public class ReimbursementController {
         this.reimbursementService = reimbursementService;
     }
 
-    @PostMapping
+    @PostMapping("/apply")
     public ReimbursementRequest createReimbursement(@RequestBody ReimbursementRequest reimbursement) {
         return reimbursementService.createReimbursement(reimbursement);
     }
@@ -38,8 +39,16 @@ public class ReimbursementController {
         return reimbursementService.getReimbursementById(id);
     }
 
-    @GetMapping
-    public List<ReimbursementRequest> getAllReimbursements() {
+    @GetMapping("/records")
+    public List<ReimbursementRequest> getAllReimbursements(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        if (userId != null) {
+            return (List<ReimbursementRequest>) reimbursementService.getReimbursementsByUser(userId);
+        }
+        // Additional filtering logic can be added here based on status, startDate, and endDate
         return (List<ReimbursementRequest>) reimbursementService.getAllReimbursements();
     }
 
@@ -48,10 +57,11 @@ public class ReimbursementController {
         return (List<ReimbursementRequest>) reimbursementService.getReimbursementsByUser(userId);
     }
 
-    @PutMapping("/{id}/approve")
-    public ReimbursementRequest approveReimbursement(@PathVariable Long id, 
-                                            @RequestParam String status, 
-                                            @RequestParam(required = false) String comment) {
+    @PostMapping("/approve/{id}")
+    public ReimbursementRequest approveReimbursement(@PathVariable Long id,
+                                            @RequestBody Map<String, String> approvalData) {
+        String status = approvalData.get("status");
+        String comment = approvalData.get("comment");
         return reimbursementService.approveReimbursement(id, status, comment);
     }
 }

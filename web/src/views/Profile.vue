@@ -50,101 +50,89 @@
   </div>
 </template>
 
-<script>
-import { ref, reactive } from 'vue'
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 
-export default {
-  setup() {
-    const activeTab = ref('info')
-    
-    const userInfo = reactive({
-      username: '',
-      name: '',
-      email: '',
-      phone: ''
-    })
-    
-    const passwordForm = reactive({
-      oldPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    })
-    
-    const passwordRules = {
-      oldPassword: [
-        { required: true, message: '请输入原密码', trigger: 'blur' }
-      ],
-      newPassword: [
-        { required: true, message: '请输入新密码', trigger: 'blur' },
-        { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
-      ],
-      confirmPassword: [
-        { required: true, message: '请确认密码', trigger: 'blur' },
-        {
-          validator: (rule, value, callback) => {
-            if (value !== passwordForm.newPassword) {
-              callback(new Error('两次输入密码不一致!'))
-            } else {
-              callback()
-            }
-          },
-          trigger: 'blur'
+const activeTab = ref('info')
+
+const userInfo = reactive({
+  username: '',
+  name: '',
+  email: '',
+  phone: ''
+})
+
+const passwordForm = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
+const passwordRules = {
+  oldPassword: [
+    { required: true, message: '请输入原密码', trigger: 'blur' }
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    {
+      validator: (rule, value, callback) => {
+        if (value !== passwordForm.newPassword) {
+          callback(new Error('两次输入密码不一致!'))
+        } else {
+          callback()
         }
-      ]
+      },
+      trigger: 'blur'
     }
-    
-    const fetchUserInfo = async () => {
-      try {
-        const response = await api.get('/api/user/profile')
-        Object.assign(userInfo, response.data)
-      } catch (error) {
-        ElMessage.error('获取用户信息失败: ' + error.message)
-      }
-    }
-    
-    const updateProfile = async () => {
-      try {
-        await api.put('/api/user/profile', userInfo)
-        ElMessage.success('个人信息更新成功')
-      } catch (error) {
-        ElMessage.error('更新失败: ' + error.message)
-      }
-    }
-    
-    const changePassword = () => {
-      passwordFormRef.value.validate(async (valid) => {
-        if (valid) {
-          try {
-            await api.post('/api/user/change-password', {
-              oldPassword: passwordForm.oldPassword,
-              newPassword: passwordForm.newPassword
-            })
-            ElMessage.success('密码修改成功')
-            passwordFormRef.value.resetFields()
-          } catch (error) {
-            ElMessage.error('密码修改失败: ' + error.message)
-          }
-        }
-      })
-    }
-    
-    onMounted(() => {
-      fetchUserInfo()
-    })
-    
-    return {
-      activeTab,
-      userInfo,
-      passwordForm,
-      passwordRules,
-      updateProfile,
-      changePassword,
-      passwordFormRef
-    }
+  ]
+}
+
+const passwordFormRef = ref(null)
+
+const fetchUserInfo = async () => {
+  try {
+    const response = await api.get('/api/user/profile')
+    Object.assign(userInfo, response.data)
+  } catch (error) {
+    ElMessage.error('获取用户信息失败: ' + error.message)
   }
 }
+
+const updateProfile = async () => {
+  try {
+    await api.put('/api/user/profile', userInfo)
+    ElMessage.success('个人信息更新成功')
+  } catch (error) {
+    ElMessage.error('更新失败: ' + error.message)
+  }
+}
+
+const changePassword = () => {
+  passwordFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        await api.post('/api/user/change-password', {
+          oldPassword: passwordForm.oldPassword,
+          newPassword: passwordForm.newPassword
+        })
+        ElMessage.success('密码修改成功')
+        passwordFormRef.value.resetFields()
+      } catch (error) {
+        ElMessage.error('密码修改失败: ' + error.message)
+      }
+    }
+  })
+}
+
+onMounted(() => {
+  fetchUserInfo()
+})
 </script>
 
 <style scoped>

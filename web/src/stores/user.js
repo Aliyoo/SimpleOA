@@ -5,7 +5,7 @@ import { ElMessage } from 'element-plus'
 export const useUserStore = defineStore('user', {
   state: () => ({
     user: null,
-    token: localStorage.getItem('token') || null,
+    token: null, // 不再从 localStorage 获取 token，因为使用 HttpOnly Cookie
     permissions: JSON.parse(localStorage.getItem('permissions')) || [],
     menus: JSON.parse(localStorage.getItem('menus')) || []
   }),
@@ -54,8 +54,7 @@ export const useUserStore = defineStore('user', {
         const response = await api.post('/api/auth/login', loginForm)
         if (response.data && response.data.user && response.data.token) {
             this.user = response.data.user
-            this.token = response.data.token
-            localStorage.setItem('token', this.token)
+            this.token = response.data.token // 实际 token 由后端通过 HttpOnly Cookie 设置，这里仅作为标识
             // 在登录成功后立即获取用户权限和菜单
             await this.fetchUserPermissions()
             await this.fetchUserMenus()
@@ -74,26 +73,24 @@ export const useUserStore = defineStore('user', {
     async logout() {
       try {
         this.user = null
-        this.token = null
+        this.token = null // 清除 token 标识，实际 HttpOnly Cookie 由后端清除
         this.permissions = []
         this.menus = []
-        localStorage.removeItem('token')
         localStorage.removeItem('permissions')
         localStorage.removeItem('menus')
         ElMessage.success('登出成功')
       } catch (error) {
         console.error('登出操作失败:', error)
         this.user = null
-        this.token = null
+        this.token = null // 清除 token 标识
         this.permissions = []
         this.menus = []
-        localStorage.removeItem('token')
         localStorage.removeItem('permissions')
         localStorage.removeItem('menus')
       }
     },
     async fetchUser() {
-        if (!this.token) return;
+        // 由于使用 HttpOnly Cookie，无法直接检查 token 存在性，依赖后端验证
         try {
             const response = await api.get('/api/auth/me');
             if (response.data) {
@@ -119,6 +116,7 @@ export const useUserStore = defineStore('user', {
             if (response.data) {
                 this.permissions = response.data;
                 localStorage.setItem('permissions', JSON.stringify(this.permissions));
+                this.token = 'authenticated'; // 设置一个标识表示已认证
             }
         } catch (error) {
             console.error("获取用户权限失败:", error);
@@ -131,6 +129,9 @@ export const useUserStore = defineStore('user', {
             if (response.data) {
                 this.menus = response.data;
                 localStorage.setItem('menus', JSON.stringify(this.menus));
+                if (!this.token) {
+                    this.token = 'authenticated'; // 设置一个标识表示已认证
+                }
             }
         } catch (error) {
             console.error("获取用户菜单失败:", error);

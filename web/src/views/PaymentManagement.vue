@@ -115,167 +115,149 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, reactive, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 
-export default {
-  setup() {
-    const activeTab = ref('record')
-    
-    const paymentForm = reactive({
-      project: '',
-      amount: 0,
-      date: '',
-      method: '',
-      remark: ''
-    })
-    
-    const paymentMethods = ref([
-      { value: 'bank', label: '银行转账' },
-      { value: 'cash', label: '现金' },
-      { value: 'check', label: '支票' },
-      { value: 'other', label: '其他' }
-    ])
-    
-    const projectList = ref([])
-    const statisticsData = ref([])
-    const statisticsDateRange = ref([])
-    const reminderList = ref([])
-    
-    const fetchProjects = async () => {
-      try {
-        const response = await api.get('/api/projects')
-        projectList.value = response.data
-      } catch (error) {
-        ElMessage.error('获取项目列表失败: ' + error.message)
-      }
-    }
-    
-    const fetchStatisticsData = async () => {
-      if (!statisticsDateRange.value || statisticsDateRange.value.length !== 2) {
-        return
-      }
-      
-      try {
-        const response = await api.get('/api/payment/statistics', {
-          params: {
-            startDate: statisticsDateRange.value[0],
-            endDate: statisticsDateRange.value[1]
-          }
-        })
-        statisticsData.value = response.data
-        renderChart()
-      } catch (error) {
-        ElMessage.error('获取统计数据失败: ' + error.message)
-      }
-    }
-    
-    const renderChart = () => {
-      const chartDom = document.getElementById('paymentStatisticsChart')
-      if (!chartDom) return
-      
-      const myChart = echarts.init(chartDom)
-      const option = {
-        tooltip: {
-          trigger: 'item'
-        },
-        legend: {
-          orient: 'vertical',
-          left: 'left'
-        },
-        series: [
-          {
-            name: '回款分布',
-            type: 'pie',
-            radius: '50%',
-            data: statisticsData.value.map(item => ({
-              value: item.totalAmount,
-              name: item.projectName
-            })),
-            emphasis: {
-              itemStyle: {
-                shadowBlur: 10,
-                shadowOffsetX: 0,
-                shadowColor: 'rgba(0, 0, 0, 0.5)'
-              }
-            }
-          }
-        ]
-      }
-      
-      myChart.setOption(option)
-    }
-    
-    const fetchReminderList = async () => {
-      try {
-        const response = await api.get('/api/payment/reminder-list')
-        reminderList.value = response.data
-      } catch (error) {
-        ElMessage.error('获取提醒列表失败: ' + error.message)
-      }
-    }
-    
-    const submitPayment = async () => {
-      try {
-        await api.post('/api/payment/record', paymentForm)
-        ElMessage.success('回款记录提交成功')
-        paymentForm.remark = ''
-        fetchStatisticsData()
-        fetchReminderList()
-      } catch (error) {
-        ElMessage.error('提交失败: ' + error.message)
-      }
-    }
-    
-    const markAsPaid = async (row) => {
-      try {
-        await api.post(`/api/payment/mark-paid/${row.id}`)
-        ElMessage.success('已标记为已回款')
-        fetchReminderList()
-      } catch (error) {
-        ElMessage.error('操作失败: ' + error.message)
-      }
-    }
-    
-    const getStatusTagType = (status) => {
-      switch (status) {
-        case '已回款': return 'success'
-        case '待回款': return 'warning'
-        case '逾期': return 'danger'
-        default: return 'info'
-      }
-    }
-    
-    onMounted(() => {
-      fetchProjects()
-      fetchReminderList()
-      
-      // 设置默认统计日期范围为当前月
-      const now = new Date()
-      const year = now.getFullYear()
-      const month = (now.getMonth() + 1).toString().padStart(2, '0')
-      statisticsDateRange.value = [`${year}-${month}`, `${year}-${month}`]
-      fetchStatisticsData()
-    })
-    
-    return {
-      activeTab,
-      paymentForm,
-      paymentMethods,
-      projectList,
-      statisticsData,
-      statisticsDateRange,
-      reminderList,
-      submitPayment,
-      markAsPaid,
-      getStatusTagType,
-      fetchStatisticsData
-    }
+const activeTab = ref('record')
+
+const paymentForm = reactive({
+  project: '',
+  amount: 0,
+  date: '',
+  method: '',
+  remark: ''
+})
+
+const paymentMethods = ref([
+  { value: 'bank', label: '银行转账' },
+  { value: 'cash', label: '现金' },
+  { value: 'check', label: '支票' },
+  { value: 'other', label: '其他' }
+])
+
+const projectList = ref([])
+const statisticsData = ref([])
+const statisticsDateRange = ref([])
+const reminderList = ref([])
+
+const fetchProjects = async () => {
+  try {
+    const response = await api.get('/api/projects')
+    projectList.value = response.data
+  } catch (error) {
+    ElMessage.error('获取项目列表失败: ' + error.message)
   }
 }
+
+const fetchStatisticsData = async () => {
+  if (!statisticsDateRange.value || statisticsDateRange.value.length !== 2) {
+    return
+  }
+  
+  try {
+    const response = await api.get('/api/payment/statistics', {
+      params: {
+        startDate: statisticsDateRange.value[0],
+        endDate: statisticsDateRange.value[1]
+      }
+    })
+    statisticsData.value = response.data
+    renderChart()
+  } catch (error) {
+    ElMessage.error('获取统计数据失败: ' + error.message)
+  }
+}
+
+const renderChart = () => {
+  const chartDom = document.getElementById('paymentStatisticsChart')
+  if (!chartDom) return
+  
+  const myChart = echarts.init(chartDom)
+  const option = {
+    tooltip: {
+      trigger: 'item'
+    },
+    legend: {
+      orient: 'vertical',
+      left: 'left'
+    },
+    series: [
+      {
+        name: '回款分布',
+        type: 'pie',
+        radius: '50%',
+        data: statisticsData.value.map(item => ({
+          value: item.totalAmount,
+          name: item.projectName
+        })),
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        }
+      }
+    ]
+  }
+  
+  myChart.setOption(option)
+}
+
+const fetchReminderList = async () => {
+  try {
+    const response = await api.get('/api/payment/reminder-list')
+    reminderList.value = response.data
+  } catch (error) {
+    ElMessage.error('获取提醒列表失败: ' + error.message)
+  }
+}
+
+const submitPayment = async () => {
+  try {
+    await api.post('/api/payment/record', paymentForm)
+    ElMessage.success('回款记录提交成功')
+    paymentForm.remark = ''
+    fetchStatisticsData()
+    fetchReminderList()
+  } catch (error) {
+    ElMessage.error('提交失败: ' + error.message)
+  }
+}
+
+const markAsPaid = async (row) => {
+  try {
+    await api.post(`/api/payment/mark-paid/${row.id}`)
+    ElMessage.success('已标记为已回款')
+    fetchReminderList()
+  } catch (error) {
+    ElMessage.error('操作失败: ' + error.message)
+  }
+}
+
+const getStatusTagType = (status) => {
+  switch (status) {
+    case '已回款': return 'success'
+    case '待回款': return 'warning'
+    case '逾期': return 'danger'
+    default: return 'info'
+  }
+}
+
+onMounted(() => {
+  fetchProjects()
+  fetchReminderList()
+  
+  // 设置默认统计日期范围为当前月
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = (now.getMonth() + 1).toString().padStart(2, '0')
+  statisticsDateRange.value = [`${year}-${month}`, `${year}-${month}`]
+  fetchStatisticsData()
+})
 </script>
 
 <style scoped>

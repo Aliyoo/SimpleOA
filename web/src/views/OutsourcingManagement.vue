@@ -121,170 +121,152 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref, reactive, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 
-export default {
-  setup() {
-    const activeTab = ref('apply')
-    
-    const outsourcingForm = reactive({
-      projectName: '',
-      company: '',
-      startTime: '',
-      endTime: '',
-      budget: 0,
-      description: ''
-    })
-    
-    const approvalList = ref([])
-    const statisticsData = ref([])
-    const statisticsDateRange = ref([])
-    const isApprover = ref(false)
-    
-    const fetchApprovalList = async () => {
-      try {
-        const response = await api.get('/api/outsourcing/approval-list')
-        approvalList.value = response.data
-      } catch (error) {
-        ElMessage.error('获取审批列表失败: ' + error.message)
-      }
-    }
-    
-    const fetchStatisticsData = async () => {
-      if (!statisticsDateRange.value || statisticsDateRange.value.length !== 2) {
-        return
-      }
-      
-      try {
-        const response = await api.get('/api/outsourcing/statistics', {
-          params: {
-            startDate: statisticsDateRange.value[0],
-            endDate: statisticsDateRange.value[1]
-          }
-        })
-        statisticsData.value = response.data
-        renderChart()
-      } catch (error) {
-        ElMessage.error('获取统计数据失败: ' + error.message)
-      }
-    }
-    
-    const renderChart = () => {
-      const chartDom = document.getElementById('outsourcingStatisticsChart')
-      if (!chartDom) return
-      
-      const myChart = echarts.init(chartDom)
-      const option = {
-        tooltip: {
-          trigger: 'item'
-        },
-        legend: {
-          orient: 'vertical',
-          left: 'left'
-        },
-        series: [
-          {
-            name: '外包预算分布',
-            type: 'pie',
-            radius: '50%',
-            data: statisticsData.value.map(item => ({
-              value: item.totalBudget,
-              name: item.company
-            })),
-            emphasis: {
-              itemStyle: {
-                shadowBlur: 10,
-                shadowOffsetX: 0,
-                shadowColor: 'rgba(0, 0, 0, 0.5)'
-              }
-            }
-          }
-        ]
-      }
-      
-      myChart.setOption(option)
-    }
-    
-    const submitOutsourcing = async () => {
-      try {
-        await api.post('/api/outsourcing/apply', outsourcingForm)
-        ElMessage.success('外包申请提交成功')
-        outsourcingForm.description = ''
-        fetchApprovalList()
-      } catch (error) {
-        ElMessage.error('提交失败: ' + error.message)
-      }
-    }
-    
-    const approveOutsourcing = async (row) => {
-      try {
-        await api.post(`/api/outsourcing/approve/${row.id}`)
-        ElMessage.success('已通过审批')
-        fetchApprovalList()
-      } catch (error) {
-        ElMessage.error('操作失败: ' + error.message)
-      }
-    }
-    
-    const rejectOutsourcing = async (row) => {
-      try {
-        await api.post(`/api/outsourcing/reject/${row.id}`)
-        ElMessage.success('已拒绝审批')
-        fetchApprovalList()
-      } catch (error) {
-        ElMessage.error('操作失败: ' + error.message)
-      }
-    }
-    
-    const getStatusTagType = (status) => {
-      switch (status) {
-        case '已通过': return 'success'
-        case '已拒绝': return 'danger'
-        case '待审批': return 'warning'
-        default: return 'info'
-      }
-    }
-    
-    const checkApproverRole = async () => {
-      try {
-        const response = await api.get('/api/user/is-approver')
-        isApprover.value = response.data
-      } catch (error) {
-        console.error('检查审批权限失败:', error)
-      }
-    }
-    
-    onMounted(() => {
-      fetchApprovalList()
-      checkApproverRole()
-      
-      // 设置默认统计日期范围为当前月
-      const now = new Date()
-      const year = now.getFullYear()
-      const month = (now.getMonth() + 1).toString().padStart(2, '0')
-      statisticsDateRange.value = [`${year}-${month}`, `${year}-${month}`]
-      fetchStatisticsData()
-    })
-    
-    return {
-      activeTab,
-      outsourcingForm,
-      approvalList,
-      statisticsData,
-      statisticsDateRange,
-      isApprover,
-      submitOutsourcing,
-      approveOutsourcing,
-      rejectOutsourcing,
-      getStatusTagType,
-      fetchStatisticsData
-    }
+const activeTab = ref('apply')
+
+const outsourcingForm = reactive({
+  projectName: '',
+  company: '',
+  startTime: '',
+  endTime: '',
+  budget: 0,
+  description: ''
+})
+
+const approvalList = ref([])
+const statisticsData = ref([])
+const statisticsDateRange = ref([])
+const isApprover = ref(false)
+
+const fetchApprovalList = async () => {
+  try {
+    const response = await api.get('/api/outsourcing/approval-list')
+    approvalList.value = response.data
+  } catch (error) {
+    ElMessage.error('获取审批列表失败: ' + error.message)
   }
 }
+
+const fetchStatisticsData = async () => {
+  if (!statisticsDateRange.value || statisticsDateRange.value.length !== 2) {
+    return
+  }
+  
+  try {
+    const response = await api.get('/api/outsourcing/statistics', {
+      params: {
+        startDate: statisticsDateRange.value[0],
+        endDate: statisticsDateRange.value[1]
+      }
+    })
+    statisticsData.value = response.data
+    renderChart()
+  } catch (error) {
+    ElMessage.error('获取统计数据失败: ' + error.message)
+  }
+}
+
+const renderChart = () => {
+  const chartDom = document.getElementById('outsourcingStatisticsChart')
+  if (!chartDom) return
+  
+  const myChart = echarts.init(chartDom)
+  const option = {
+    tooltip: {
+      trigger: 'item'
+    },
+    legend: {
+      orient: 'vertical',
+      left: 'left'
+    },
+    series: [
+      {
+        name: '外包预算分布',
+        type: 'pie',
+        radius: '50%',
+        data: statisticsData.value.map(item => ({
+          value: item.totalBudget,
+          name: item.company
+        })),
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        }
+      }
+    ]
+  }
+  
+  myChart.setOption(option)
+}
+
+const submitOutsourcing = async () => {
+  try {
+    await api.post('/api/outsourcing/apply', outsourcingForm)
+    ElMessage.success('外包申请提交成功')
+    outsourcingForm.description = ''
+    fetchApprovalList()
+  } catch (error) {
+    ElMessage.error('提交失败: ' + error.message)
+  }
+}
+
+const approveOutsourcing = async (row) => {
+  try {
+    await api.post(`/api/outsourcing/approve/${row.id}`)
+    ElMessage.success('已通过审批')
+    fetchApprovalList()
+  } catch (error) {
+    ElMessage.error('操作失败: ' + error.message)
+  }
+}
+
+const rejectOutsourcing = async (row) => {
+  try {
+    await api.post(`/api/outsourcing/reject/${row.id}`)
+    ElMessage.success('已拒绝审批')
+    fetchApprovalList()
+  } catch (error) {
+    ElMessage.error('操作失败: ' + error.message)
+  }
+}
+
+const getStatusTagType = (status) => {
+  switch (status) {
+    case '已通过': return 'success'
+    case '已拒绝': return 'danger'
+    case '待审批': return 'warning'
+    default: return 'info'
+  }
+}
+
+const checkApproverRole = async () => {
+  try {
+    const response = await api.get('/api/user/is-approver')
+    isApprover.value = response.data
+  } catch (error) {
+    console.error('检查审批权限失败:', error)
+  }
+}
+
+onMounted(() => {
+  fetchApprovalList()
+  checkApproverRole()
+  
+  // 设置默认统计日期范围为当前月
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = (now.getMonth() + 1).toString().padStart(2, '0')
+  statisticsDateRange.value = [`${year}-${month}`, `${year}-${month}`]
+  fetchStatisticsData()
+})
 </script>
 
 <style scoped>

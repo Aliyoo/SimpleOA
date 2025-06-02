@@ -1,6 +1,6 @@
 <template>
   <div class="project-manager-time-container">
-    <h1>项目经理工时管理</h1>
+    <h1>我的工时</h1>
 
     <!-- 自定义 Tab 导航 -->
     <div class="custom-tabs">
@@ -298,7 +298,7 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { APP_CONFIG } from '../utils/config.js'
 import { ref, onMounted } from 'vue'
 import api from '../utils/axios.js'
@@ -306,198 +306,196 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { Download } from '@element-plus/icons-vue'
 
-export default {
-  setup() {
-    // 定义 tabs 数组，用于自定义 tabs 导航
-    const tabs = [
-      { name: 'batch', label: '批量填写' },
-      { name: 'stats', label: '统计报表' }
-    ]
+// 定义 tabs 数组，用于自定义 tabs 导航
+const tabs = [
+  { name: 'batch', label: '批量填写' },
+  { name: 'stats', label: '统计报表' }
+]
 
-    const activeTab = ref('batch')
-    const userStore = useUserStore()
-    const currentUser = ref(userStore.user)
-    const managedProjects = ref([])
-    const allProjects = ref([])
-    const showAllProjects = ref(false)
-    const displayProjects = ref([])
-    const batchDateRange = ref([])
-    const batchDates = ref([])
-    const batchLoading = ref(false)
+const activeTab = ref('batch')
+const userStore = useUserStore()
+const currentUser = ref(userStore.user)
+const managedProjects = ref([])
+const allProjects = ref([])
+const showAllProjects = ref(false)
+const displayProjects = ref([])
+const batchDateRange = ref([])
+const batchDates = ref([])
+const batchLoading = ref(false)
 
-    // 统计报表相关数据
-    const statsDateRange = ref([])
-    const statsLoading = ref(false)
-    const overallStats = ref({
-      totalHours: 0,
-      recordCount: 0,
-      averageHoursPerRecord: 0,
-      overtimeHours: 0,
-      workload: 0
-    })
-    const projectsStats = ref([])
-    const projectDetailVisible = ref(false)
-    const projectDetailLoading = ref(false)
-    const currentProjectDetail = ref({})
-    const memberStats = ref([])
-    const allMemberStats = ref([])
+// 统计报表相关数据
+const statsDateRange = ref([])
+const statsLoading = ref(false)
+const overallStats = ref({
+  totalHours: 0,
+  recordCount: 0,
+  averageHoursPerRecord: 0,
+  overtimeHours: 0,
+  workload: 0
+})
+const projectsStats = ref([])
+const projectDetailVisible = ref(false)
+const projectDetailLoading = ref(false)
+const currentProjectDetail = ref({})
+const memberStats = ref([])
+const allMemberStats = ref([])
 
-    // 获取项目经理管理的项目列表
-    const fetchManagedProjects = async () => {
-      if (!currentUser.value || !currentUser.value.id) {
-        if (userStore.user && userStore.user.id) {
-          currentUser.value = userStore.user
-        } else {
-          ElMessage.warning('未获取到当前用户信息')
-          return
-        }
-      }
+// 获取项目经理管理的项目列表
+const fetchManagedProjects = async () => {
+  if (!currentUser.value || !currentUser.value.id) {
+    if (userStore.user && userStore.user.id) {
+      currentUser.value = userStore.user
+    } else {
+      ElMessage.warning('未获取到当前用户信息')
+      return
+    }
+  }
 
-      try {
-        batchLoading.value = true
-        const response = await api.get(`/api/projects/manager/${currentUser.value.id}`)
-        managedProjects.value = response.data
-        console.log('获取到管理的项目列表:', managedProjects.value)
+  try {
+    batchLoading.value = true
+    const response = await api.get(`/api/projects/manager/${currentUser.value.id}`)
+    managedProjects.value = response.data
+    console.log('获取到管理的项目列表:', managedProjects.value)
 
-        // 更新显示的项目列表
-        updateDisplayProjects()
-      } catch (error) {
-        console.error('获取管理的项目列表失败:', error)
-        ElMessage.error('获取管理的项目列表失败: ' + error.message)
-        batchLoading.value = false
-      }
+    // 更新显示的项目列表
+    updateDisplayProjects()
+  } catch (error) {
+    console.error('获取管理的项目列表失败:', error)
+    ElMessage.error('获取管理的项目列表失败: ' + error.message)
+    batchLoading.value = false
+  }
+}
+
+// 获取所有项目列表
+const fetchAllProjects = async () => {
+  if (!currentUser.value || !currentUser.value.id) {
+    if (userStore.user && userStore.user.id) {
+      currentUser.value = userStore.user
+    } else {
+      ElMessage.warning('未获取到当前用户信息')
+      return
+    }
+  }
+
+  try {
+    batchLoading.value = true
+    const response = await api.get('/api/projects')
+    allProjects.value = response.data
+    console.log('获取到所有项目列表:', allProjects.value)
+
+    // 更新显示的项目列表
+    updateDisplayProjects()
+  } catch (error) {
+    console.error('获取所有项目列表失败:', error)
+    ElMessage.error('获取所有项目列表失败: ' + error.message)
+    batchLoading.value = false
+  }
+}
+
+// 更新显示的项目列表
+const updateDisplayProjects = async () => {
+  try {
+    // 根据开关状态决定显示哪些项目
+    const projects = showAllProjects.value ? allProjects.value : managedProjects.value
+
+    if (!projects || projects.length === 0) {
+      displayProjects.value = []
+      batchLoading.value = false
+      return
     }
 
-    // 获取所有项目列表
-    const fetchAllProjects = async () => {
-      if (!currentUser.value || !currentUser.value.id) {
-        if (userStore.user && userStore.user.id) {
-          currentUser.value = userStore.user
-        } else {
-          ElMessage.warning('未获取到当前用户信息')
-          return
-        }
-      }
+    // 为每个项目获取成员并初始化工时数据
+    const projectsWithMembers = []
 
+    for (const project of projects) {
       try {
-        batchLoading.value = true
-        const response = await api.get('/api/projects')
-        allProjects.value = response.data
-        console.log('获取到所有项目列表:', allProjects.value)
+        // 获取项目成员
+        const response = await api.get(`/api/projects/${project.id}/members`)
+        const members = response.data
 
-        // 更新显示的项目列表
-        updateDisplayProjects()
+        // 为每个成员初始化工时数据
+        const membersWithHours = members.map(member => {
+          const hours = {}
+          batchDates.value.forEach(date => {
+            hours[date] = 0
+          })
+
+          return {
+            ...member,
+            hours
+          }
+        })
+
+        // 添加到项目列表
+        projectsWithMembers.push({
+          ...project,
+          members: membersWithHours
+        })
       } catch (error) {
-        console.error('获取所有项目列表失败:', error)
-        ElMessage.error('获取所有项目列表失败: ' + error.message)
-        batchLoading.value = false
+        console.error(`获取项目 ${project.id} 成员列表失败:`, error)
+        // 添加到项目列表，但成员为空
+        projectsWithMembers.push({
+          ...project,
+          members: []
+        })
       }
     }
 
     // 更新显示的项目列表
-    const updateDisplayProjects = async () => {
-      try {
-        // 根据开关状态决定显示哪些项目
-        const projects = showAllProjects.value ? allProjects.value : managedProjects.value
+    displayProjects.value = projectsWithMembers
+    console.log('更新显示的项目列表:', displayProjects.value)
 
-        if (!projects || projects.length === 0) {
-          displayProjects.value = []
-          batchLoading.value = false
-          return
-        }
+    // 加载已提交的工时数据
+    loadSubmittedWorkTime()
+  } finally {
+    batchLoading.value = false
+  }
+}
 
-        // 为每个项目获取成员并初始化工时数据
-        const projectsWithMembers = []
+// 切换显示所有项目或仅管理的项目
+const onShowAllProjectsChange = (value) => {
+  console.log('切换项目显示模式:', value ? '所有项目' : '我管理的项目')
 
-        for (const project of projects) {
-          try {
-            // 获取项目成员
-            const response = await api.get(`/api/projects/${project.id}/members`)
-            const members = response.data
+  if (value && allProjects.value.length === 0) {
+    // 如果切换到显示所有项目，但还没有获取过所有项目列表，则获取
+    fetchAllProjects()
+  } else {
+    // 否则直接更新显示的项目列表
+    updateDisplayProjects()
+  }
+}
 
-            // 为每个成员初始化工时数据
-            const membersWithHours = members.map(member => {
-              const hours = {}
-              batchDates.value.forEach(date => {
-                hours[date] = 0
-              })
+// 刷新项目数据
+const refreshProjects = () => {
+  if (showAllProjects.value) {
+    fetchAllProjects()
+  } else {
+    fetchManagedProjects()
+  }
+}
 
-              return {
-                ...member,
-                hours
-              }
-            })
+// 初始化批量日期范围
+const initBatchDateRange = () => {
+  console.log('初始化批量日期范围，当前值:', batchDateRange.value)
 
-            // 添加到项目列表
-            projectsWithMembers.push({
-              ...project,
-              members: membersWithHours
-            })
-          } catch (error) {
-            console.error(`获取项目 ${project.id} 成员列表失败:`, error)
-            // 添加到项目列表，但成员为空
-            projectsWithMembers.push({
-              ...project,
-              members: []
-            })
-          }
-        }
+  // 检查日期范围是否有效
+  let needsReset = true
 
-        // 更新显示的项目列表
-        displayProjects.value = projectsWithMembers
-        console.log('更新显示的项目列表:', displayProjects.value)
+  if (batchDateRange.value && batchDateRange.value.length === 2) {
+    try {
+      const startDate = new Date(batchDateRange.value[0])
+      const endDate = new Date(batchDateRange.value[1])
 
-        // 加载已提交的工时数据
-        loadSubmittedWorkTime()
-      } finally {
-        batchLoading.value = false
-      }
-    }
-
-    // 切换显示所有项目或仅管理的项目
-    const onShowAllProjectsChange = (value) => {
-      console.log('切换项目显示模式:', value ? '所有项目' : '我管理的项目')
-
-      if (value && allProjects.value.length === 0) {
-        // 如果切换到显示所有项目，但还没有获取过所有项目列表，则获取
-        fetchAllProjects()
+      if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime()) && startDate <= endDate) {
+        console.log('当前批量日期范围有效，无需重置')
+        needsReset = false
       } else {
-        // 否则直接更新显示的项目列表
-        updateDisplayProjects()
+        console.warn('当前批量日期范围无效，需要重置')
       }
+    } catch (error) {
+      console.error('解析批量日期范围时出错:', error)
     }
-
-    // 刷新项目数据
-    const refreshProjects = () => {
-      if (showAllProjects.value) {
-        fetchAllProjects()
-      } else {
-        fetchManagedProjects()
-      }
-    }
-
-    // 初始化批量日期范围
-    const initBatchDateRange = () => {
-      console.log('初始化批量日期范围，当前值:', batchDateRange.value)
-
-      // 检查日期范围是否有效
-      let needsReset = true
-
-      if (batchDateRange.value && batchDateRange.value.length === 2) {
-        try {
-          const startDate = new Date(batchDateRange.value[0])
-          const endDate = new Date(batchDateRange.value[1])
-
-          if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime()) && startDate <= endDate) {
-            console.log('当前批量日期范围有效，无需重置')
-            needsReset = false
-          } else {
-            console.warn('当前批量日期范围无效，需要重置')
-          }
-        } catch (error) {
-          console.error('解析批量日期范围时出错:', error)
-        }
-      } else {
+  } else {
         console.warn('批量日期范围不完整，需要重置')
       }
 
@@ -1399,46 +1397,6 @@ export default {
       fetchProjectsStats()
     })
 
-    return {
-      tabs,
-      activeTab,
-      managedProjects,
-      allProjects,
-      showAllProjects,
-      displayProjects,
-      batchDateRange,
-      batchDates,
-      batchLoading,
-      statsDateRange,
-      statsLoading,
-      overallStats,
-      projectsStats,
-      projectDetailVisible,
-      projectDetailLoading,
-      currentProjectDetail,
-      memberStats,
-      allMemberStats,
-      getDefaultDateRange,
-      getDefaultDateRangeDates,
-      formatDateLabel,
-      calculateTotalHours,
-      validateHours,
-      getCellClass,
-      onBatchDateRangeChange,
-      onStatsDateRangeChange,
-      onShowAllProjectsChange,
-      refreshProjects,
-      submitProjectTimeRecords,
-      fetchProjectsStats,
-      viewProjectDetail,
-      formatNumber,
-      isProjectManager,
-      exportBatchFillData,
-      exportStatisticalReportData,
-      Download // 确保图标组件在模板中可用
-    }
-  }
-}
 </script>
 
 <style scoped>

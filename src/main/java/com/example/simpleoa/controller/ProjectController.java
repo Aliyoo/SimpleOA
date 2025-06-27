@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,8 +48,11 @@ public class ProjectController {
             return ResponseEntity.ok(savedProject);
         } catch (Exception e) {
             logger.error("Failed to create project", e);
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to create project");
+            errorResponse.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", "Failed to create project", "message", e.getMessage()));
+                    .body(errorResponse);
         }
     }
 

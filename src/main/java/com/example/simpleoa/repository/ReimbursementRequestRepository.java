@@ -1,11 +1,14 @@
 package com.example.simpleoa.repository;
 
 import com.example.simpleoa.model.ReimbursementRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface ReimbursementRequestRepository extends JpaRepository<ReimbursementRequest, Long> {
@@ -54,4 +57,17 @@ public interface ReimbursementRequestRepository extends JpaRepository<Reimbursem
     // 查询超过指定金额的报销申请
     @Query("SELECT r FROM ReimbursementRequest r WHERE r.amount > :amount")
     List<ReimbursementRequest> findByAmountGreaterThan(@Param("amount") BigDecimal amount);
+
+    // 分页查询，支持多条件过滤
+    @Query("SELECT r FROM ReimbursementRequest r WHERE " +
+            "(:userId IS NULL OR r.applicant.id = :userId) AND " +
+            "(:status IS NULL OR r.status = :status) AND " +
+            "(:startDate IS NULL OR r.expenseDate >= :startDate) AND " +
+            "(:endDate IS NULL OR r.expenseDate <= :endDate)")
+    Page<ReimbursementRequest> findWithFilters(
+            @Param("userId") Long userId,
+            @Param("status") String status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            Pageable pageable);
 }

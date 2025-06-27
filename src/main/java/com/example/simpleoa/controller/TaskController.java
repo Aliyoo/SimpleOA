@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,8 +28,11 @@ public class TaskController {
             Task saved = taskService.createTask(task);
             return ResponseEntity.ok(saved);
         } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to create task");
+            errorResponse.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to create task", "message", e.getMessage()));
+                    .body(errorResponse);
         }
     }
 
@@ -39,8 +43,11 @@ public class TaskController {
             Task updated = taskService.updateTask(task);
             return ResponseEntity.ok(updated);
         } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to update task");
+            errorResponse.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to update task", "message", e.getMessage()));
+                    .body(errorResponse);
         }
     }
 
@@ -50,10 +57,15 @@ public class TaskController {
         try {
             Long id = req.get("id");
             taskService.deleteTask(id);
-            return ResponseEntity.ok(Map.of("success", true));
+            Map<String, Boolean> successResponse = new HashMap<>();
+            successResponse.put("success", true);
+            return ResponseEntity.ok(successResponse);
         } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to delete task");
+            errorResponse.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to delete task", "message", e.getMessage()));
+                    .body(errorResponse);
         }
     }
 
@@ -62,7 +74,9 @@ public class TaskController {
     public ResponseEntity<?> getTaskById(@PathVariable Long id) {
         Task task = taskService.getTaskById(id);
         if (task == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Task not found"));
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Task not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
         return ResponseEntity.ok(task);
     }

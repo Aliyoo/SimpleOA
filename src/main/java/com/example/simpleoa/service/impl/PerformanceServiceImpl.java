@@ -7,6 +7,7 @@ import com.example.simpleoa.model.PerformanceEvaluationItem;
 import com.example.simpleoa.service.PerformanceService;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -40,17 +41,17 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     @Override
     public List<PerformanceCriteria> getAllCriteria() {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceCriteria> getCriteriaByCategory(String category) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceCriteria> getActiveCriteria() {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
@@ -75,37 +76,37 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     @Override
     public List<PerformanceEvaluation> getAllEvaluations() {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceEvaluation> getEvaluationsByUser(Long userId) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceEvaluation> getEvaluationsByPeriod(String evaluationPeriod) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceEvaluation> getEvaluationsByStatus(String status) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceEvaluation> getEvaluationsByDateRange(Date startDate, Date endDate) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceEvaluation> getEvaluationsByEvaluator(Long evaluatedById) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceEvaluation> getLatestEvaluationsByUser(Long userId) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
@@ -135,12 +136,12 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     @Override
     public List<PerformanceEvaluationItem> getEvaluationItemsByEvaluation(Long evaluationId) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceEvaluationItem> getEvaluationItemsByCriteria(Long criteriaId) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
@@ -160,12 +161,12 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     @Override
     public Map<String, Object> calculatePerformanceByUser(Long userId, String period, Date startDate, Date endDate) {
-        return Map.of();
+        return Collections.emptyMap();
     }
 
     @Override
     public Map<String, Object> calculateTeamPerformance(List<Long> userIds, String period, Date startDate, Date endDate) {
-        return Map.of();
+        return Collections.emptyMap();
     }
 
     @Override
@@ -190,37 +191,37 @@ public class PerformanceServiceImpl implements PerformanceService {
 
     @Override
     public List<PerformanceBonus> getAllBonuses() {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceBonus> getBonusesByUser(Long userId) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceBonus> getBonusesByEvaluation(Long evaluationId) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceBonus> getBonusesByPeriod(String bonusPeriod) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceBonus> getBonusesByStatus(String status) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceBonus> getBonusesByDateRange(Date startDate, Date endDate) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<PerformanceBonus> getBonusesByType(String bonusType) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override

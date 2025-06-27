@@ -11,10 +11,15 @@ import com.example.simpleoa.service.ApprovalFlowService;
 import com.example.simpleoa.service.PaymentService;
 import com.example.simpleoa.service.ReimbursementService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -42,15 +47,35 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         // 保存报销申请
         reimbursementRequest.setStatus("PENDING");
         ReimbursementRequest savedRequest = reimbursementRequestRepository.save(reimbursementRequest);
-        
+
         // 创建审批流程
-        // 这里假设审批人是通过某种方式确定的，例如部门经理或指定的审批人
-        User approver = userRepository.findById(reimbursementRequest.getApplicant().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Approver not found"));
-        
-        approvalFlowService.createReimbursementApproval(savedRequest, approver);
-        
+        // 查找合适的审批人（这里简化为查找管理员角色的用户）
+        User approver = findApproverForReimbursement(savedRequest);
+
+        if (approver != null) {
+            approvalFlowService.createReimbursementApproval(savedRequest, approver);
+        }
+
         return savedRequest;
+    }
+
+    /**
+     * 查找报销申请的审批人
+     * 这里简化实现，实际项目中可能需要根据部门、金额等条件确定审批人
+     */
+    private User findApproverForReimbursement(ReimbursementRequest request) {
+        // 简化实现：查找第一个管理员用户作为审批人
+        // 实际项目中应该根据业务规则确定审批人
+        List<User> allUsers = userRepository.findAll();
+        for (User user : allUsers) {
+            // 假设用户名包含"admin"或"manager"的是管理员
+            if (user.getUsername().toLowerCase().contains("admin") ||
+                    user.getUsername().toLowerCase().contains("manager")) {
+                return user;
+            }
+        }
+        // 如果没找到管理员，返回第一个用户（这只是临时方案）
+        return allUsers.isEmpty() ? null : allUsers.get(0);
     }
 
     @Override
@@ -70,7 +95,9 @@ public class ReimbursementServiceImpl implements ReimbursementService {
 
     @Override
     public Iterable<ReimbursementRequest> getAllReimbursements() {
-        return reimbursementRequestRepository.findAll();
+        Iterable<ReimbursementRequest> result = reimbursementRequestRepository.findAll();
+        System.out.println("getAllReimbursements - 查询到记录数: " + ((List<ReimbursementRequest>) result).size());
+        return result;
     }
 
     @Override
@@ -152,6 +179,61 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         result.put("linkedAt", new Date());
         result.put("status", "SUCCESS");
         
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> getReimbursementsWithFilter(int page, int size, Long userId, String status,
+            String startDate, String endDate) {
+        // 创建分页对象，按ID倒序排列（更可靠的排序字段）
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+
+        // 处理空字符串参数
+        if (status != null && status.trim().isEmpty()) {
+            status = null;
+        }
+        if (startDate != null && startDate.trim().isEmpty()) {
+            startDate = null;
+        }
+        if (endDate != null && endDate.trim().isEmpty()) {
+            endDate = null;
+        }
+
+        // 转换日期字符串为LocalDate
+        LocalDate start = null;
+        LocalDate end = null;
+
+        try {
+            if (startDate != null) {
+                start = LocalDate.parse(startDate);
+            }
+            if (endDate != null) {
+                end = LocalDate.parse(endDate);
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("日期格式错误，请使用 yyyy-MM-dd 格式");
+        }
+
+        // 添加调试日志
+        System.out.println("查询参数 - userId: " + userId + ", status: " + status + ", start: " + start + ", end: " + end);
+
+        // 执行分页查询
+        Page<ReimbursementRequest> pageResult = reimbursementRequestRepository.findWithFilters(
+                userId, status, start, end, pageable);
+
+        System.out.println(
+                "查询结果 - 总记录数: " + pageResult.getTotalElements() + ", 当前页记录数: " + pageResult.getContent().size());
+
+        // 构造返回结果
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", pageResult.getContent());
+        result.put("totalElements", pageResult.getTotalElements());
+        result.put("totalPages", pageResult.getTotalPages());
+        result.put("currentPage", pageResult.getNumber());
+        result.put("size", pageResult.getSize());
+        result.put("hasNext", pageResult.hasNext());
+        result.put("hasPrevious", pageResult.hasPrevious());
+
         return result;
     }
 }

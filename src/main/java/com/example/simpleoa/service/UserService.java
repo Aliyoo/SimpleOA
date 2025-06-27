@@ -13,6 +13,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder; // Import PasswordEncoder
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -115,7 +116,7 @@ public class UserService implements UserDetailsService {
 
     public List<User> getSelectableUsers() {
         // 这里可以添加逻辑来获取可选用户，除开管理员都可以选中
-        List<String> usernames = List.of("admin");
+        List<String> usernames = Arrays.asList("admin");
         return userRepository.findByUsernameNotIn(usernames);
     }
 }

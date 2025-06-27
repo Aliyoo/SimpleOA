@@ -5,6 +5,7 @@ import com.example.simpleoa.model.User;
 import com.example.simpleoa.service.PositionService;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -37,27 +38,27 @@ public class PositionServiceImpl implements PositionService {
 
     @Override
     public List<Position> getAllPositions() {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<Position> getPositionsByDepartment(String department) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<Position> getPositionsByLevel(String level) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<Position> getActivePositions() {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public List<Position> searchPositionsByName(String name) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
@@ -72,16 +73,16 @@ public class PositionServiceImpl implements PositionService {
 
     @Override
     public List<User> getUsersByPosition(Long positionId) {
-        return List.of();
+        return Collections.emptyList();
     }
 
     @Override
     public Map<String, Object> getPositionStatsByDepartment() {
-        return Map.of();
+        return Collections.emptyMap();
     }
 
     @Override
     public Map<String, Object> getPositionDistribution() {
-        return Map.of();
+        return Collections.emptyMap();
     }
 }

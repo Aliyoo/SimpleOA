@@ -128,10 +128,10 @@ public class PaymentServiceImpl implements PaymentService {
     public Payment createReimbursementPayment(ReimbursementRequest reimbursementRequest, User processor) {
         Payment payment = new Payment();
         payment.setPaymentId("PMT-" + System.currentTimeMillis());
-        payment.setAmount(reimbursementRequest.getAmount());
+        payment.setAmount(reimbursementRequest.getTotalAmount());
         payment.setPayer(processor.getUsername());
         payment.setPaymentDate(LocalDate.now());
-        payment.setDescription("报销支付: " + reimbursementRequest.getDescription());
+        payment.setDescription("报销: " + reimbursementRequest.getTitle());
         payment.setStatus("PENDING");
         payment.setReimbursementRequest(reimbursementRequest);
         payment.setProcessor(processor);

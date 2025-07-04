@@ -45,6 +45,14 @@ public class BudgetExpense {
     @Temporal(TemporalType.TIMESTAMP)
     private Date recordTime;
 
+    @Column
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createTime;
+
+    @Column
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date lastUpdateTime;
+
     public Long getId() {
         return id;
     }
@@ -131,5 +139,21 @@ public class BudgetExpense {
 
     public void setRecordTime(Date recordTime) {
         this.recordTime = recordTime;
+    }
+
+    public Date getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(Date createTime) {
+        this.createTime = createTime;
+    }
+
+    public Date getLastUpdateTime() {
+        return lastUpdateTime;
+    }
+
+    public void setLastUpdateTime(Date lastUpdateTime) {
+        this.lastUpdateTime = lastUpdateTime;
     }
 }

@@ -171,4 +171,15 @@ public class ProjectController {
         logger.info("Getting projects managed by manager ID: {}", managerId);
         return projectService.getProjectsByManagerId(managerId);
     }
+
+    /**
+     * 获取项目成员列表
+     * @param projectId 项目ID
+     * @return 项目成员列表
+     */
+    @GetMapping("/{projectId}/members")
+    public List<User> getProjectMembers(@PathVariable Long projectId) {
+        logger.info("Getting members for project ID: {}", projectId);
+        return projectService.getProjectMembers(projectId);
+    }
 }

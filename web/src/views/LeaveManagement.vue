@@ -1,67 +1,62 @@
 <template>
   <div class="leave-management-container">
     <h1>请假管理</h1>
-    
+
     <el-tabs v-model="activeTab">
       <el-tab-pane label="请假申请" name="apply">
         <el-form :model="leaveForm" label-width="100px" class="apply-form">
-          <el-form-item label="请假类型" prop="type">
-            <el-select v-model="leaveForm.type" placeholder="请选择请假类型">
-              <el-option 
-                v-for="type in leaveTypes" 
-                :key="type.value" 
-                :label="type.label" 
-                :value="type.value"
+          <el-form-item label="请假类型" prop="leaveType">
+            <el-select v-model="leaveForm.leaveType" placeholder="请选择请假类型">
+              <el-option
+                  v-for="type in leaveTypes"
+                  :key="type.value"
+                  :label="type.label"
+                  :value="type.value"
               />
             </el-select>
           </el-form-item>
-          
-          <el-form-item label="开始时间" prop="startTime">
-            <el-date-picker 
-              v-model="leaveForm.startTime" 
-              type="datetime" 
-              placeholder="选择开始时间"
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DD HH:mm"
+
+          <el-form-item label="开始时间" prop="startDate">
+            <el-date-picker
+                v-model="leaveForm.startDate"
+                type="datetime"
+                placeholder="选择开始时间"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DD HH:mm"
             />
           </el-form-item>
-          
-          <el-form-item label="结束时间" prop="endTime">
-            <el-date-picker 
-              v-model="leaveForm.endTime" 
-              type="datetime" 
-              placeholder="选择结束时间"
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DD HH:mm"
+
+          <el-form-item label="结束时间" prop="endDate">
+            <el-date-picker
+                v-model="leaveForm.endDate"
+                type="datetime"
+                placeholder="选择结束时间"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DD HH:mm"
             />
           </el-form-item>
-          
-          <el-form-item label="请假天数" prop="days">
-            <el-input-number v-model="leaveForm.days" :min="0.5" :max="30" :step="0.5" />
-          </el-form-item>
-          
+
           <el-form-item label="请假原因" prop="reason">
-            <el-input 
-              v-model="leaveForm.reason" 
-              type="textarea" 
-              :rows="4" 
-              placeholder="请输入请假原因"
+            <el-input
+                v-model="leaveForm.reason"
+                type="textarea"
+                :rows="4"
+                placeholder="请输入请假原因"
             />
           </el-form-item>
-          
+
           <el-form-item>
             <el-button type="primary" @click="submitLeave">提交申请</el-button>
           </el-form-item>
         </el-form>
       </el-tab-pane>
-      
+
       <el-tab-pane label="审批列表" name="approval">
         <el-table :data="approvalList" style="width: 100%">
-          <el-table-column prop="type" label="请假类型" width="120" />
-          <el-table-column prop="startTime" label="开始时间" width="180" />
-          <el-table-column prop="endTime" label="结束时间" width="180" />
-          <el-table-column prop="days" label="天数" width="100" />
-          <el-table-column prop="reason" label="原因" />
+          <el-table-column prop="leaveType" label="请假类型" width="120"/>
+          <el-table-column prop="startDate" label="开始时间" width="180"/>
+          <el-table-column prop="endDate" label="结束时间" width="180"/>
+          <el-table-column prop="reason" label="原因"/>
           <el-table-column prop="status" label="状态" width="120">
             <template #default="scope">
               <el-tag :type="getStatusTagType(scope.row.status)">
@@ -71,19 +66,19 @@
           </el-table-column>
           <el-table-column label="操作" width="180" v-if="isApprover">
             <template #default="scope">
-              <el-button 
-                size="small" 
-                type="success" 
-                @click="approveLeave(scope.row)"
-                v-if="scope.row.status === '待审批'"
+              <el-button
+                  size="small"
+                  type="success"
+                  @click="approveLeave(scope.row)"
+                  v-if="scope.row.status === '待审批'"
               >
                 通过
               </el-button>
-              <el-button 
-                size="small" 
-                type="danger" 
-                @click="rejectLeave(scope.row)"
-                v-if="scope.row.status === '待审批'"
+              <el-button
+                  size="small"
+                  type="danger"
+                  @click="rejectLeave(scope.row)"
+                  v-if="scope.row.status === '待审批'"
               >
                 拒绝
               </el-button>
@@ -91,28 +86,28 @@
           </el-table-column>
         </el-table>
       </el-tab-pane>
-      
+
       <el-tab-pane label="统计报表" name="statistics">
         <div class="statistics-container">
           <el-date-picker
-            v-model="statisticsDateRange"
-            type="monthrange"
-            range-separator="至"
-            start-placeholder="开始月份"
-            end-placeholder="结束月份"
-            format="YYYY-MM"
-            value-format="YYYY-MM"
-            @change="fetchStatisticsData"
+              v-model="statisticsDateRange"
+              type="monthrange"
+              range-separator="至"
+              start-placeholder="开始月份"
+              end-placeholder="结束月份"
+              format="YYYY-MM"
+              value-format="YYYY-MM"
+              @change="fetchStatisticsData"
           />
-          
+
           <el-table :data="statisticsData" style="width: 100%; margin-top: 20px">
-            <el-table-column prop="type" label="请假类型" />
-            <el-table-column prop="totalDays" label="总天数" />
-            <el-table-column prop="percentage" label="占比" />
+            <el-table-column prop="type" label="请假类型"/>
+            <el-table-column prop="totalDays" label="总天数"/>
+            <el-table-column prop="percentage" label="占比"/>
           </el-table>
-          
+
           <div class="chart-container">
-            <el-empty description="暂无数据" v-if="!statisticsData.length" />
+            <el-empty description="暂无数据" v-if="!statisticsData.length"/>
             <div v-else>
               <div id="leaveStatisticsChart" style="width: 100%; height: 400px"></div>
             </div>
@@ -124,30 +119,29 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import {ref, reactive, onMounted} from 'vue'
 import api from '../utils/axios.js'
-import { ElMessage } from 'element-plus'
+import {ElMessage} from 'element-plus'
 import * as echarts from 'echarts'
-import { APP_CONFIG } from '../utils/config.js'
+import {APP_CONFIG} from '../utils/config.js'
 
 const activeTab = ref('apply')
 
 const leaveForm = reactive({
-  type: '',
-  startTime: '',
-  endTime: '',
-  days: 1,
+  leaveType: '',
+  startDate: '',
+  endDate: '',
   reason: ''
 })
 
 const leaveTypes = ref([
-  { value: 'annual', label: '年假' },
-  { value: 'sick', label: '病假' },
-  { value: 'personal', label: '事假' },
-  { value: 'marriage', label: '婚假' },
-  { value: 'maternity', label: '产假' },
-  { value: 'paternity', label: '陪产假' },
-  { value: 'other', label: '其他' }
+  {value: 'annual', label: '年假'},
+  {value: 'sick', label: '病假'},
+  {value: 'personal', label: '事假'},
+  {value: 'marriage', label: '婚假'},
+  {value: 'maternity', label: '产假'},
+  {value: 'paternity', label: '陪产假'},
+  {value: 'other', label: '其他'}
 ])
 
 const approvalList = ref([])
@@ -168,7 +162,7 @@ const fetchStatisticsData = async () => {
   if (!statisticsDateRange.value || statisticsDateRange.value.length !== 2) {
     return
   }
-  
+
   try {
     const response = await api.get('/api/leave/statistics', {
       params: {
@@ -186,7 +180,7 @@ const fetchStatisticsData = async () => {
 const renderChart = () => {
   const chartDom = document.getElementById('leaveStatisticsChart')
   if (!chartDom) return
-  
+
   const myChart = echarts.init(chartDom)
   const option = {
     tooltip: {
@@ -215,7 +209,7 @@ const renderChart = () => {
       }
     ]
   }
-  
+
   myChart.setOption(option)
 }
 
@@ -252,16 +246,20 @@ const rejectLeave = async (row) => {
 
 const getStatusTagType = (status) => {
   switch (status) {
-    case '已通过': return 'success'
-    case '已拒绝': return 'danger'
-    case '待审批': return 'warning'
-    default: return 'info'
+    case '已通过':
+      return 'success'
+    case '已拒绝':
+      return 'danger'
+    case '待审批':
+      return 'warning'
+    default:
+      return 'info'
   }
 }
 
 const checkApproverRole = async () => {
   try {
-    const response = await api.get('/api/user/is-approver')
+    const response = await api.get('/api/users/is-approver')
     isApprover.value = response.data
   } catch (error) {
     console.error('检查审批权限失败:', error)
@@ -271,7 +269,7 @@ const checkApproverRole = async () => {
 onMounted(async () => {
   fetchApprovalList()
   checkApproverRole()
-  
+
   // 从全局配置获取默认日期范围
   statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange();
   fetchStatisticsData()

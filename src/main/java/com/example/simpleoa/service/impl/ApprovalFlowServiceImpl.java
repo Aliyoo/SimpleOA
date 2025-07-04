@@ -153,8 +153,8 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
             requester = userRepository.findById(flow.getBusinessTripRequest().getUserId()).orElse(null);
             requestTitle = "出差审批 - " + flow.getBusinessTripRequest().getDestination();
         } else if ("REIMBURSEMENT".equals(requestType) && flow.getReimbursementRequest() != null) {
-            requester = userRepository.findById(flow.getReimbursementRequest().getUserId()).orElse(null);
-            requestTitle = "报销审批 - " + flow.getReimbursementRequest().getDescription();
+            requester = userRepository.findById(flow.getReimbursementRequest().getApplicant().getId()).orElse(null);
+            requestTitle = "报销审批 - " + flow.getReimbursementRequest().getTitle();
         }
 
         // 构建通知消息

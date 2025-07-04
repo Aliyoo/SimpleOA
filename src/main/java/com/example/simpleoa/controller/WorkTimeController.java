@@ -380,27 +380,79 @@ public class WorkTimeController {
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestParam(required = false) Boolean approved,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String workType,
             @RequestParam(required = false, defaultValue = "0") Integer page,
             @RequestParam(required = false, defaultValue = "10") Integer size) {
         Project project = new Project();
         project.setId(projectId);
 
+        User user = null;
+        if (userId != null) {
+            user = new User();
+            user.setId(userId);
+        }
+
         // 如果请求包含分页参数，返回分页结果
         if (page != null && size != null) {
-            return workTimeService.getWorkTimeRecordsByProjectAndDateRangePaged(
+            return workTimeService.getWorkTimeRecordsByProjectAndDateRangePagedWithFilters(
                     project,
                     LocalDate.parse(startDate),
                     LocalDate.parse(endDate),
                     approved,
+                    user,
+                    workType,
                     page,
                     size);
         } else {
             // 否则返回全部结果
-            return workTimeService.getWorkTimeRecordsByProjectAndDateRangeFiltered(
+            return workTimeService.getWorkTimeRecordsByProjectAndDateRangeFilteredWithFilters(
                     project,
                     LocalDate.parse(startDate),
                     LocalDate.parse(endDate),
-                    approved);
+                    approved,
+                    user,
+                    workType);
+        }
+    }
+
+    @PutMapping("/batch/approve")
+    public Map<String, Object> batchApproveWorkTime(@RequestBody List<Long> recordIds) {
+        try {
+            int successCount = workTimeService.batchApproveWorkTime(recordIds);
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 200);
+            response.put("message", "批量审核成功");
+            response.put("data", Map.of("successCount", successCount));
+            return response;
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("code", 500);
+            errorResponse.put("message", "批量审核失败: " + e.getMessage());
+            errorResponse.put("data", null);
+            return errorResponse;
+        }
+    }
+
+    @PutMapping("/batch/reject")
+    public Map<String, Object> batchRejectWorkTime(@RequestBody Map<String, Object> requestBody) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Long> recordIds = (List<Long>) requestBody.get("recordIds");
+            String reason = (String) requestBody.get("reason");
+            
+            int successCount = workTimeService.batchRejectWorkTime(recordIds, reason);
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 200);
+            response.put("message", "批量驳回成功");
+            response.put("data", Map.of("successCount", successCount));
+            return response;
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("code", 500);
+            errorResponse.put("message", "批量驳回失败: " + e.getMessage());
+            errorResponse.put("data", null);
+            return errorResponse;
         }
     }
 }

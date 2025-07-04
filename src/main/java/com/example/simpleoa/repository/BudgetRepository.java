@@ -22,4 +22,24 @@ public interface BudgetRepository extends JpaRepository<Budget, Long> {
     
     @Query("SELECT SUM(b.usedAmount) FROM Budget b WHERE b.project.id = ?1")
     Double getTotalUsedAmountByProject(Long projectId);
+
+    Long countByProjectId(Long projectId);
+
+    @Query("SELECT SUM(b.remainingAmount) FROM Budget b WHERE b.project.id = ?1")
+    Double getTotalRemainingAmountByProject(Long projectId);
+
+    @Query("SELECT SUM(b.totalAmount) FROM Budget b WHERE (b.startDate BETWEEN ?1 AND ?2) OR (b.endDate BETWEEN ?1 AND ?2)")
+    Double getTotalBudgetAmountByDateRange(Date startDate, Date endDate);
+
+    @Query("SELECT SUM(b.usedAmount) FROM Budget b WHERE (b.startDate BETWEEN ?1 AND ?2) OR (b.endDate BETWEEN ?1 AND ?2)")
+    Double getTotalUsedAmountByDateRange(Date startDate, Date endDate);
+
+    @Query("SELECT SUM(b.totalAmount) FROM Budget b")
+    Double sumTotalAmount();
+
+    @Query("SELECT SUM(b.usedAmount) FROM Budget b")
+    Double sumUsedAmount();
+
+    @Query("SELECT SUM(b.remainingAmount) FROM Budget b")
+    Double sumRemainingAmount();
 }

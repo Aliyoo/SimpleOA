@@ -24,4 +24,9 @@ public interface BudgetItemRepository extends JpaRepository<BudgetItem, Long> {
     
     @Query("SELECT SUM(bi.usedAmount) FROM BudgetItem bi WHERE bi.budget.id = ?1")
     Double getTotalUsedAmountByBudget(Long budgetId);
+
+    Long countByBudgetId(Long budgetId);
+
+    @Query("SELECT COUNT(bi) FROM BudgetItem bi WHERE bi.budget.project.id = ?1")
+    Long countByProjectId(Long projectId);
 }

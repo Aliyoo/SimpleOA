@@ -1,149 +1,68 @@
 package com.example.simpleoa.controller;
 
+import com.example.simpleoa.common.ApiResponse;
 import com.example.simpleoa.model.ReimbursementRequest;
+import com.example.simpleoa.model.ReimbursementRequestDTO;
 import com.example.simpleoa.model.User;
 import com.example.simpleoa.service.ReimbursementService;
-import com.example.simpleoa.service.UserService;
-import com.example.simpleoa.common.ApiResponse;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/oa/reimbursement")
 public class ReimbursementController {
-    private final ReimbursementService reimbursementService;
-    private final UserService userService;
 
-    public ReimbursementController(ReimbursementService reimbursementService, UserService userService) {
+    private final ReimbursementService reimbursementService;
+
+    public ReimbursementController(ReimbursementService reimbursementService) {
         this.reimbursementService = reimbursementService;
-        this.userService = userService;
     }
 
-    @PostMapping("/apply")
-    public ApiResponse<ReimbursementRequest> createReimbursement(@RequestBody ReimbursementRequest reimbursement) {
-        try {
-            // 获取当前登录用户
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String username = authentication.getName();
-            User currentUser = (User) userService.loadUserByUsername(username);
-
-            if (currentUser == null) {
-                return ApiResponse.error(401, "用户未登录");
-            }
-
-            // 设置申请人
-            reimbursement.setApplicant(currentUser);
-
-            ReimbursementRequest savedRequest = reimbursementService.createReimbursement(reimbursement);
-            return ApiResponse.success("报销申请提交成功", savedRequest);
-        } catch (Exception e) {
-            return ApiResponse.error("提交失败: " + e.getMessage());
-        }
+    @PostMapping
+    public ResponseEntity<ApiResponse<ReimbursementRequest>> createReimbursement(@RequestBody ReimbursementRequestDTO dto, @AuthenticationPrincipal User user) {
+        ReimbursementRequest created = reimbursementService.createReimbursement(dto, user.getId());
+        return ResponseEntity.ok(ApiResponse.success("报销申请已创建", created));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<ReimbursementRequest> updateReimbursement(@PathVariable Long id,
-            @RequestBody ReimbursementRequest reimbursement) {
-        try {
-            reimbursement.setId(id);
-            ReimbursementRequest updated = reimbursementService.updateReimbursement(reimbursement);
-            return ApiResponse.success("更新成功", updated);
-        } catch (Exception e) {
-            return ApiResponse.error("更新失败: " + e.getMessage());
-        }
+    public ResponseEntity<ApiResponse<ReimbursementRequest>> updateReimbursement(@PathVariable Long id, @RequestBody ReimbursementRequestDTO dto) {
+        ReimbursementRequest updated = reimbursementService.updateReimbursement(id, dto);
+        return ResponseEntity.ok(ApiResponse.success("报销申请已更新", updated));
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> deleteReimbursement(@PathVariable Long id) {
-        try {
-            reimbursementService.deleteReimbursement(id);
-            return ApiResponse.success("删除成功", null);
-        } catch (Exception e) {
-            return ApiResponse.error("删除失败: " + e.getMessage());
-        }
+    public ResponseEntity<ApiResponse<Void>> deleteReimbursement(@PathVariable Long id) {
+        reimbursementService.deleteReimbursement(id);
+        return ResponseEntity.ok(ApiResponse.success("报销申请已删除", null));
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<ReimbursementRequest> getReimbursementById(@PathVariable Long id) {
-        try {
-            ReimbursementRequest request = reimbursementService.getReimbursementById(id);
-            if (request == null) {
-                return ApiResponse.error(404, "报销申请不存在");
-            }
-            return ApiResponse.success(request);
-        } catch (Exception e) {
-            return ApiResponse.error("查询失败: " + e.getMessage());
-        }
+    public ResponseEntity<ApiResponse<ReimbursementRequest>> getReimbursementById(@PathVariable Long id) {
+        ReimbursementRequest request = reimbursementService.getReimbursementById(id);
+        return ResponseEntity.ok(ApiResponse.success(request));
     }
 
-    @GetMapping("/records")
-    public ApiResponse<Map<String, Object>> getAllReimbursements(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
-        try {
-            // 如果没有指定userId，获取当前登录用户的ID
-            if (userId == null) {
-                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                String username = authentication.getName();
-                User currentUser = (User) userService.loadUserByUsername(username);
-                userId = currentUser.getId();
-            }
-
-            Map<String, Object> result = reimbursementService.getReimbursementsWithFilter(
-                    page - 1, size, userId, status, startDate, endDate);
-            return ApiResponse.success(result);
-        } catch (Exception e) {
-            return ApiResponse.error("查询失败: " + e.getMessage());
-        }
+    @GetMapping
+    public ResponseEntity<ApiResponse<Page<ReimbursementRequest>>> getReimbursements(
+            @AuthenticationPrincipal User user,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<ReimbursementRequest> requests = reimbursementService.getReimbursements(user.getId(), page, size);
+        return ResponseEntity.ok(ApiResponse.success(requests));
     }
 
-    @GetMapping("/user/{userId}")
-    public ApiResponse<List<ReimbursementRequest>> getReimbursementsByUser(@PathVariable Long userId) {
-        try {
-            List<ReimbursementRequest> requests = (List<ReimbursementRequest>) reimbursementService
-                    .getReimbursementsByUser(userId);
-            return ApiResponse.success(requests);
-        } catch (Exception e) {
-            return ApiResponse.error("查询失败: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/all")
-    public ApiResponse<List<ReimbursementRequest>> getAllReimbursementsSimple() {
-        try {
-            List<ReimbursementRequest> requests = (List<ReimbursementRequest>) reimbursementService
-                    .getAllReimbursements();
-            System.out.println("Controller - 查询到记录数: " + requests.size());
-            for (ReimbursementRequest req : requests) {
-                System.out.println("记录: ID=" + req.getId() + ", type=" + req.getType() + ", amount=" + req.getAmount()
-                        + ", status=" + req.getStatus());
-            }
-            return ApiResponse.success(requests);
-        } catch (Exception e) {
-            System.err.println("查询失败: " + e.getMessage());
-            e.printStackTrace();
-            return ApiResponse.error("查询失败: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/approve/{id}")
-    public ApiResponse<ReimbursementRequest> approveReimbursement(@PathVariable Long id,
-                                            @RequestBody Map<String, String> approvalData) {
-        try {
-            String status = approvalData.get("status");
-            String comment = approvalData.get("comment");
-            ReimbursementRequest approved = reimbursementService.approveReimbursement(id, status, comment);
-            return ApiResponse.success("审批成功", approved);
-        } catch (Exception e) {
-            return ApiResponse.error("审批失败: " + e.getMessage());
-        }
+    @PostMapping("/{id}/approval")
+    public ResponseEntity<ApiResponse<ReimbursementRequest>> approveOrRejectReimbursement(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> payload,
+            @AuthenticationPrincipal User approver) {
+        String decision = payload.get("decision");
+        String comment = payload.get("comment");
+        ReimbursementRequest result = reimbursementService.approveOrReject(id, decision, comment, approver.getId());
+        return ResponseEntity.ok(ApiResponse.success("审批处理成功", result));
     }
 }

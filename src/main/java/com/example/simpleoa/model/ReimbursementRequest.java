@@ -1,14 +1,12 @@
 package com.example.simpleoa.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -21,25 +19,29 @@ public class ReimbursementRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String expenseType;
-    private BigDecimal amount;
+    @ManyToOne
+    @JoinColumn(name = "applicant_id", nullable = false)
+    private User applicant;
 
-    @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate expenseDate;
+    @Column(nullable = false)
+    private String title; // 报销标题，例如 “2025年6月差旅报销”
 
-    private String description;
-    private String status;
-    private String comment;
+    @Column(nullable = false)
+    private BigDecimal totalAmount; // 总金额，由所有明细计算得出
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ReimbursementStatus status; // 使用枚举表示状态
+
+    private String comment; // 审批意见
 
     @ElementCollection
-    private List<String> attachments;
+    @CollectionTable(name = "reimbursement_attachments", joinColumns = @JoinColumn(name = "request_id"))
+    @Column(name = "attachment_path")
+    private List<String> attachments; // 凭证文件路径列表
 
-    // 这些字段是为了与前端保持一致
-    private String type; // 与expenseType相同，保留两个字段以兼容现有代码
-
-    @ManyToOne
-    @JoinColumn(name = "applicant_id")
-    private User applicant;
+    @OneToMany(mappedBy = "reimbursementRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReimbursementItem> items; // 费用明细
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
@@ -47,46 +49,28 @@ public class ReimbursementRequest {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updateTime;
 
-    // 为了与前端保持一致的getter/setter
-    @JsonProperty("date")
-    public LocalDate getDate() {
-        return expenseDate;
-    }
-
-    public void setDate(LocalDate date) {
-        this.expenseDate = date;
-    }
-
-    @JsonProperty("type")
-    public String getType() {
-        return type != null ? type : expenseType;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-        this.expenseType = type; // 保持两个字段同步
-    }
-
-    public void setExpenseType(String expenseType) {
-        this.expenseType = expenseType;
-        this.type = expenseType; // 保持两个字段同步
-    }
-
-    public Long getUserId() {
-        return applicant != null ? applicant.getId() : null;
-    }
-
     @PrePersist
     protected void onCreate() {
         createTime = LocalDateTime.now();
         updateTime = LocalDateTime.now();
         if (status == null) {
-            status = "PENDING";
+            status = ReimbursementStatus.DRAFT;
         }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updateTime = LocalDateTime.now();
+    }
+
+    // Helper method to calculate total amount from items
+    public void calculateTotalAmount() {
+        if (this.items == null) {
+            this.totalAmount = BigDecimal.ZERO;
+            return;
+        }
+        this.totalAmount = items.stream()
+                                .map(ReimbursementItem::getAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

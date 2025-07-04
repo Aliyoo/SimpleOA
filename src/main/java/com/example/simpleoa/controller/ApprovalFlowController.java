@@ -329,19 +329,19 @@ public class ApprovalFlowController {
         if (reimbursementRequest.getId() == null || approver.getId() == null) {
             throw new IllegalArgumentException("ReimbursementRequest and approver must have valid IDs");
         }
-        if (approver.getId().equals(reimbursementRequest.getUserId())) {
+        if (approver.getId().equals(reimbursementRequest.getApplicant().getId())) {
             throw new IllegalArgumentException("Approver cannot be the same person as the reimbursement submitter");
         }
         if (reimbursementRequest.getStatus() == null || !reimbursementRequest.getStatus().equals("SUBMITTED")) {
             throw new IllegalStateException("ReimbursementRequest must be in SUBMITTED status for approval");
         }
-        if (reimbursementRequest.getAmount() == null || reimbursementRequest.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+        if (reimbursementRequest.getTotalAmount() == null || reimbursementRequest.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Reimbursement amount must be positive");
         }
-        if (reimbursementRequest.getType() == null) {
+        if (reimbursementRequest.getTitle() == null || reimbursementRequest.getTitle().isEmpty()) {
             throw new IllegalArgumentException("Reimbursement type cannot be null");
         }
-        if (reimbursementRequest.getDate() == null) {
+        if (reimbursementRequest.getCreateTime() == null) {
             throw new IllegalArgumentException("Reimbursement date cannot be null");
         }
         if (reimbursementRequest.getAttachments() == null || reimbursementRequest.getAttachments().isEmpty()) {

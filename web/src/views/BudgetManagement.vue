@@ -16,7 +16,26 @@
         
         <el-table :data="filteredBudgets" style="width: 100%; margin-top: 20px">
           <el-table-column prop="name" label="预算名称" width="180" />
-          <el-table-column prop="projectName" label="所属项目" width="180" />
+          <el-table-column label="所属项目" width="180">
+            <template #default="scope">
+              {{ scope.row.project?.name || 'N/A' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="startDate" label="开始日期" width="120">
+            <template #default="scope">
+              {{ formatDate(scope.row.startDate) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="endDate" label="结束日期" width="120">
+            <template #default="scope">
+              {{ formatDate(scope.row.endDate) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="remainingAmount" label="剩余金额" width="120">
+            <template #default="scope">
+              {{ formatCurrency(scope.row.remainingAmount) }}
+            </template>
+          </el-table-column>
           <el-table-column prop="totalAmount" label="总预算" width="120">
             <template #default="scope">
               {{ formatCurrency(scope.row.totalAmount) }}
@@ -115,7 +134,16 @@
       <el-tab-pane label="预算预警" name="budgetAlerts">
         <div class="alerts-container">
           <el-table :data="budgetAlerts" style="width: 100%">
-            <el-table-column prop="budgetName" label="预算名称" width="180" />
+            <el-table-column label="预算名称" width="180">
+              <template #default="scope">
+                {{ scope.row.budget?.name || 'N/A' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="预算项目" width="180">
+              <template #default="scope">
+                {{ scope.row.budgetItem?.name || 'N/A' }}
+              </template>
+            </el-table-column>
             <el-table-column prop="alertType" label="预警类型" width="120">
               <template #default="scope">
                 <el-tag :type="getAlertTypeTag(scope.row.alertType)">
@@ -129,17 +157,34 @@
               </template>
             </el-table-column>
             <el-table-column prop="message" label="预警消息" />
+            
+            <el-table-column prop="alertDate" label="预警日期" width="180">
+              <template #default="scope">
+                {{ formatDate(scope.row.alertDate) }}
+              </template>
+            </el-table-column>
             <el-table-column prop="status" label="状态" width="100">
               <template #default="scope">
-                <el-tag :type="scope.row.status === 'ACTIVE' ? 'danger' : 'info'">
-                  {{ scope.row.status === 'ACTIVE' ? '已触发' : '未触发' }}
+                <el-tag :type="getAlertStatusType(scope.row.status)">
+                  {{ getAlertStatusText(scope.row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="createTime" label="创建时间" width="180" />
+            <el-table-column prop="resolvedBy" label="解决人" width="120">
+              <template #default="scope">
+                {{ scope.row.resolvedBy?.username || 'N/A' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="resolvedDate" label="解决日期" width="180">
+              <template #default="scope">
+                {{ formatDate(scope.row.resolvedDate) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="resolution" label="解决方案" />
             <el-table-column label="操作" width="120">
               <template #default="scope">
                 <el-button size="small" type="primary" @click="handleViewAlert(scope.row)">查看</el-button>
+                <el-button v-if="scope.row.status === '未解决'" size="small" type="success" @click="handleResolveAlert(scope.row)">解决</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -181,7 +226,12 @@
             <el-option label="关闭" value="CLOSED" />
           </el-select>
         </el-form-item>
-        <!-- Add more fields as needed (e.g., budget items, start/end dates) -->
+        <el-form-item label="开始日期" prop="startDate">
+          <el-date-picker v-model="budgetForm.startDate" type="date" placeholder="选择开始日期" style="width: 100%;" value-format="YYYY-MM-DD" />
+        </el-form-item>
+        <el-form-item label="结束日期" prop="endDate">
+          <el-date-picker v-model="budgetForm.endDate" type="date" placeholder="选择结束日期" style="width: 100%;" value-format="YYYY-MM-DD" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="budgetDialogVisible = false">取消</el-button>
@@ -191,6 +241,26 @@
 
      <!-- Placeholder for Alert View Dialog -->
      <!-- <el-dialog title="查看预警详情" v-model="alertViewDialogVisible"> ... </el-dialog> -->
+
+    <!-- Resolve Alert Dialog -->
+    <el-dialog
+      title="解决预警"
+      v-model="resolveAlertDialogVisible"
+      @closed="selectedAlert = null; resolveAlertForm.resolution = ''; resolveAlertFormRef?.clearValidate();"
+    >
+      <el-form :model="resolveAlertForm" ref="resolveAlertFormRef" label-width="100px">
+        <el-form-item label="预警消息">
+          <el-input type="textarea" :value="selectedAlert?.message" :rows="3" readonly />
+        </el-form-item>
+        <el-form-item label="解决方案" prop="resolution" :rules="[{ required: true, message: '请输入解决方案', trigger: 'blur' }]" >
+          <el-input type="textarea" v-model="resolveAlertForm.resolution" :rows="4" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="resolveAlertDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitResolveAlertForm">确定</el-button>
+      </template>
+    </el-dialog>
 
   </div>
 </template>
@@ -220,14 +290,22 @@ const initialBudgetFormState = () => ({
     totalAmount: 0,
     description: '',
     status: 'ACTIVE',
-    // Add other relevant fields, e.g., budgetItems: []
+    startDate: null,
+    endDate: null,
 });
 const budgetForm = reactive(initialBudgetFormState());
 
 // Budget Alerts
 const budgetAlerts = ref([])
-// const alertViewDialogVisible = ref(false); // For viewing alert details
-// const selectedAlert = ref(null);
+const alertViewDialogVisible = ref(false);
+const selectedAlert = ref(null);
+const resolveAlertDialogVisible = ref(false);
+const resolveAlertForm = reactive({
+  alertId: null,
+  resolution: '',
+  resolvedById: 1, // Assuming a default user ID for now, or fetch current user ID
+});
+const resolveAlertFormRef = ref(null);
 
 // --- Computed Properties ---
 
@@ -236,7 +314,7 @@ const filteredBudgets = computed(() => {
   const searchLower = budgetSearch.value.toLowerCase();
   return budgets.value.filter(item => 
     item.name?.toLowerCase().includes(searchLower) ||
-    item.projectName?.toLowerCase().includes(searchLower)
+    item.project?.name?.toLowerCase().includes(searchLower)
   );
 });
 
@@ -266,6 +344,20 @@ const budgetRules = {
         { type: 'number', min: 0, message: '预算金额不能为负', trigger: ['blur', 'change'] }
     ],
     status: [{ required: true, message: '请选择状态', trigger: 'change' }],
+    startDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
+    endDate: [
+        { required: true, message: '请选择结束日期', trigger: 'change' },
+        {
+            validator: (rule, value, callback) => {
+                if (budgetForm.startDate && value && new Date(value) < new Date(budgetForm.startDate)) {
+                    callback(new Error('结束日期不能早于开始日期'));
+                } else {
+                    callback();
+                }
+            },
+            trigger: 'change',
+        },
+    ],
 };
 
 // --- Methods ---
@@ -282,7 +374,10 @@ const fetchBudgets = async () => {
 
 const fetchBudgetAlerts = async () => {
   try {
-    const response = await api.get('/api/budgets/alerts'); // Adjust endpoint if needed
+    // Assuming you have a way to get the current project ID, e.g., from a user store or route params
+    // For now, let's assume a dummy project ID or fetch all alerts
+    const projectId = 1; // Replace with actual project ID
+    const response = await api.get(`/api/budgets/project/${projectId}/alerts`);
     budgetAlerts.value = response.data;
   } catch (error) {
     ElMessage.error('获取预算预警失败: ' + error.message);
@@ -314,7 +409,9 @@ const handleEditBudget = (item) => {
     // Ensure projectId is correctly assigned
     const formData = {
         ...item,
-        projectId: item.projectId || item.project?.id // Handle if project object is nested
+        projectId: item.project?.id, // Handle if project object is nested
+        startDate: item.startDate ? new Date(item.startDate).toISOString().slice(0, 10) : null,
+        endDate: item.endDate ? new Date(item.endDate).toISOString().slice(0, 10) : null,
     };
     Object.assign(budgetForm, formData);
     budgetDialogVisible.value = true;
@@ -373,6 +470,34 @@ const handleViewAlert = (alert) => {
     // alertViewDialogVisible.value = true;
 };
 
+const handleResolveAlert = (alert) => {
+  selectedAlert.value = alert;
+  resolveAlertForm.alertId = alert.id;
+  resolveAlertForm.resolution = ''; // Clear previous resolution
+  resolveAlertDialogVisible.value = true;
+};
+
+const submitResolveAlertForm = async () => {
+  if (!resolveAlertFormRef.value) return;
+  await resolveAlertFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        await api.post(`/api/budgets/alerts/${resolveAlertForm.alertId}/resolve`, null, {
+          params: {
+            resolution: resolveAlertForm.resolution,
+            resolvedById: resolveAlertForm.resolvedById,
+          },
+        });
+        ElMessage.success('预警已解决');
+        resolveAlertDialogVisible.value = false;
+        fetchBudgetAlerts(); // Refresh alerts list
+      } catch (error) {
+        ElMessage.error('解决预警失败: ' + error.message);
+      }
+    }
+  });
+};
+
 // Helper functions for display
 const formatCurrency = (value) => {
     return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(value || 0); 
@@ -406,6 +531,22 @@ const getAlertTypeTag = (type) => {
 
 const getAlertTypeText = (type) => {
     return type === 'PERCENTAGE' ? '百分比预警' : '金额预警';
+};
+
+const getAlertStatusType = (status) => {
+  const statusMap = { '未解决': 'danger', '已解决': 'success' };
+  return statusMap[status] || 'info';
+};
+
+const getAlertStatusText = (status) => {
+  const statusMap = { '未解决': '未解决', '已解决': '已解决' };
+  return statusMap[status] || status;
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('zh-CN');
 };
 
 // --- Lifecycle Hook ---

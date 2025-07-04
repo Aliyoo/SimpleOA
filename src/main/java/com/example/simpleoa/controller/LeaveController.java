@@ -3,12 +3,13 @@ package com.example.simpleoa.controller;
 import com.example.simpleoa.model.LeaveRequest;
 import com.example.simpleoa.service.LeaveService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/leaves")
+@RequestMapping("/api/leave")
 public class LeaveController {
     private final LeaveService leaveService;
 
@@ -17,41 +18,28 @@ public class LeaveController {
         this.leaveService = leaveService;
     }
 
-    @PostMapping
-    public LeaveRequest createLeave(@RequestBody LeaveRequest leaveRequest) {
-        return leaveService.createLeave(leaveRequest);
+    @PostMapping("/apply")
+    public LeaveRequest applyLeave(@RequestBody LeaveRequest leaveRequest) {
+        return leaveService.applyLeave(leaveRequest);
     }
 
-    @PutMapping("/{id}")
-    public LeaveRequest updateLeave(@PathVariable Long id, @RequestBody LeaveRequest leaveRequest) {
-        leaveRequest.setId(id);
-        return leaveService.updateLeave(leaveRequest);
+    @GetMapping("/approval-list")
+    public List<LeaveRequest> getApprovalList() {
+        return leaveService.getApprovalList();
     }
 
-    @DeleteMapping("/{id}")
-    public void deleteLeave(@PathVariable Long id) {
-        leaveService.deleteLeave(id);
+    @PostMapping("/approve/{id}")
+    public LeaveRequest approveLeave(@PathVariable Long id) {
+        return leaveService.approveLeave(id, "已通过", "同意");
     }
 
-    @GetMapping("/{id}")
-    public LeaveRequest getLeaveById(@PathVariable Long id) {
-        return leaveService.getLeaveById(id);
+    @PostMapping("/reject/{id}")
+    public LeaveRequest rejectLeave(@PathVariable Long id, @RequestBody(required = false) String comment) {
+        return leaveService.rejectLeave(id, comment);
     }
 
-    @GetMapping
-    public List<LeaveRequest> getAllLeaves() {
-        return (List<LeaveRequest>) leaveService.getAllLeaves();
-    }
-
-    @GetMapping("/user/{userId}")
-    public List<LeaveRequest> getLeavesByUser(@PathVariable Long userId) {
-        return (List<LeaveRequest>) leaveService.getLeavesByUser(userId);
-    }
-
-    @PutMapping("/{id}/approve")
-    public LeaveRequest approveLeave(@PathVariable Long id, 
-                                   @RequestParam String status, 
-                                   @RequestParam(required = false) String comment) {
-        return leaveService.approveLeave(id, status, comment);
+    @GetMapping("/statistics")
+    public ResponseEntity<?> getLeaveStatistics(@RequestParam String startDate, @RequestParam String endDate) {
+        return ResponseEntity.ok(leaveService.getLeaveStatistics(startDate, endDate));
     }
 }

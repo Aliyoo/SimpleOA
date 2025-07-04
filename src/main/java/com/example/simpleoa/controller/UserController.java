@@ -58,4 +58,10 @@ public class UserController {
     public List<User> getSelectableUsers() {
         return userService.getSelectableUsers();
     }
+
+    @GetMapping("/is-approver")
+    public boolean isApprover() {
+        // In a real application, this should check the current user's roles.
+        return true;
+    }
 }

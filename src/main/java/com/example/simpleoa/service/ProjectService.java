@@ -184,4 +184,19 @@ public class ProjectService {
         logger.info("Getting projects managed by manager ID: {}", managerId);
         return projectRepository.findByManagerId(managerId);
     }
+
+    /**
+     * 获取项目成员列表
+     * @param projectId 项目ID
+     * @return 项目成员列表
+     */
+    public List<User> getProjectMembers(Long projectId) {
+        logger.info("Getting members for project ID: {}", projectId);
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("项目不存在: " + projectId));
+        
+        return project.getMembers() != null ? 
+                project.getMembers().stream().toList() : 
+                new ArrayList<>();
+    }
 }

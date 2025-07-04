@@ -29,14 +29,14 @@ public class BudgetAlert {
 
     @Column(nullable = false)
     @Temporal(TemporalType.TIMESTAMP)
-    private Date alertTime;
+    private Date alertDate;
 
     @Column
     private String status;
 
     @Column
     @Temporal(TemporalType.TIMESTAMP)
-    private Date resolvedTime;
+    private Date resolvedDate;
 
     @ManyToOne
     @JoinColumn(name = "resolved_by")
@@ -44,6 +44,14 @@ public class BudgetAlert {
 
     @Column(columnDefinition = "TEXT")
     private String resolution;
+
+    @Column
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createTime;
+
+    @Column
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date lastUpdateTime;
 
     public Long getId() {
         return id;
@@ -93,12 +101,12 @@ public class BudgetAlert {
         this.message = message;
     }
 
-    public Date getAlertTime() {
-        return alertTime;
+    public Date getAlertDate() {
+        return alertDate;
     }
 
-    public void setAlertTime(Date alertTime) {
-        this.alertTime = alertTime;
+    public void setAlertDate(Date alertDate) {
+        this.alertDate = alertDate;
     }
 
     public String getStatus() {
@@ -109,12 +117,28 @@ public class BudgetAlert {
         this.status = status;
     }
 
-    public Date getResolvedTime() {
-        return resolvedTime;
+    public Date getResolvedDate() {
+        return resolvedDate;
     }
 
-    public void setResolvedTime(Date resolvedTime) {
-        this.resolvedTime = resolvedTime;
+    public void setResolvedDate(Date resolvedDate) {
+        this.resolvedDate = resolvedDate;
+    }
+
+    public Date getCreateTime() {
+        return createTime;
+    }
+
+    public void setCreateTime(Date createTime) {
+        this.createTime = createTime;
+    }
+
+    public Date getLastUpdateTime() {
+        return lastUpdateTime;
+    }
+
+    public void setLastUpdateTime(Date lastUpdateTime) {
+        this.lastUpdateTime = lastUpdateTime;
     }
 
     public User getResolvedBy() {

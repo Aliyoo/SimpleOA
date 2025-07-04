@@ -507,4 +507,83 @@ public class WorkTimeService {
 
         return result;
     }
+
+    // 新增带多重筛选的查询方法
+    public Map<String, Object> getWorkTimeRecordsByProjectAndDateRangePagedWithFilters(
+            Project project,
+            LocalDate startDate,
+            LocalDate endDate,
+            Boolean approved,
+            User user,
+            String workType,
+            Integer page,
+            Integer size) {
+        
+        // 获取所有符合基本条件的记录
+        List<WorkTimeRecord> allRecords = getWorkTimeRecordsByProjectAndDateRangeFilteredWithFilters(
+                project, startDate, endDate, approved, user, workType);
+        
+        // 手动分页
+        int start = page * size;
+        int end = Math.min(start + size, allRecords.size());
+        List<WorkTimeRecord> pageContent = allRecords.subList(start, end);
+        
+        // 构建返回结果
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", pageContent);
+        result.put("totalElements", allRecords.size());
+        result.put("totalPages", (int) Math.ceil((double) allRecords.size() / size));
+        result.put("number", page);
+        result.put("size", size);
+        
+        return result;
+    }
+
+    public List<WorkTimeRecord> getWorkTimeRecordsByProjectAndDateRangeFilteredWithFilters(
+            Project project,
+            LocalDate startDate,
+            LocalDate endDate,
+            Boolean approved,
+            User user,
+            String workType) {
+        
+        List<WorkTimeRecord> records = workTimeRecordRepository.findByProjectAndDateBetween(
+                project, startDate, endDate);
+        
+        // 应用筛选条件
+        return records.stream()
+                .filter(record -> approved == null || record.getApproved().equals(approved))
+                .filter(record -> user == null || record.getUser().getId().equals(user.getId()))
+                .filter(record -> workType == null || workType.isEmpty() || workType.equals(record.getWorkType()))
+                .sorted((a, b) -> b.getDate().compareTo(a.getDate())) // 按日期降序排序
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    // 批量审核通过
+    public int batchApproveWorkTime(List<Long> recordIds) {
+        int successCount = 0;
+        for (Long recordId : recordIds) {
+            try {
+                approveWorkTime(recordId);
+                successCount++;
+            } catch (Exception e) {
+                System.err.println("审核工时记录 " + recordId + " 失败: " + e.getMessage());
+            }
+        }
+        return successCount;
+    }
+
+    // 批量驳回
+    public int batchRejectWorkTime(List<Long> recordIds, String reason) {
+        int successCount = 0;
+        for (Long recordId : recordIds) {
+            try {
+                rejectWorkTime(recordId, reason);
+                successCount++;
+            } catch (Exception e) {
+                System.err.println("驳回工时记录 " + recordId + " 失败: " + e.getMessage());
+            }
+        }
+        return successCount;
+    }
 }

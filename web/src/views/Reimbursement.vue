@@ -25,8 +25,19 @@
     <!-- Form Dialog -->
     <el-dialog v-model="formDialogVisible" :title="isEdit ? '编辑报销申请' : '新建报销申请'" width="60%">
       <el-form :model="formData" label-width="120px">
-        <el-form-item label="报销标题">
+        <el-form-item label="报销标题" prop="title">
           <el-input v-model="formData.title"></el-input>
+        </el-form-item>
+
+        <el-form-item label="关联项目" prop="projectId">
+          <el-select v-model="formData.projectId" placeholder="请选择关联项目" clearable style="width: 100%;">
+            <el-option
+              v-for="project in projectList"
+              :key="project.id"
+              :label="project.name"
+              :value="project.id"
+            />
+          </el-select>
         </el-form-item>
 
         <el-divider>费用明细</el-divider>
@@ -94,21 +105,31 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue'; // Added computed
 import { ElMessage, ElMessageBox } from 'element-plus';
-import axios from '@/utils/axios'; // Assuming you have a configured axios instance
+import axios from '@/utils/axios';
 import { Plus } from '@element-plus/icons-vue';
+import { useUserStore } from '@/stores/user'; // For fetching user-specific projects
+
+const userStore = useUserStore();
+const currentUser = computed(() => userStore.user); // Make currentUser reactive
 
 const reimbursementList = ref([]);
+const projectList = ref([]); // For storing the list of projects
+
 const formDialogVisible = ref(false);
 const approvalDialogVisible = ref(false);
 const isEdit = ref(false);
-const formData = ref({
+
+const initialFormData = () => ({
   id: null,
   title: '',
+  projectId: null, // Added projectId
   items: [],
   attachments: []
 });
+const formData = ref(initialFormData());
+
 const fileList = ref([]);
 const currentReimbursement = ref({});
 const approvalComment = ref('');
@@ -123,21 +144,41 @@ const fetchReimbursements = async () => {
   }
 };
 
-onMounted(fetchReimbursements);
+const fetchProjects = async () => {
+  if (!currentUser.value || !currentUser.value.id) {
+    ElMessage.warning('当前用户信息获取失败，无法加载项目列表。');
+    return;
+  }
+  try {
+    const response = await axios.get(`/api/projects/user/${currentUser.value.id}`);
+    projectList.value = response.data;
+  } catch (error) {
+    console.error('获取项目列表失败:', error);
+    ElMessage.error('获取项目列表失败');
+    projectList.value = []; // Ensure it's an empty array on error
+  }
+};
+
+onMounted(async () => {
+  await userStore.fetchUser(); // Ensure user info is loaded
+  fetchReimbursements();
+  fetchProjects(); // Fetch projects on mount
+});
 
 // Form Dialog Logic
 const openFormDialog = (row) => {
   isEdit.value = !!row;
   if (row) {
     formData.value = JSON.parse(JSON.stringify(row));
-    fileList.value = formData.value.attachments.map(path => ({ name: path, url: path }));
+    // Ensure projectId is set, default to null if not present in row
+    formData.value.projectId = row.projectId || null;
+    fileList.value = (formData.value.attachments || []).map(path => {
+      // Assuming path is a string URL, if it's an object, adjust accordingly
+      const name = typeof path === 'string' ? path.substring(path.lastIndexOf('/') + 1) : 'attachment';
+      return { name: name, url: path };
+    });
   } else {
-    formData.value = {
-      id: null,
-      title: '',
-      items: [],
-      attachments: []
-    };
+    formData.value = initialFormData();
     fileList.value = [];
   }
   formDialogVisible.value = true;

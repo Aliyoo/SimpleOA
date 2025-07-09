@@ -58,3 +58,30 @@ DROP TABLE IF EXISTS permission_role_mapping;
 
 -- End of migration scripts.
 -- Remember to review and test thoroughly.
+
+-- =====================================================================================
+-- Add project_id to reimbursement_request table
+-- =====================================================================================
+-- Comment: Adding a foreign key column to associate reimbursement requests with projects.
+-- This allows tracking reimbursements against specific projects for cost analysis.
+
+-- Add the project_id column, allowing NULL values if a reimbursement is not project-specific.
+ALTER TABLE reimbursement_request ADD COLUMN project_id BIGINT NULL;
+
+-- Add a foreign key constraint to link project_id to the id column of the project table.
+-- Note: Ensure the 'project' table and its 'id' column exist before running this.
+-- The ON DELETE SET NULL behavior means if a project is deleted, the project_id in
+-- reimbursement_request will be set to NULL rather than deleting the reimbursement request.
+-- Adjust ON DELETE behavior (e.g., ON DELETE RESTRICT) as per business rules.
+ALTER TABLE reimbursement_request
+ADD CONSTRAINT fk_reimbursement_project
+FOREIGN KEY (project_id) REFERENCES project(id)
+ON DELETE SET NULL; -- Or ON DELETE RESTRICT, ON DELETE CASCADE, as appropriate.
+
+-- Example for MySQL if a specific syntax is preferred:
+-- ALTER TABLE reimbursement_request ADD COLUMN project_id BIGINT NULL;
+-- ALTER TABLE reimbursement_request ADD CONSTRAINT fk_reimbursement_project FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE SET NULL;
+
+-- Example for PostgreSQL (syntax is usually similar for this):
+-- ALTER TABLE reimbursement_request ADD COLUMN project_id BIGINT NULL;
+-- ALTER TABLE reimbursement_request ADD CONSTRAINT fk_reimbursement_project FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE SET NULL;

@@ -23,6 +23,10 @@ public class ReimbursementRequest {
     @JoinColumn(name = "applicant_id", nullable = false)
     private User applicant;
 
+    @ManyToOne(fetch = FetchType.LAZY) // Assuming LAZY fetch is okay
+    @JoinColumn(name = "project_id", nullable = true) // Allow null if reimbursement is not project-specific
+    private Project project;
+
     @Column(nullable = false)
     private String title; // 报销标题，例如 “2025年6月差旅报销”
 

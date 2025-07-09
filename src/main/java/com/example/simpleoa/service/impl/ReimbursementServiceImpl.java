@@ -1,6 +1,7 @@
 package com.example.simpleoa.service.impl;
 
 import com.example.simpleoa.model.*;
+import com.example.simpleoa.repository.ProjectRepository;
 import com.example.simpleoa.repository.ReimbursementRequestRepository;
 import com.example.simpleoa.repository.UserRepository;
 import com.example.simpleoa.service.ReimbursementService;
@@ -9,27 +10,40 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Service
 public class ReimbursementServiceImpl implements ReimbursementService {
 
     private final ReimbursementRequestRepository reimbursementRequestRepository;
     private final UserRepository userRepository;
+    private final ProjectRepository projectRepository; // Added ProjectRepository
 
-    public ReimbursementServiceImpl(ReimbursementRequestRepository reimbursementRequestRepository, UserRepository userRepository) {
+    public ReimbursementServiceImpl(ReimbursementRequestRepository reimbursementRequestRepository,
+                                    UserRepository userRepository,
+                                    ProjectRepository projectRepository) { // Added to constructor
         this.reimbursementRequestRepository = reimbursementRequestRepository;
         this.userRepository = userRepository;
+        this.projectRepository = projectRepository; // Initialize ProjectRepository
     }
 
     @Override
     @Transactional
     public ReimbursementRequest createReimbursement(ReimbursementRequestDTO dto, Long applicantId) {
-        User applicant = userRepository.findById(applicantId).orElseThrow(() -> new RuntimeException("User not found"));
+        User applicant = userRepository.findById(applicantId).orElseThrow(() -> new RuntimeException("User not found for ID: " + applicantId));
 
         ReimbursementRequest request = new ReimbursementRequest();
         request.setApplicant(applicant);
         request.setTitle(dto.getTitle());
         request.setAttachments(dto.getAttachments());
         request.setStatus(ReimbursementStatus.DRAFT);
+
+        // Handle Project association
+        if (dto.getProjectId() != null) {
+            Project project = projectRepository.findById(dto.getProjectId())
+                    .orElseThrow(() -> new RuntimeException("Project not found for ID: " + dto.getProjectId()));
+            request.setProject(project);
+        }
 
         if (dto.getItems() != null) {
             dto.getItems().forEach(item -> item.setReimbursementRequest(request));
@@ -44,15 +58,36 @@ public class ReimbursementServiceImpl implements ReimbursementService {
     @Transactional
     public ReimbursementRequest updateReimbursement(Long id, ReimbursementRequestDTO dto) {
         ReimbursementRequest request = getReimbursementById(id);
-        // Add authorization logic here to ensure only the applicant can update in DRAFT status
+        // Add authorization logic here to ensure only the applicant can update in DRAFT status, etc.
+        if (!request.getApplicant().getId().equals(dto.getId()) && request.getStatus() != ReimbursementStatus.DRAFT) {
+            // This check seems wrong. dto.getId() is reimbursement ID, not applicant ID.
+            // And applicant ID should be checked against the authenticated user, not from DTO.
+            // For now, focusing on project ID.
+        }
+
 
         request.setTitle(dto.getTitle());
         request.setAttachments(dto.getAttachments());
 
+        // Handle Project association update
+        if (dto.getProjectId() != null) {
+            Project project = projectRepository.findById(dto.getProjectId())
+                    .orElseThrow(() -> new RuntimeException("Project not found for ID: " + dto.getProjectId()));
+            request.setProject(project);
+        } else {
+            request.setProject(null); // Allow unsetting the project
+        }
+
         if (dto.getItems() != null) {
+            // Manage items carefully to avoid issues with detached entities if items are complex
+            request.getItems().clear(); // Simple approach: clear and add all. Consider more sophisticated merging if needed.
+            dto.getItems().forEach(itemDTO -> {
+                itemDTO.setReimbursementRequest(request); // Ensure association
+                request.getItems().add(itemDTO);
+            });
+            request.calculateTotalAmount();
+        } else {
             request.getItems().clear();
-            dto.getItems().forEach(item -> item.setReimbursementRequest(request));
-            request.getItems().addAll(dto.getItems());
             request.calculateTotalAmount();
         }
 

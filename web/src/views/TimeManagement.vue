@@ -1120,7 +1120,12 @@ const fetchProjects = async () => {
       try {
         // 获取当前用户参与的项目列表
         const response = await api.get(`/api/projects/user/${currentUser.value.id}`)
-        projectList.value = response.data
+        if (response.data && response.data.success !== false && response.data.data !== undefined) { // Standardized access
+          projectList.value = response.data.data
+        } else {
+           // Fallback or if /api/projects/user is not yet standardized
+          projectList.value = response.data
+        }
         console.log('获取到用户参与的项目列表:', projectList.value)
 
         // 在项目列表加载完成后初始化批量填写表格
@@ -1188,18 +1193,25 @@ const fetchProjects = async () => {
         // 调用API获取工时记录
         const response = await api.get(`/api/worktime/user/${currentUser.value.id}/range`, { params })
 
-        // 处理返回的数据
-        if (Array.isArray(response.data)) {
-          // 如果返回的是数组，则直接使用
-          approvalList.value = response.data
-          approvalPagination.total = response.data.length // 注意：这里只是临时处理，实际应该由后端返回总数
-        } else if (response.data && response.data.content) {
-          // 如果返回的是分页对象，则提取content属性
-          approvalList.value = response.data.content
-          approvalPagination.total = response.data.totalElements || 0
+        // 处理返回的数据 (assuming response.data is ApiResponse)
+        if (response.data && response.data.success !== false && response.data.data !== undefined) {
+          const responseData = response.data.data;
+          if (Array.isArray(responseData)) {
+            // If data is an array (non-paged)
+            approvalList.value = responseData;
+            approvalPagination.total = responseData.length; // May need adjustment if API doesn't provide total for non-paged
+          } else if (responseData && responseData.content) {
+            // If data is a Page object
+            approvalList.value = responseData.content;
+            approvalPagination.total = responseData.totalElements || 0;
+          } else {
+            approvalList.value = [];
+            approvalPagination.total = 0;
+          }
         } else {
-          approvalList.value = []
-          approvalPagination.total = 0
+          console.error('获取工时记录失败或响应格式不正确:', response);
+          approvalList.value = [];
+          approvalPagination.total = 0;
         }
 
         // 按日期降序排序
@@ -1377,17 +1389,15 @@ const fetchProjects = async () => {
 
         console.log('API响应数据:', response.data);
 
-        // 检查响应数据结构
-        let responseData;
-        if (response.data && response.data.code === 200 && response.data.data) {
-          // 新的嵌套结构 {code, message, data}
-          responseData = response.data.data;
-          console.log('使用嵌套数据结构:', responseData);
-        } else {
-          // 旧的直接结构
-          responseData = response.data;
-          console.log('使用直接数据结构:', responseData);
+        // 检查响应数据结构 (ApiResponse is now response.data)
+        let responseData = response.data.data; // Directly access .data.data
+        if (!response.data || response.data.success === false || responseData === undefined) {
+            ElMessage.error(response.data?.message || '获取统计数据失败');
+            statisticsData.value = [];
+            summaryData.value = { /* ... reset ... */ };
+            return;
         }
+        console.log('使用标准API响应数据:', responseData);
 
         // 从响应中获取数据
         const totalHours = responseData.totalHours || 0;
@@ -2058,21 +2068,28 @@ const fetchProjects = async () => {
 
         const response = await api.get(`/api/worktime/user/${currentUser.value.id}/range`, { params });
         
-        if (Array.isArray(response.data)) {
-          detailReportData.value = response.data.map(record => ({
-            ...record,
-            projectName: record.project?.name || '未知项目'
-          }));
-          reportPagination.total = response.data.length;
-        } else if (response.data?.content) {
-          detailReportData.value = response.data.content.map(record => ({
-            ...record,
-            projectName: record.project?.name || '未知项目'
-          }));
-          reportPagination.total = response.data.totalElements || 0;
+        if (response.data && response.data.success !== false && response.data.data !== undefined) {
+          const responsePayload = response.data.data;
+          if (Array.isArray(responsePayload)) {
+            detailReportData.value = responsePayload.map(record => ({
+              ...record,
+              projectName: record.project?.name || '未知项目'
+            }));
+            reportPagination.total = responsePayload.length;
+          } else if (responsePayload?.content) {
+            detailReportData.value = responsePayload.content.map(record => ({
+              ...record,
+              projectName: record.project?.name || '未知项目'
+            }));
+            reportPagination.total = responsePayload.totalElements || 0;
+          } else {
+            detailReportData.value = [];
+            reportPagination.total = 0;
+          }
         } else {
           detailReportData.value = [];
           reportPagination.total = 0;
+          ElMessage.error(response.data?.message || '获取详细报表数据失败');
         }
       } catch (error) {
         console.error('获取详细报表数据失败:', error);
@@ -2251,7 +2268,7 @@ const fetchProjects = async () => {
         });
 
         // 显示周报内容
-        const report = response.data;
+        const report = response.data.data; // Adjusted for ApiResponse
         const reportContent = `
           本周工时汇总 (${weekStartDate} - ${new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]})
           
@@ -2286,7 +2303,7 @@ const fetchProjects = async () => {
         });
 
         // 显示月报内容
-        const report = response.data;
+        const report = response.data.data; // Adjusted for ApiResponse
         const reportContent = `
           本月工时汇总 (${monthStartDate} - ${now.toISOString().split('T')[0]})
           

@@ -4,17 +4,24 @@ import com.example.simpleoa.model.BusinessTripRequest;
 import com.example.simpleoa.service.BusinessTripService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/business-trips")
+@RequestMapping("/api/travel")
 public class BusinessTripController {
     private final BusinessTripService businessTripService;
 
     @Autowired
     public BusinessTripController(BusinessTripService businessTripService) {
         this.businessTripService = businessTripService;
+    }
+
+    
+    @GetMapping("/statistics")
+    public ResponseEntity<?> getBusinessTripStatistics(@RequestParam String startDate, @RequestParam String endDate) {
+        return ResponseEntity.ok(businessTripService.getBusinessTripStatistics(startDate, endDate));
     }
 
     @PostMapping
@@ -48,10 +55,14 @@ public class BusinessTripController {
         return (List<BusinessTripRequest>) businessTripService.getBusinessTripsByUser(userId);
     }
 
-    @PutMapping("/{id}/approve")
-    public BusinessTripRequest approveBusinessTrip(@PathVariable Long id, 
-                                          @RequestParam String status, 
-                                          @RequestParam(required = false) String comment) {
-        return businessTripService.approveBusinessTrip(id, status, comment);
+    // 前端需要的API接口
+    @PostMapping("/apply")
+    public BusinessTripRequest applyBusinessTrip(@RequestBody BusinessTripRequest businessTrip) {
+        return businessTripService.createBusinessTrip(businessTrip);
+    }
+    
+    @GetMapping("/list")
+    public List<BusinessTripRequest> getTravelList() {
+        return (List<BusinessTripRequest>) businessTripService.getAllBusinessTrips();
     }
 }

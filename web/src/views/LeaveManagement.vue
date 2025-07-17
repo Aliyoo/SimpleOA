@@ -4,7 +4,7 @@
 
     <el-tabs v-model="activeTab">
       <el-tab-pane label="请假申请" name="apply">
-        <el-form :model="leaveForm" label-width="100px" class="apply-form">
+        <el-form :model="leaveForm" :rules="leaveFormRules" ref="leaveFormRef" label-width="100px" class="apply-form">
           <el-form-item label="请假类型" prop="leaveType">
             <el-select v-model="leaveForm.leaveType" placeholder="请选择请假类型">
               <el-option
@@ -51,9 +51,13 @@
         </el-form>
       </el-tab-pane>
 
-      <el-tab-pane label="审批列表" name="approval">
-        <el-table :data="approvalList" style="width: 100%">
-          <el-table-column prop="leaveType" label="请假类型" width="120"/>
+      <el-tab-pane label="我的申请" name="myApplications">
+        <el-table :data="myApplicationsList" style="width: 100%">
+          <el-table-column prop="leaveType" label="请假类型" width="120">
+            <template #default="scope">
+              {{ getLeaveTypeLabel(scope.row.leaveType) }}
+            </template>
+          </el-table-column>
           <el-table-column prop="startDate" label="开始时间" width="180"/>
           <el-table-column prop="endDate" label="结束时间" width="180"/>
           <el-table-column prop="reason" label="原因"/>
@@ -64,45 +68,63 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" v-if="isApprover">
-            <template #default="scope">
-              <el-button
-                  size="small"
-                  type="success"
-                  @click="approveLeave(scope.row)"
-                  v-if="scope.row.status === '待审批'"
-              >
-                通过
-              </el-button>
-              <el-button
-                  size="small"
-                  type="danger"
-                  @click="rejectLeave(scope.row)"
-                  v-if="scope.row.status === '待审批'"
-              >
-                拒绝
-              </el-button>
-            </template>
-          </el-table-column>
+          <el-table-column prop="applicant" label="申请人" width="120"/>
+          <el-table-column prop="applyDate" label="申请时间" width="180"/>
         </el-table>
       </el-tab-pane>
 
       <el-tab-pane label="统计报表" name="statistics">
         <div class="statistics-container">
-          <el-date-picker
-              v-model="statisticsDateRange"
-              type="monthrange"
-              range-separator="至"
-              start-placeholder="开始月份"
-              end-placeholder="结束月份"
-              format="YYYY-MM"
-              value-format="YYYY-MM"
-              @change="fetchStatisticsData"
-          />
+          <div class="filter-container">
+            <el-date-picker
+                v-model="statisticsDateRange"
+                type="monthrange"
+                range-separator="至"
+                start-placeholder="开始月份"
+                end-placeholder="结束月份"
+                format="YYYY-MM"
+                value-format="YYYY-MM"
+                @change="fetchStatisticsData"
+            />
+            <el-button type="primary" @click="fetchStatisticsData" style="margin-left: 10px">查询</el-button>
+          </div>
+
+          <!-- 汇总信息卡片 -->
+          <div class="summary-cards">
+            <el-card class="summary-card">
+              <div class="card-content">
+                <div class="card-title">总请假天数</div>
+                <div class="card-value">{{ statisticsSummary.totalDays || 0 }}</div>
+              </div>
+            </el-card>
+            <el-card class="summary-card">
+              <div class="card-content">
+                <div class="card-title">请假次数</div>
+                <div class="card-value">{{ statisticsSummary.totalCount || 0 }}</div>
+              </div>
+            </el-card>
+            <el-card class="summary-card">
+              <div class="card-content">
+                <div class="card-title">通过率</div>
+                <div class="card-value">{{ statisticsSummary.approvalRate || '0%' }}</div>
+              </div>
+            </el-card>
+            <el-card class="summary-card">
+              <div class="card-content">
+                <div class="card-title">最常用类型</div>
+                <div class="card-value">{{ getLeaveTypeLabel(statisticsSummary.mostUsedType) || '-' }}</div>
+              </div>
+            </el-card>
+          </div>
 
           <el-table :data="statisticsData" style="width: 100%; margin-top: 20px">
-            <el-table-column prop="type" label="请假类型"/>
+            <el-table-column prop="type" label="请假类型">
+              <template #default="scope">
+                {{ getLeaveTypeLabel(scope.row.type) }}
+              </template>
+            </el-table-column>
             <el-table-column prop="totalDays" label="总天数"/>
+            <el-table-column prop="totalCount" label="请假次数"/>
             <el-table-column prop="percentage" label="占比"/>
           </el-table>
 
@@ -144,17 +166,26 @@ const leaveTypes = ref([
   {value: 'other', label: '其他'}
 ])
 
-const approvalList = ref([])
+const myApplicationsList = ref([])
 const statisticsData = ref([])
+const statisticsSummary = ref({})
 const statisticsDateRange = ref([])
-const isApprover = ref(false)
+const leaveFormRef = ref()
 
-const fetchApprovalList = async () => {
+// 表单验证规则
+const leaveFormRules = {
+  leaveType: [{ required: true, message: '请选择请假类型', trigger: 'change' }],
+  startDate: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
+  endDate: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
+  reason: [{ required: true, message: '请输入请假原因', trigger: 'blur' }]
+}
+
+const fetchMyApplicationsList = async () => {
   try {
-    const response = await api.get('/api/leave/approval-list')
-    approvalList.value = response.data
+    const response = await api.get('/api/leave/my-applications')
+    myApplicationsList.value = response.data
   } catch (error) {
-    ElMessage.error('获取审批列表失败: ' + error.message)
+    ElMessage.error('获取我的申请列表失败: ' + error.message)
   }
 }
 
@@ -170,7 +201,8 @@ const fetchStatisticsData = async () => {
         endDate: statisticsDateRange.value[1]
       }
     })
-    statisticsData.value = response.data
+    statisticsData.value = response.data.details || []
+    statisticsSummary.value = response.data.summary || {}
     renderChart()
   } catch (error) {
     ElMessage.error('获取统计数据失败: ' + error.message)
@@ -197,7 +229,7 @@ const renderChart = () => {
         radius: '50%',
         data: statisticsData.value.map(item => ({
           value: item.totalDays,
-          name: item.type
+          name: getLeaveTypeLabel(item.type)
         })),
         emphasis: {
           itemStyle: {
@@ -214,35 +246,29 @@ const renderChart = () => {
 }
 
 const submitLeave = async () => {
+  if (!leaveFormRef.value) return
+  
   try {
+    await leaveFormRef.value.validate()
     await api.post('/api/leave/apply', leaveForm)
     ElMessage.success('请假申请提交成功')
-    leaveForm.reason = ''
-    fetchApprovalList()
+    // 重置表单
+    Object.assign(leaveForm, {
+      leaveType: '',
+      startDate: '',
+      endDate: '',
+      reason: ''
+    })
+    fetchMyApplicationsList()
   } catch (error) {
-    ElMessage.error('提交失败: ' + error.message)
+    if (error.message) {
+      ElMessage.error('提交失败: ' + error.message)
+    } else {
+      console.log('表单验证失败')
+    }
   }
 }
 
-const approveLeave = async (row) => {
-  try {
-    await api.post(`/api/leave/approve/${row.id}`)
-    ElMessage.success('已通过审批')
-    fetchApprovalList()
-  } catch (error) {
-    ElMessage.error('操作失败: ' + error.message)
-  }
-}
-
-const rejectLeave = async (row) => {
-  try {
-    await api.post(`/api/leave/reject/${row.id}`)
-    ElMessage.success('已拒绝审批')
-    fetchApprovalList()
-  } catch (error) {
-    ElMessage.error('操作失败: ' + error.message)
-  }
-}
 
 const getStatusTagType = (status) => {
   switch (status) {
@@ -257,18 +283,15 @@ const getStatusTagType = (status) => {
   }
 }
 
-const checkApproverRole = async () => {
-  try {
-    const response = await api.get('/api/users/is-approver')
-    isApprover.value = response.data
-  } catch (error) {
-    console.error('检查审批权限失败:', error)
-  }
+// 将英文请假类型转换为中文显示
+const getLeaveTypeLabel = (value) => {
+  const type = leaveTypes.value.find(item => item.value === value)
+  return type ? type.label : value
 }
 
+
 onMounted(async () => {
-  fetchApprovalList()
-  checkApproverRole()
+  fetchMyApplicationsList()
 
   // 从全局配置获取默认日期范围
   statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange();
@@ -288,6 +311,37 @@ onMounted(async () => {
 
 .statistics-container {
   margin-top: 20px;
+}
+
+.filter-container {
+  margin-bottom: 20px;
+}
+
+.summary-cards {
+  display: flex;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.summary-card {
+  flex: 1;
+  text-align: center;
+}
+
+.card-content {
+  padding: 20px;
+}
+
+.card-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.card-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #409eff;
 }
 
 .chart-container {

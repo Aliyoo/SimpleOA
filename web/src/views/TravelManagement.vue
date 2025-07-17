@@ -4,7 +4,7 @@
     
     <el-tabs v-model="activeTab">
       <el-tab-pane label="出差申请" name="apply">
-        <el-form :model="travelForm" label-width="100px" class="apply-form">
+        <el-form :model="travelForm" :rules="formRules" ref="travelFormRef" label-width="100px" class="apply-form">
           <el-form-item label="出差地点" prop="destination">
             <el-input v-model="travelForm.destination" placeholder="请输入出差地点" />
           </el-form-item>
@@ -52,8 +52,8 @@
         </el-form>
       </el-tab-pane>
       
-      <el-tab-pane label="审批列表" name="approval">
-        <el-table :data="approvalList" style="width: 100%">
+      <el-tab-pane label="出差列表" name="list">
+        <el-table :data="travelList" style="width: 100%">
           <el-table-column prop="destination" label="出差地点" width="180" />
           <el-table-column prop="startTime" label="开始时间" width="180" />
           <el-table-column prop="endTime" label="结束时间" width="180" />
@@ -63,27 +63,25 @@
           <el-table-column prop="status" label="状态" width="120">
             <template #default="scope">
               <el-tag :type="getStatusTagType(scope.row.status)">
-                {{ scope.row.status }}
+                {{ getStatusText(scope.row.status) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" v-if="isApprover">
+          <el-table-column label="操作" width="180">
             <template #default="scope">
               <el-button 
                 size="small" 
-                type="success" 
-                @click="approveTravel(scope.row)"
-                v-if="scope.row.status === '待审批'"
+                type="primary" 
+                @click="editTravel(scope.row)"
               >
-                通过
+                编辑
               </el-button>
               <el-button 
                 size="small" 
                 type="danger" 
-                @click="rejectTravel(scope.row)"
-                v-if="scope.row.status === '待审批'"
+                @click="deleteTravel(scope.row)"
               >
-                拒绝
+                删除
               </el-button>
             </template>
           </el-table-column>
@@ -102,6 +100,41 @@
             value-format="YYYY-MM"
             @change="fetchStatisticsData"
           />
+          <el-button type="primary" @click="fetchStatisticsData" style="margin-left: 10px">查询</el-button>
+          
+          <!-- 汇总信息卡片 -->
+          <div class="summary-cards">
+            <el-card class="summary-card">
+              <div class="card-content">
+                <div class="card-title">总出差天数</div>
+                <div class="card-value">{{ statisticsSummary.totalDays || 0 }}</div>
+              </div>
+            </el-card>
+            <el-card class="summary-card">
+              <div class="card-content">
+                <div class="card-title">出差次数</div>
+                <div class="card-value">{{ statisticsSummary.totalCount || 0 }}</div>
+              </div>
+            </el-card>
+            <el-card class="summary-card">
+              <div class="card-content">
+                <div class="card-title">通过率</div>
+                <div class="card-value">{{ statisticsSummary.approvalRate || '0%' }}</div>
+              </div>
+            </el-card>
+            <el-card class="summary-card">
+              <div class="card-content">
+                <div class="card-title">最常去地点</div>
+                <div class="card-value">{{ statisticsSummary.mostUsedDestination || '-' }}</div>
+              </div>
+            </el-card>
+            <el-card class="summary-card">
+              <div class="card-content">
+                <div class="card-title">总预算</div>
+                <div class="card-value">¥{{ statisticsSummary.totalBudget || 0 }}</div>
+              </div>
+            </el-card>
+          </div>
           
           <el-table :data="statisticsData" style="width: 100%; margin-top: 20px">
             <el-table-column prop="destination" label="出差地点" />
@@ -139,17 +172,40 @@ const travelForm = reactive({
   budget: 0
 })
 
-const approvalList = ref([])
+const travelList = ref([])
 const statisticsData = ref([])
+const statisticsSummary = ref({})
 const statisticsDateRange = ref([])
-const isApprover = ref(false)
+const travelFormRef = ref(null)
 
-const fetchApprovalList = async () => {
+// 表单验证规则
+const formRules = {
+  destination: [
+    { required: true, message: '请输入出差地点', trigger: 'blur' },
+    { min: 2, max: 100, message: '出差地点长度在2到100个字符', trigger: 'blur' }
+  ],
+  startTime: [
+    { required: true, message: '请选择开始时间', trigger: 'change' }
+  ],
+  endTime: [
+    { required: true, message: '请选择结束时间', trigger: 'change' }
+  ],
+  reason: [
+    { required: true, message: '请输入出差事由', trigger: 'blur' },
+    { min: 10, max: 500, message: '出差事由长度在10到500个字符', trigger: 'blur' }
+  ],
+  budget: [
+    { required: true, message: '请输入预算金额', trigger: 'blur' },
+    { type: 'number', min: 0, message: '预算金额不能为负数', trigger: 'blur' }
+  ]
+}
+
+const fetchTravelList = async () => {
   try {
-    const response = await api.get('/api/travel/approval-list')
-    approvalList.value = response.data
+    const response = await api.get('/api/travel/list')
+    travelList.value = response.data
   } catch (error) {
-    ElMessage.error('获取审批列表失败: ' + error.message)
+    ElMessage.error('获取出差列表失败: ' + error.message)
   }
 }
 
@@ -165,7 +221,8 @@ const fetchStatisticsData = async () => {
         endDate: statisticsDateRange.value[1]
       }
     })
-    statisticsData.value = response.data
+    statisticsData.value = response.data.details || []
+    statisticsSummary.value = response.data.summary || {}
     renderChart()
   } catch (error) {
     ElMessage.error('获取统计数据失败: ' + error.message)
@@ -209,60 +266,88 @@ const renderChart = () => {
 }
 
 const submitTravel = async () => {
+  // 表单验证
+  if (!travelFormRef.value) return
+  
   try {
+    await travelFormRef.value.validate()
+    
+    // 额外的时间验证
+    if (travelForm.startTime && travelForm.endTime) {
+      const startTime = new Date(travelForm.startTime)
+      const endTime = new Date(travelForm.endTime)
+      if (startTime >= endTime) {
+        ElMessage.error('开始时间不能晚于或等于结束时间')
+        return
+      }
+    }
+    
     await api.post('/api/travel/apply', travelForm)
     ElMessage.success('出差申请提交成功')
-    travelForm.reason = ''
-    fetchApprovalList()
+    
+    // 清空表单
+    Object.assign(travelForm, {
+      destination: '',
+      startTime: '',
+      endTime: '',
+      days: 1,
+      reason: '',
+      budget: 0
+    })
+    
+    // 重置表单验证
+    travelFormRef.value.resetFields()
+    
+    fetchTravelList()
   } catch (error) {
-    ElMessage.error('提交失败: ' + error.message)
+    if (error.name === 'ValidationError') {
+      ElMessage.error('请正确填写表单信息')
+    } else {
+      ElMessage.error('提交失败: ' + error.message)
+    }
   }
 }
 
-const approveTravel = async (row) => {
-  try {
-    await api.post(`/api/travel/approve/${row.id}`)
-    ElMessage.success('已通过审批')
-    fetchApprovalList()
-  } catch (error) {
-    ElMessage.error('操作失败: ' + error.message)
-  }
+const editTravel = async (row) => {
+  // 编辑功能待实现
+  ElMessage.info('编辑功能待实现')
 }
 
-const rejectTravel = async (row) => {
+const deleteTravel = async (row) => {
   try {
-    await api.post(`/api/travel/reject/${row.id}`)
-    ElMessage.success('已拒绝审批')
-    fetchApprovalList()
+    await api.delete(`/api/travel/${row.id}`)
+    ElMessage.success('删除成功')
+    fetchTravelList()
   } catch (error) {
-    ElMessage.error('操作失败: ' + error.message)
+    ElMessage.error('删除失败: ' + error.message)
   }
 }
 
 const getStatusTagType = (status) => {
   switch (status) {
-    case '已通过': return 'success'
-    case '已拒绝': return 'danger'
-    case '待审批': return 'warning'
+    case 'APPROVED': return 'success'
+    case 'REJECTED': return 'danger'
+    case 'PENDING': return 'warning'
     default: return 'info'
   }
 }
 
-const checkApproverRole = async () => {
-  try {
-    const response = await api.get('/api/user/is-approver')
-    isApprover.value = response.data
-  } catch (error) {
-    console.error('检查审批权限失败:', error)
+const getStatusText = (status) => {
+  switch (status) {
+    case 'APPROVED': return '已通过'
+    case 'REJECTED': return '已拒绝'
+    case 'PENDING': return '待审批'
+    default: return '未知'
   }
 }
 
 onMounted(async () => {
-  fetchApprovalList()
-  checkApproverRole()
+  fetchTravelList()
   
   // 从全局配置获取默认日期范围
-  statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange();
+  if (APP_CONFIG && APP_CONFIG.DEFAULT_DATE_RANGE) {
+    statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange()
+  }
   fetchStatisticsData()
 })
 </script setup>
@@ -283,5 +368,36 @@ onMounted(async () => {
 
 .chart-container {
   margin-top: 30px;
+}
+
+.filter-container {
+  margin-bottom: 20px;
+}
+
+.summary-cards {
+  display: flex;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.summary-card {
+  flex: 1;
+  text-align: center;
+}
+
+.card-content {
+  padding: 20px;
+}
+
+.card-title {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.card-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #409eff;
 }
 </style>

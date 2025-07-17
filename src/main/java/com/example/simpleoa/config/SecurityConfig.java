@@ -41,6 +41,13 @@ public class    SecurityConfig {
                 .requestMatchers("/api/tasks/**").authenticated()
                 .requestMatchers("/api/departments/**").authenticated()
                 .requestMatchers("/api/roles/**").authenticated()
+                .requestMatchers("/api/dashboard/**").authenticated()
+                .requestMatchers("/api/menu/**").authenticated()
+                .requestMatchers("/api/leave/**").authenticated()
+                .requestMatchers("/api/reimbursement/**").authenticated()
+                .requestMatchers("/api/approval/**").authenticated()
+                .requestMatchers("/api/budget/**").authenticated()
+                .requestMatchers("/api/performance/**").authenticated()
                 // 所有其他请求也需要认证
                 .anyRequest().authenticated()
             )

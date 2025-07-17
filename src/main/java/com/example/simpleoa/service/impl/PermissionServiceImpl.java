@@ -125,6 +125,66 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
+    public List<Map<String, Object>> getPermissionTree() {
+        List<Permission> allPermissions = permissionRepository.findAll();
+        
+        // 按资源分组
+        Map<String, List<Permission>> groupedPermissions = allPermissions.stream()
+                .collect(Collectors.groupingBy(Permission::getResource));
+        
+        List<Map<String, Object>> tree = new ArrayList<>();
+        
+        // 资源名称映射
+        Map<String, String> resourceNameMap = new HashMap<>();
+        resourceNameMap.put("DASHBOARD", "仪表盘");
+        resourceNameMap.put("WORKTIME", "工时管理");
+        resourceNameMap.put("MANAGER_WORKTIME", "项目经理工时");
+        resourceNameMap.put("LEAVE", "请假管理");
+        resourceNameMap.put("TRAVEL", "出差管理");
+        resourceNameMap.put("REIMBURSEMENT", "报销管理");
+        resourceNameMap.put("APPROVAL", "审批管理");
+        resourceNameMap.put("PROJECT", "项目管理");
+        resourceNameMap.put("TASK", "任务管理");
+        resourceNameMap.put("OUTSOURCING", "外包管理");
+        resourceNameMap.put("PAYMENT", "付款管理");
+        resourceNameMap.put("BUDGET", "预算管理");
+        resourceNameMap.put("PERFORMANCE", "绩效管理");
+        resourceNameMap.put("USER", "用户管理");
+        resourceNameMap.put("ROLE", "角色管理");
+        resourceNameMap.put("PERMISSION", "权限管理");
+        resourceNameMap.put("LOG", "日志管理");
+        resourceNameMap.put("NOTIFICATION", "通知管理");
+        resourceNameMap.put("ANNOUNCEMENT", "公告管理");
+        resourceNameMap.put("SYSTEM", "系统配置");
+        resourceNameMap.put("PROFILE", "个人资料");
+        
+        for (Map.Entry<String, List<Permission>> entry : groupedPermissions.entrySet()) {
+            String resource = entry.getKey();
+            List<Permission> permissions = entry.getValue();
+            
+            Map<String, Object> resourceNode = new HashMap<>();
+            resourceNode.put("id", "resource_" + resource);
+            resourceNode.put("name", resourceNameMap.getOrDefault(resource, resource));
+            resourceNode.put("isGroup", true);
+            
+            List<Map<String, Object>> children = new ArrayList<>();
+            for (Permission permission : permissions) {
+                Map<String, Object> permissionNode = new HashMap<>();
+                permissionNode.put("id", permission.getId());
+                permissionNode.put("name", permission.getDescription());
+                permissionNode.put("permissionCode", permission.getName());
+                permissionNode.put("isGroup", false);
+                children.add(permissionNode);
+            }
+            
+            resourceNode.put("children", children);
+            tree.add(resourceNode);
+        }
+        
+        return tree;
+    }
+
+    @Override
     public Permission getPermission(Long id) {
         return permissionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("权限不存在"));

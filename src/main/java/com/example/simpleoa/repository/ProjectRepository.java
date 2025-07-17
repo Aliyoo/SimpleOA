@@ -1,6 +1,7 @@
 package com.example.simpleoa.repository;
 
 import com.example.simpleoa.model.Project;
+import com.example.simpleoa.model.ProjectStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -41,4 +42,9 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     // 查询项目经理管理的项目
     @Query("SELECT p FROM Project p WHERE p.manager.id = :managerId")
     List<Project> findByManagerId(@Param("managerId") Long managerId);
+    
+    // Dashboard Service 需要的方法
+    
+    // 按项目状态统计数量
+    long countByStatus(ProjectStatus status);
 }

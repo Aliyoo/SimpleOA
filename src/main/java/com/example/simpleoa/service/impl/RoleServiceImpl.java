@@ -33,6 +33,46 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
+    @Transactional
+    public Role createRoleWithPermissions(Role role, List<Long> permissionIds) {
+        // 先保存角色
+        Role savedRole = roleRepository.save(role);
+        
+        // 如果有权限ID，则设置权限
+        if (permissionIds != null && !permissionIds.isEmpty()) {
+            List<Permission> permissions = permissionRepository.findAllById(permissionIds);
+            Set<Permission> permissionSet = new HashSet<>(permissions);
+            savedRole.setPermissions(permissionSet);
+            savedRole = roleRepository.save(savedRole);
+        }
+        
+        return savedRole;
+    }
+
+    @Override
+    @Transactional
+    public Role updateRoleWithPermissions(Role role, List<Long> permissionIds) {
+        // 先更新角色基本信息
+        Role savedRole = roleRepository.save(role);
+        
+        // 设置权限（包括清空权限的情况）
+        if (permissionIds != null) {
+            if (permissionIds.isEmpty()) {
+                // 清空权限
+                savedRole.setPermissions(new HashSet<>());
+            } else {
+                // 设置新权限
+                List<Permission> permissions = permissionRepository.findAllById(permissionIds);
+                Set<Permission> permissionSet = new HashSet<>(permissions);
+                savedRole.setPermissions(permissionSet);
+            }
+            savedRole = roleRepository.save(savedRole);
+        }
+        
+        return savedRole;
+    }
+
+    @Override
     public Role updateRole(Role role) {
         return roleRepository.save(role);
     }

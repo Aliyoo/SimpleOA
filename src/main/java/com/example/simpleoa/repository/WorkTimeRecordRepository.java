@@ -65,4 +65,17 @@ public interface WorkTimeRecordRepository extends JpaRepository<WorkTimeRecord, 
     // 按项目、日期范围和审批状态查询工时记录（分页）
     Page<WorkTimeRecord> findByProjectAndDateBetween(Project project, LocalDate startDate, LocalDate endDate, Pageable pageable);
     Page<WorkTimeRecord> findByProjectAndDateBetweenAndApproved(Project project, LocalDate startDate, LocalDate endDate, Boolean approved, Pageable pageable);
+    
+    // Dashboard Service 需要的方法
+    
+    // 按审批状态统计记录数
+    long countByApproved(Boolean approved);
+    
+    // 按审批状态和日期范围统计记录数
+    @Query("SELECT COUNT(w) FROM WorkTimeRecord w WHERE w.approved = :approved AND w.date BETWEEN :startDate AND :endDate")
+    long countByApprovedAndDateRange(@Param("approved") Boolean approved, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    
+    // 按日期范围统计总工时
+    @Query("SELECT SUM(w.hours) FROM WorkTimeRecord w WHERE w.date BETWEEN :startDate AND :endDate")
+    Double sumHoursByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 }

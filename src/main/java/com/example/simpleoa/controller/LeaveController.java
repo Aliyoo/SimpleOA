@@ -28,6 +28,11 @@ public class LeaveController {
         return leaveService.getApprovalList();
     }
 
+    @GetMapping("/my-applications")
+    public List<LeaveRequest> getMyApplications() {
+        return leaveService.getMyApplications();
+    }
+
     @PostMapping("/approve/{id}")
     public LeaveRequest approveLeave(@PathVariable Long id) {
         return leaveService.approveLeave(id, "已通过", "同意");

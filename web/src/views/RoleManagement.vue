@@ -91,7 +91,7 @@ const fetchRoles = async () => {
 
 const fetchPermissions = async () => {
   try {
-    const response = await api.get('/api/permissions')
+    const response = await api.get('/api/permissions/tree')
     permissionTree.value = response.data
   } catch (error) {
     ElMessage.error('获取权限树失败: ' + error.message)
@@ -150,7 +150,11 @@ const handleDelete = async (role) => {
 }
 
 const handleCheckChange = (data, checkedInfo) => {
-  roleForm.value.permissions = checkedInfo.checkedKeys
+  // 过滤掉分组节点，只保留具体权限节点
+  const filteredKeys = checkedInfo.checkedKeys.filter(key => {
+    return !String(key).startsWith('resource_')
+  })
+  roleForm.value.permissions = filteredKeys
   roleFormRef.value?.validateField('permissions');
 }
 

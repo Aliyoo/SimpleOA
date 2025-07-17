@@ -1,5 +1,6 @@
 package com.example.simpleoa.service;
 
+import com.example.simpleoa.model.ApprovalFlow;
 import com.example.simpleoa.model.Project;
 import com.example.simpleoa.model.ProjectStatus;
 import com.example.simpleoa.model.User;
@@ -8,16 +9,17 @@ import com.example.simpleoa.repository.WorkTimeRecordRepository;
 import com.example.simpleoa.service.ApprovalFlowService;
 import com.example.simpleoa.service.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 
 @Service
 public class WorkTimeService {
@@ -100,6 +102,13 @@ public class WorkTimeService {
                 if (record.getWorkType() != null && !record.getWorkType().isEmpty()) {
                     existingRecord.setWorkType(record.getWorkType());
                 }
+                // 保留原有的审批状态
+                if (record.isApproved()) {
+                    existingRecord.setApproved(true);
+                }
+                if (record.getStatus() != null && !record.getStatus().isEmpty()) {
+                    existingRecord.setStatus(record.getStatus());
+                }
 
                 // 保存更新后的记录
                 savedRecord = workTimeRecordRepository.save(existingRecord);
@@ -116,7 +125,13 @@ public class WorkTimeService {
                         Project project = projectService.getProjectById(savedRecord.getProject().getId());
                         if (project != null && project.getManager() != null) {
                             // 创建审批流程
-                            approvalFlowService.createApprovalFlow(savedRecord, project.getManager());
+                            ApprovalFlow approvalFlow = approvalFlowService.createApprovalFlow(savedRecord, project.getManager());
+                            
+                            // 如果工时记录已经是审批通过状态（比如项目经理填写的），同时更新审批流程状态
+                            if (savedRecord.isApproved()) {
+                                approvalFlowService.updateApprovalFlowStatus(approvalFlow.getId(), "APPROVED", "项目经理填写，自动审批通过");
+                                System.out.println("工时记录ID " + savedRecord.getId() + " 已自动审批通过");
+                            }
                         }
                     }
                 } catch (Exception e) {
@@ -165,7 +180,8 @@ public class WorkTimeService {
         }
     }
 
-    public Map<String, Object> getWorkTimeRecordsByUserAndDateRangePaged(
+    // 分页查询，并根据条件进行筛选
+    public Page<WorkTimeRecord> getWorkTimeRecordsByUserAndDateRangePaged(
             User user, LocalDate startDate, LocalDate endDate, Project project, Boolean approved,
             int page, int size) {
 
@@ -175,31 +191,16 @@ public class WorkTimeService {
 
         // 根据传入的参数决定查询方式
         if (project != null && approved != null) {
-            // 按用户、日期范围、项目和审批状态查询
-            recordPage = workTimeRecordRepository.findByUserAndDateBetweenAndProjectAndApproved(
-                    user, startDate, endDate, project, approved, pageable);
+            recordPage = workTimeRecordRepository.findByUserAndDateBetweenAndProjectAndApproved(user, startDate, endDate, project, approved, pageable);
         } else if (project != null) {
-            // 按用户、日期范围和项目查询
-            recordPage = workTimeRecordRepository.findByUserAndDateBetweenAndProject(
-                    user, startDate, endDate, project, pageable);
+            recordPage = workTimeRecordRepository.findByUserAndDateBetweenAndProject(user, startDate, endDate, project, pageable);
         } else if (approved != null) {
-            // 按用户、日期范围和审批状态查询
-            recordPage = workTimeRecordRepository.findByUserAndDateBetweenAndApproved(
-                    user, startDate, endDate, approved, pageable);
+            recordPage = workTimeRecordRepository.findByUserAndDateBetweenAndApproved(user, startDate, endDate, approved, pageable);
         } else {
-            // 只按用户和日期范围查询
             recordPage = workTimeRecordRepository.findByUserAndDateBetween(user, startDate, endDate, pageable);
         }
 
-        // 构建返回结果
-        Map<String, Object> result = new HashMap<>();
-        result.put("content", recordPage.getContent());
-        result.put("totalElements", recordPage.getTotalElements());
-        result.put("totalPages", recordPage.getTotalPages());
-        result.put("number", recordPage.getNumber());
-        result.put("size", recordPage.getSize());
-
-        return result;
+        return recordPage;
     }
 
     public WorkTimeRecord approveWorkTime(Long recordId) {
@@ -509,7 +510,7 @@ public class WorkTimeService {
     }
 
     // 新增带多重筛选的查询方法
-    public Map<String, Object> getWorkTimeRecordsByProjectAndDateRangePagedWithFilters(
+    public Page<WorkTimeRecord> getWorkTimeRecordsByProjectAndDateRangePagedWithFilters(
             Project project,
             LocalDate startDate,
             LocalDate endDate,
@@ -518,25 +519,23 @@ public class WorkTimeService {
             String workType,
             Integer page,
             Integer size) {
-        
+
         // 获取所有符合基本条件的记录
         List<WorkTimeRecord> allRecords = getWorkTimeRecordsByProjectAndDateRangeFilteredWithFilters(
                 project, startDate, endDate, approved, user, workType);
-        
-        // 手动分页
-        int start = page * size;
-        int end = Math.min(start + size, allRecords.size());
+
+        // 创建 Pageable 对象
+        Pageable pageable = PageRequest.of(page, size);
+
+        // 计算当前页的起始位置
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), allRecords.size());
+
+        // 获取当前页的记录列表
         List<WorkTimeRecord> pageContent = allRecords.subList(start, end);
-        
-        // 构建返回结果
-        Map<String, Object> result = new HashMap<>();
-        result.put("content", pageContent);
-        result.put("totalElements", allRecords.size());
-        result.put("totalPages", (int) Math.ceil((double) allRecords.size() / size));
-        result.put("number", page);
-        result.put("size", size);
-        
-        return result;
+
+        // 构建并返回 Page 对象
+        return new PageImpl<>(pageContent, pageable, allRecords.size());
     }
 
     public List<WorkTimeRecord> getWorkTimeRecordsByProjectAndDateRangeFilteredWithFilters(
@@ -546,13 +545,13 @@ public class WorkTimeService {
             Boolean approved,
             User user,
             String workType) {
-        
+
         List<WorkTimeRecord> records = workTimeRecordRepository.findByProjectAndDateBetween(
                 project, startDate, endDate);
-        
+
         // 应用筛选条件
         return records.stream()
-                .filter(record -> approved == null || record.getApproved().equals(approved))
+                .filter(record -> approved == null || Boolean.valueOf(record.isApproved()).equals(approved))
                 .filter(record -> user == null || record.getUser().getId().equals(user.getId()))
                 .filter(record -> workType == null || workType.isEmpty() || workType.equals(record.getWorkType()))
                 .sorted((a, b) -> b.getDate().compareTo(a.getDate())) // 按日期降序排序

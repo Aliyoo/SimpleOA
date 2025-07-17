@@ -21,6 +21,8 @@ public interface LeaveService {
 
     List<LeaveRequest> getApprovalList();
 
+    List<LeaveRequest> getMyApplications();
+
     Object getLeaveStatistics(String startDate, String endDate);
 
     LeaveRequest applyLeave(LeaveRequest leaveRequest);

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -45,4 +46,17 @@ public interface BusinessTripRequestRepository extends JpaRepository<BusinessTri
     // 查询即将开始的出差（未来7天内）
     @Query("SELECT b FROM BusinessTripRequest b WHERE b.startDate BETWEEN CURRENT_DATE AND CURRENT_DATE + 7 AND b.status = 'APPROVED'")
     List<BusinessTripRequest> findUpcomingBusinessTrips();
+    
+    // 按申请人查询
+    List<BusinessTripRequest> findByApplicantId(Long applicantId);
+    
+    // 按申请人和日期范围查询
+    @Query("SELECT b FROM BusinessTripRequest b WHERE b.applicant.id = :applicantId AND b.startTime >= :startDate AND b.startTime <= :endDate")
+    List<BusinessTripRequest> findByApplicantIdAndDateRange(@Param("applicantId") Long applicantId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    
+    // 按申请人和目的地查询
+    List<BusinessTripRequest> findByApplicantIdAndDestination(Long applicantId, String destination);
+    
+    // 按申请人和状态查询
+    List<BusinessTripRequest> findByApplicantIdAndStatus(Long applicantId, String status);
 }

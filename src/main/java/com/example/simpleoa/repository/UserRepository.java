@@ -55,4 +55,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 查询最近注册的用户
     //@Query("SELECT u FROM User u ORDER BY u.createTime DESC")
     //List<User> findRecentUsers(org.springframework.data.domain.Pageable pageable);
+    
+    // Dashboard Service 需要的方法
+    
+    // 按启用状态统计用户数
+    long countByEnabled(Integer enabled);
 }

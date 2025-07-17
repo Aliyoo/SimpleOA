@@ -30,6 +30,14 @@ public class PermissionController {
     }
 
     /**
+     * Get permissions in tree structure
+     */
+    @GetMapping("/tree")
+    public List<Map<String, Object>> getPermissionTree() {
+        return permissionService.getPermissionTree();
+    }
+
+    /**
      * Get permission by id
      */
     @GetMapping("/{id}")

@@ -84,7 +84,64 @@
       </el-tab-pane>
       
       <el-tab-pane label="报销列表" name="list">
-        <el-table :data="reimbursementList" style="width: 100%">
+        <!-- 筛选查询栏 -->
+        <div class="filter-container">
+          <el-row :gutter="20">
+            <el-col :span="6">
+              <el-select v-model="listFilters.status" placeholder="选择状态" clearable @change="fetchReimbursementList">
+                <el-option label="全部状态" :value="null" />
+                <el-option
+                  v-for="status in statusOptions"
+                  :key="status.value"
+                  :label="status.label"
+                  :value="status.value"
+                />
+              </el-select>
+            </el-col>
+            <el-col :span="6">
+              <el-date-picker
+                v-model="listFilters.startDate"
+                type="date"
+                placeholder="开始日期"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                @change="fetchReimbursementList"
+              />
+            </el-col>
+            <el-col :span="6">
+              <el-date-picker
+                v-model="listFilters.endDate"
+                type="date"
+                placeholder="结束日期"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                @change="fetchReimbursementList"
+              />
+            </el-col>
+            <el-col :span="6">
+              <el-input
+                v-model="listFilters.keyword"
+                placeholder="搜索标题关键字"
+                clearable
+                @clear="fetchReimbursementList"
+                @keyup.enter="fetchReimbursementList"
+              >
+                <template #append>
+                  <el-button @click="fetchReimbursementList">
+                    <el-icon><Search /></el-icon>
+                  </el-button>
+                </template>
+              </el-input>
+            </el-col>
+          </el-row>
+          <el-row style="margin-top: 10px;">
+            <el-col :span="24">
+              <el-button @click="resetFilters">重置筛选</el-button>
+              <el-button type="primary" @click="fetchReimbursementList">查询</el-button>
+            </el-col>
+          </el-row>
+        </div>
+        <el-table :data="reimbursementList" style="width: 100%" v-loading="listLoading">
           <el-table-column prop="title" label="报销标题" width="200" />
           <el-table-column prop="projectName" label="关联项目" width="150" />
           <el-table-column prop="totalAmount" label="总金额" width="120">
@@ -282,7 +339,7 @@
 import { ref, onMounted, computed, reactive, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../utils/axios.js'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Search } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import * as echarts from 'echarts'
 import { APP_CONFIG } from '../utils/config.js'
@@ -316,6 +373,16 @@ const statisticsData = ref([])
 const statisticsSummary = ref({})
 const statisticsDateRange = ref([])
 const fileList = ref([])
+
+// 筛选相关变量
+const listFilters = reactive({
+  status: null,
+  startDate: null,
+  endDate: null,
+  keyword: ''
+})
+const listLoading = ref(false)
+const statusOptions = ref([])
 
 // 计算总金额
 const totalAmount = computed(() => {
@@ -367,6 +434,9 @@ onMounted(async () => {
       // 不显示错误消息，因为路由守卫已经处理了认证
     }
   }
+  
+  // 初始化状态选项
+  initializeStatusOptions();
   
   // 继续加载其他数据
   fetchReimbursementList();
@@ -496,15 +566,56 @@ const getStatusTagType = (status) => {
     return tagMap[status] || 'primary';
 };
 
-// 新增的函数实现
+// 初始化状态选项
+const initializeStatusOptions = () => {
+  statusOptions.value = [
+    { label: '草稿', value: 'DRAFT' },
+    { label: '待部门经理审批', value: 'PENDING_MANAGER_APPROVAL' },
+    { label: '待财务审批', value: 'PENDING_FINANCE_APPROVAL' },
+    { label: '已通过', value: 'APPROVED' },
+    { label: '已驳回', value: 'REJECTED' }
+  ]
+}
+
+// 筛选功能的列表获取函数
 const fetchReimbursementList = async () => {
+  listLoading.value = true
   try {
-    const response = await api.get('/api/oa/reimbursement')
+    const params = {}
+    
+    // 添加筛选参数
+    if (listFilters.status) {
+      params.status = listFilters.status
+    }
+    if (listFilters.startDate) {
+      params.startDate = listFilters.startDate
+    }
+    if (listFilters.endDate) {
+      params.endDate = listFilters.endDate
+    }
+    if (listFilters.keyword && listFilters.keyword.trim()) {
+      params.keyword = listFilters.keyword.trim()
+    }
+    
+    const response = await api.get('/api/oa/reimbursement', { params })
     reimbursementList.value = response.data.content || response.data
   } catch (error) {
     console.error('获取报销列表失败:', error)
     ElMessage.error('获取报销列表失败: ' + (error.response?.data?.message || error.message))
+  } finally {
+    listLoading.value = false
   }
+}
+
+// 重置筛选条件
+const resetFilters = () => {
+  Object.assign(listFilters, {
+    status: null,
+    startDate: null,
+    endDate: null,
+    keyword: ''
+  })
+  fetchReimbursementList()
 }
 
 const fetchStatisticsData = async () => {

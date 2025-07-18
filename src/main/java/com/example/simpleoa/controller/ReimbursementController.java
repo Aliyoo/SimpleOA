@@ -3,6 +3,7 @@ package com.example.simpleoa.controller;
 import com.example.simpleoa.common.ApiResponse;
 import com.example.simpleoa.model.ReimbursementRequest;
 import com.example.simpleoa.model.ReimbursementRequestDTO;
+import com.example.simpleoa.model.ReimbursementStatus;
 import com.example.simpleoa.model.User;
 import com.example.simpleoa.service.ReimbursementService;
 import org.springframework.data.domain.Page;
@@ -50,8 +51,12 @@ public class ReimbursementController {
     public ResponseEntity<ApiResponse<Page<ReimbursementRequest>>> getReimbursements(
             @AuthenticationPrincipal User user,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Page<ReimbursementRequest> requests = reimbursementService.getReimbursements(user.getId(), page, size);
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) ReimbursementStatus status,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String keyword) {
+        Page<ReimbursementRequest> requests = reimbursementService.getReimbursements(user.getId(), page, size, status, startDate, endDate, keyword);
         return ResponseEntity.ok(ApiResponse.success(requests));
     }
 
@@ -64,5 +69,19 @@ public class ReimbursementController {
         String comment = payload.get("comment");
         ReimbursementRequest result = reimbursementService.approveOrReject(id, decision, comment, approver.getId());
         return ResponseEntity.ok(ApiResponse.success("审批处理成功", result));
+    }
+
+    @GetMapping("/statistics")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getReimbursementStatistics(
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @AuthenticationPrincipal User user) {
+        Map<String, Object> statistics = reimbursementService.getReimbursementStatistics(startDate, endDate, user.getId());
+        return ResponseEntity.ok(ApiResponse.success(statistics));
+    }
+
+    @GetMapping("/status-options")
+    public ResponseEntity<ApiResponse<ReimbursementStatus[]>> getReimbursementStatusOptions() {
+        return ResponseEntity.ok(ApiResponse.success("获取报销状态选项成功", ReimbursementStatus.values()));
     }
 }

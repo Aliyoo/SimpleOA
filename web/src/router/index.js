@@ -304,27 +304,27 @@ router.beforeEach((to, from, next) => {
     }
     // 即使有 token，也要验证其有效性，但避免不必要的重复验证
     if (userStore.user) {
-      // 如果已经有用户信息，继续导航
-      next();
+      // 如果已经有用户信息，检查权限后继续导航
+      checkPermissionAndNavigate(to, next, userStore);
     } else {
       userStore.fetchUser().then(() => {
-        // 继续导航
-        next();
+        // 获取用户信息后检查权限
+        checkPermissionAndNavigate(to, next, userStore);
       }).catch((error) => {
         console.error("验证用户信息失败:", error);
-        // 不要立即登出，检查是否为临时错误
-        if (error.response?.status === 401 || error.response?.status === 403) {
-          console.error("认证错误，但不立即登出，可能是临时问题:", error.response);
-          next({ name: 'Login', query: { redirect: to.fullPath } });
-        } else {
-          userStore.logout();
-          next({ name: 'Login', query: { redirect: to.fullPath } });
-        }
+        // 认证失败，跳转到登录页
+        next({ name: 'Login', query: { redirect: to.fullPath } });
       });
     }
     return;
   }
 
+  // 如果不需要登录，直接允许访问
+  next();
+});
+
+// 检查权限并导航的辅助函数
+function checkPermissionAndNavigate(to, next, userStore) {
   // 如果是admin用户，允许访问所有路由
   if (userStore.isAdmin) {
     next();
@@ -351,6 +351,6 @@ router.beforeEach((to, from, next) => {
     // 如果路由没有配置权限要求，允许访问
     next();
   }
-});
+}
 
 export default router

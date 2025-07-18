@@ -10,7 +10,7 @@ export const useUserStore = defineStore('user', {
     menus: JSON.parse(localStorage.getItem('menus')) || []
   }),
   getters: {
-    isAuthenticated: (state) => !!state.token,
+    isAuthenticated: (state) => !!state.user || !!state.token,
     isAdmin: (state) => {
       return state.user && (
         state.user.username === 'admin' ||
@@ -92,21 +92,74 @@ export const useUserStore = defineStore('user', {
     async fetchUser() {
         // 由于使用 HttpOnly Cookie，无法直接检查 token 存在性，依赖后端验证
         try {
-            const response = await api.get('/api/auth/me');
-            if (response.data) {
-                this.user = response.data;
-                // 获取用户权限
-                await this.fetchUserPermissions();
-                // 获取用户菜单
-                await this.fetchUserMenus();
+            const response = await api.get('/api/auth/me', {
+                skipGlobalErrorHandler: true // 跳过全局错误处理
+            });
+            
+            let userData = response.data;
+            
+            // 如果响应数据是字符串，尝试解析为JSON
+            if (typeof userData === 'string') {
+                try {
+                    userData = JSON.parse(userData);
+                } catch (parseError) {
+                    console.error('解析用户数据失败:', parseError);
+                    throw new Error('用户数据格式错误');
+                }
+            }
+            
+            if (userData && userData.id) {
+                this.user = userData;
+                this.token = 'authenticated'; // 设置认证标识
+                
+                // 获取用户权限和菜单（不阻塞主流程）
+                try {
+                    await this.fetchUserPermissions();
+                    await this.fetchUserMenus();
+                } catch (permError) {
+                    console.warn('获取用户权限或菜单失败:', permError);
+                    // 不抛出错误，允许继续使用
+                }
+            } else {
+                throw new Error('无效的用户数据');
             }
         } catch (error) {
             console.error("获取用户信息失败:", error);
-            // Token might be invalid or API issue, but don't logout immediately.
-            // The navigation guard will still protect routes based on token existence.
-            // If API calls requiring authentication start failing, that's a better indicator
-            // that the token is truly invalid and logout is needed (e.g., via an Axios interceptor).
-            // this.logout(); // <-- 注释掉这一行
+            
+            // 尝试从响应中提取用户数据（针对500错误但有数据的情况）
+            if (error.response?.status === 500 && error.response?.data) {
+                let userData = error.response.data;
+                if (typeof userData === 'string') {
+                    try {
+                        userData = JSON.parse(userData);
+                        if (userData && userData.id) {
+                            console.log('从500错误中恢复用户数据:', userData);
+                            this.user = userData;
+                            this.token = 'authenticated';
+                            
+                            // 尝试获取权限和菜单
+                            try {
+                                await this.fetchUserPermissions();
+                                await this.fetchUserMenus();
+                            } catch (permError) {
+                                console.warn('获取用户权限或菜单失败:', permError);
+                            }
+                            return; // 成功恢复，不抛出错误
+                        }
+                    } catch (parseError) {
+                        console.error('从500错误中解析用户数据失败:', parseError);
+                    }
+                }
+            }
+            
+            // 认证失败时清除用户信息
+            this.user = null;
+            this.token = null;
+            this.permissions = [];
+            this.menus = [];
+            localStorage.removeItem('permissions');
+            localStorage.removeItem('menus');
+            throw error; // 重新抛出错误以便调用者处理
         }
     },
 

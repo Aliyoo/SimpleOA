@@ -5,16 +5,24 @@ import com.example.simpleoa.repository.ProjectRepository;
 import com.example.simpleoa.repository.ReimbursementRequestRepository;
 import com.example.simpleoa.repository.UserRepository;
 import com.example.simpleoa.service.ReimbursementService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ReimbursementServiceImpl implements ReimbursementService {
 
+    private static final Logger logger = LoggerFactory.getLogger(ReimbursementServiceImpl.class);
+    
     private final ReimbursementRequestRepository reimbursementRequestRepository;
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository; // Added ProjectRepository
@@ -105,8 +113,15 @@ public class ReimbursementServiceImpl implements ReimbursementService {
     }
 
     @Override
-    public Page<ReimbursementRequest> getReimbursements(Long userId, int page, int size) {
-        return reimbursementRequestRepository.findByApplicantId(userId, PageRequest.of(page, size));
+    public Page<ReimbursementRequest> getReimbursements(Long userId, int page, int size, ReimbursementStatus status, String startDate, String endDate, String keyword) {
+        logger.debug("Getting reimbursements for user: {}, page: {}, size: {}, status: {}, startDate: {}, endDate: {}, keyword: {}", userId, page, size, status, startDate, endDate, keyword);
+
+        LocalDateTime start = (startDate != null) ? LocalDateTime.parse(startDate + "T00:00:00") : null;
+        LocalDateTime end = (endDate != null) ? LocalDateTime.parse(endDate + "T23:59:59") : null;
+
+        Page<ReimbursementRequest> result = reimbursementRequestRepository.findByApplicantIdWithFilters(userId, status, start, end, keyword, PageRequest.of(page, size));
+        logger.debug("Found {} reimbursement requests for user {} with filters", result.getTotalElements(), userId);
+        return result;
     }
 
     @Override
@@ -145,5 +160,94 @@ public class ReimbursementServiceImpl implements ReimbursementService {
 
         request.setComment(comment);
         return reimbursementRequestRepository.save(request);
+    }
+
+    @Override
+    public Map<String, Object> getReimbursementStatistics(String startDate, String endDate, Long userId) {
+        logger.debug("Getting reimbursement statistics for user: {}, from: {} to: {}", userId, startDate, endDate);
+        
+        // 获取指定时间范围内的报销数据
+        // startDate 和 endDate 格式为 "YYYY-MM-DD"
+        LocalDateTime start = LocalDateTime.parse(startDate + "T00:00:00");
+        LocalDateTime end = LocalDateTime.parse(endDate + "T23:59:59");
+        logger.debug("Parsed date range: {} to {}", start, end);
+        
+        List<ReimbursementRequest> requests = reimbursementRequestRepository.findByApplicantIdAndCreateTimeBetween(
+                userId, start, end
+        );
+        logger.debug("Found {} requests for statistics", requests.size());
+        
+        // 计算统计数据
+        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> summary = new HashMap<>();
+        List<Map<String, Object>> details = new ArrayList<>();
+        
+        // 总计数据
+        BigDecimal totalAmount = requests.stream()
+                .map(ReimbursementRequest::getTotalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        int totalCount = requests.size();
+        
+        // 通过率计算
+        long approvedCount = requests.stream()
+                .filter(r -> ReimbursementStatus.APPROVED.equals(r.getStatus()))
+                .count();
+        
+        String approvalRate = totalCount > 0 ? 
+                String.format("%.1f%%", (double) approvedCount / totalCount * 100) : "0%";
+        
+        // 平均金额
+        BigDecimal avgAmount = totalCount > 0 ? 
+                totalAmount.divide(new BigDecimal(totalCount), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+        
+        // 按费用类别分组统计
+        Map<String, List<ReimbursementRequest>> categoryGroups = requests.stream()
+                .collect(Collectors.groupingBy(r -> {
+                    if (r.getItems() == null || r.getItems().isEmpty()) {
+                        return "其他";
+                    }
+                    return r.getItems().get(0).getItemCategory() != null ? 
+                            r.getItems().get(0).getItemCategory() : "其他";
+                }));
+        
+        // 最常用类别
+        String mostUsedCategory = categoryGroups.entrySet().stream()
+                .max(Map.Entry.comparingByValue((list1, list2) -> Integer.compare(list1.size(), list2.size())))
+                .map(Map.Entry::getKey)
+                .orElse("-");
+        
+        // 构建详细统计
+        for (Map.Entry<String, List<ReimbursementRequest>> entry : categoryGroups.entrySet()) {
+            String category = entry.getKey();
+            List<ReimbursementRequest> categoryRequests = entry.getValue();
+            
+            BigDecimal categoryTotal = categoryRequests.stream()
+                    .map(ReimbursementRequest::getTotalAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            
+            int categoryCount = categoryRequests.size();
+            BigDecimal categoryAvg = categoryCount > 0 ? 
+                    categoryTotal.divide(new BigDecimal(categoryCount), 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+            
+            Map<String, Object> categoryDetail = new HashMap<>();
+            categoryDetail.put("category", category);
+            categoryDetail.put("totalAmount", categoryTotal);
+            categoryDetail.put("count", categoryCount);
+            categoryDetail.put("avgAmount", categoryAvg);
+            details.add(categoryDetail);
+        }
+        
+        // 构建汇总数据
+        summary.put("totalAmount", totalAmount);
+        summary.put("totalCount", totalCount);
+        summary.put("approvalRate", approvalRate);
+        summary.put("avgAmount", avgAmount);
+        summary.put("mostUsedCategory", mostUsedCategory);
+        
+        result.put("summary", summary);
+        result.put("details", details);
+        
+        return result;
     }
 }

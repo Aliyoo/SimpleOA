@@ -1,6 +1,7 @@
 package com.example.simpleoa.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,7 +20,7 @@ public class ReimbursementRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "applicant_id", nullable = false)
     private User applicant;
 
@@ -45,6 +46,7 @@ public class ReimbursementRequest {
     private List<String> attachments; // 凭证文件路径列表
 
     @OneToMany(mappedBy = "reimbursementRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<ReimbursementItem> items; // 费用明细
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

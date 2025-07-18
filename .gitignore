@@ -111,6 +111,7 @@ test-output/
 .cursor/
 .claude/
 .roo
+.kiro
 .aitools/
 .ai/
 .llm/

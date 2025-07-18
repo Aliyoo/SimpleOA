@@ -1,6 +1,7 @@
 package com.example.simpleoa.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -20,6 +21,7 @@ public class ReimbursementItem {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reimbursement_request_id", nullable = false)
+    @JsonBackReference
     private ReimbursementRequest reimbursementRequest;
 
     @JsonFormat(pattern = "yyyy-MM-dd")

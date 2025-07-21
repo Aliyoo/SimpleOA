@@ -2,8 +2,20 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
 // 创建 axios 实例
+// 在开发环境中使用相对路径，生产环境中使用环境变量或默认值
+const getBaseURL = () => {
+  // 如果是开发环境且通过代理访问，使用相对路径
+  if (import.meta.env.DEV && window.location.host !== 'localhost:3000') {
+    // 外部IP访问时，使用当前host的8989端口
+    const host = window.location.hostname
+    return `http://${host}:8989`
+  }
+  // 开发环境本地访问或生产环境
+  return import.meta.env.VITE_API_BASE_URL || '/api'
+}
+
 const api = axios.create({
-  baseURL: 'http://localhost:8989',
+  baseURL: getBaseURL(),
   timeout: 5000,
   withCredentials: true
 })

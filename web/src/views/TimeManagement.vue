@@ -289,6 +289,7 @@
                     :controls="false"
                     size="small"
                     style="width: 60px"
+                    :disabled="!isWorkdayForDate(date)"
                     @change="validateHours(scope.row.hours[date])"
                   />
                 </template>
@@ -530,8 +531,9 @@ const batchState = ref({
 
 // 批量填写相关数据
 const batchDates = ref([])
-const batchProjects = ref([])
-const batchLoading = ref(false)
+    const batchProjects = ref([])
+    const batchLoading = ref(false)
+    const workdayCache = ref(new Map()) // 工作日缓存
 
 // 审批列表相关数据
 const approvalLoading = ref(false)
@@ -601,7 +603,7 @@ const fetchProjects = async (forceRefresh = false) => {
 
     // 在项目列表加载完成后初始化批量填写表格
     if (activeTab.value === 'batch') {
-      initBatchDateRange()
+      await initBatchDateRange()
     }
   } catch (error) {
     console.error('获取项目列表失败:', error)
@@ -1107,7 +1109,7 @@ const fetchProjects = async (forceRefresh = false) => {
       }
     }
 
-    const initBatchDateRange = () => {
+    const initBatchDateRange = async () => {
       console.log('初始化批量日期范围，当前值:', batchDateRange.value);
 
       // 检查日期范围是否有效
@@ -1190,6 +1192,9 @@ const fetchProjects = async (forceRefresh = false) => {
         }
       }
 
+      // 预加载工作日数据
+      await fetchWorkdays(batchDateRange.value);
+      
       // 生成批量表格
       generateBatchTable();
 
@@ -1247,6 +1252,12 @@ const fetchProjects = async (forceRefresh = false) => {
         }
         batchDates.value = dates
         console.log('生成的日期列表:', batchDates.value);
+        console.log('批量日期数组详情:', {
+          total: batchDates.value.length,
+          first: batchDates.value[0],
+          last: batchDates.value[batchDates.value.length - 1],
+          samples: batchDates.value.slice(0, 10)
+        });
 
         // 检查项目列表
         if (!projectList.value || projectList.value.length === 0) {
@@ -1443,11 +1454,14 @@ const fetchProjects = async (forceRefresh = false) => {
           if (typeof project.manager === 'string') {
             // 如果manager是字符串
             managerName = project.manager;
+          } else if (project.manager.realName) {
+            // 优先使用realName（真实姓名）
+            managerName = project.manager.realName;
           } else if (project.manager.name) {
             // 如果manager对象有name属性
             managerName = project.manager.name;
           } else if (project.manager.username) {
-            // 如果manager对象有username属性
+            // 最后使用username（登录账号）
             managerName = project.manager.username;
           } else if (project.manager.firstName && project.manager.lastName) {
             // 如果manager对象有firstName和lastName属性
@@ -1488,11 +1502,129 @@ const fetchProjects = async (forceRefresh = false) => {
       return value
     }
 
-    const getCellClass = ({ columnIndex }) => {
-      if (columnIndex > 2 && columnIndex < batchDates.value.length + 3) {
-        const date = batchDates.value[columnIndex - 3]
+    // 获取工作日数据
+    const fetchWorkdays = async (dateRange) => {
+      if (!dateRange || dateRange.length !== 2) {
+        console.warn('日期范围无效')
+        return
+      }
+      
+      const cacheKey = `${dateRange[0]}_${dateRange[1]}`
+      if (workdayCache.value.has(cacheKey)) {
+        console.log('使用缓存的工作日数据')
+        return workdayCache.value.get(cacheKey)
+      }
+      
+      try {
+        const startDate = new Date(dateRange[0])
+        const endDate = new Date(dateRange[1])
+        
+        const response = await api.get('/api/workdays/by-range', {
+          params: {
+            startDate: dateRange[0],
+            endDate: dateRange[1]
+          }
+        })
+        
+        const workdays = response.data || []
+        // 后端已修复时区问题，直接使用日期字符串
+        const workdaySet = new Set(workdays.map(wd => {
+          // 如果后端返回的是 'yyyy-MM-dd' 格式，直接使用
+          if (typeof wd.date === 'string' && wd.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return wd.date
+          }
+          // 如果是时间戳格式，则提取日期部分
+          return wd.date.split('T')[0]
+        }))
+        
+        // 缓存结果
+        workdayCache.value.set(cacheKey, workdaySet)
+        console.log('获取到工作日数据:', workdaySet.size, '个工作日')
+        console.log('工作日列表:', Array.from(workdaySet).sort())
+        console.log('工作日缓存详情:', {
+          cacheKey,
+          workdayCount: workdaySet.size,
+          workdayArray: Array.from(workdaySet).sort()
+        })
+        
+        // 详细分析7月5日和6日的状态
+        console.log('特别检查 2025-07-05:', workdaySet.has('2025-07-05') ? '工作日' : '非工作日');
+        console.log('特别检查 2025-07-06:', workdaySet.has('2025-07-06') ? '工作日' : '非工作日');
+        console.log('特别检查 2025-07-04:', workdaySet.has('2025-07-04') ? '工作日' : '非工作日');
+        console.log('特别检查 2025-07-07:', workdaySet.has('2025-07-07') ? '工作日' : '非工作日');
+        
+        return workdaySet
+      } catch (error) {
+        console.error('获取工作日数据失败:', error)
+        ElMessage.error('获取工作日数据失败')
+        return new Set()
+      }
+    }
+    
+    // 检查是否为工作日
+    const isWorkday = async (date) => {
+      if (!batchDateRange.value || batchDateRange.value.length !== 2) {
+        // 如果没有日期范围，默认按周末判断
         const day = new Date(date).getDay()
+        return day !== 0 && day !== 6
+      }
+      
+      const workdaySet = await fetchWorkdays(batchDateRange.value)
+      return workdaySet.has(date)
+    }
+    
+    // 同步检查是否为工作日（用于模板中的禁用状态）
+    const isWorkdayForDate = (date) => {
+      if (!batchDateRange.value || batchDateRange.value.length !== 2) {
+        // 如果没有日期范围，默认按周末判断
+        const day = new Date(date).getDay()
+        return day !== 0 && day !== 6
+      }
+      
+      const cacheKey = `${batchDateRange.value[0]}_${batchDateRange.value[1]}`
+      const workdaySet = workdayCache.value.get(cacheKey)
+      if (workdaySet) {
+        return workdaySet.has(date)
+      }
+      
+      // 如果没有缓存，默认按周末判断
+      const day = new Date(date).getDay()
+      return day !== 0 && day !== 6
+    }
+
+    const getCellClass = ({ columnIndex }) => {
+      // 添加调试信息
+      console.log('getCellClass called with columnIndex:', columnIndex, 'batchDates length:', batchDates.value.length);
+      
+      if (columnIndex > 2 && columnIndex < batchDates.value.length + 3) {
+        const dateIndex = columnIndex - 3;
+        const date = batchDates.value[dateIndex];
+        
+        console.log('Column', columnIndex, '-> Date index:', dateIndex, '-> Date:', date);
+        
+        if (!date) {
+          console.warn('Date is undefined for columnIndex:', columnIndex, 'dateIndex:', dateIndex);
+          return '';
+        }
+        
+        const day = new Date(date).getDay()
+        
+        // 检查是否在工作日缓存中
+        if (batchDateRange.value && batchDateRange.value.length === 2) {
+          const cacheKey = `${batchDateRange.value[0]}_${batchDateRange.value[1]}`
+          const workdaySet = workdayCache.value.get(cacheKey)
+          if (workdaySet) {
+            const isWorkday = workdaySet.has(date);
+            console.log('Date:', date, 'is workday:', isWorkday);
+            if (!isWorkday) {
+              return 'non-workday-cell' // 非工作日样式
+            }
+          }
+        }
+        
+        // 周末样式（作为备用）
         if (day === 0 || day === 6) {
+          console.log('Date:', date, 'is weekend');
           return 'weekend-cell'
         }
       }
@@ -1556,7 +1688,7 @@ const fetchProjects = async (forceRefresh = false) => {
       }
     }
 
-    const onBatchDateRangeChange = (range) => {
+    const onBatchDateRangeChange = async (range) => {
       console.log('批量填写日期范围已更改:', range);
       if (range && range.length === 2) {
         // 确保日期范围有效
@@ -1576,9 +1708,14 @@ const fetchProjects = async (forceRefresh = false) => {
             return;
           }
 
-          // 更新日期范围并生成表格
+          // 更新日期范围
           batchDateRange.value = range;
           console.log('更新后的批量日期范围:', batchDateRange.value);
+          
+          // 预加载工作日数据
+          await fetchWorkdays(range);
+          
+          // 生成表格
           generateBatchTable();
           // 加载已提交的工时数据
           loadSubmittedWorkTime();
@@ -1712,9 +1849,9 @@ const fetchProjects = async (forceRefresh = false) => {
       }
     })
 
-    watch(activeTab, (newTab) => {
+    watch(activeTab, async (newTab) => {
       if (newTab === 'batch' && projectList.value.length > 0) {
-        initBatchDateRange()
+        await initBatchDateRange()
       } else if (newTab === 'approval') {
         fetchApprovalList()
       }
@@ -1861,6 +1998,20 @@ h1 {
 
 .weekend-cell {
   background-color: #f0f9ff;
+}
+
+.non-workday-cell {
+  background-color: #fff2f0;
+}
+
+.non-workday-cell .el-input-number {
+  background-color: #fff2f0;
+}
+
+.non-workday-cell .el-input-number.is-disabled {
+  background-color: #f5f5f5;
+  color: #c0c4cc;
+  cursor: not-allowed;
 }
 
 /* 自定义 Tab 样式 */

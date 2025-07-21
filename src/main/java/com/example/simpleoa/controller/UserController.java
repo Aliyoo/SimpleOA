@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -21,6 +22,11 @@ public class UserController {
     @GetMapping
     public List<User> getAllUsers() {
         return userService.getAllUsers();
+    }
+
+    @PostMapping
+    public User createUser(@RequestBody User user) {
+        return userService.registerUser(user);
     }
 
     @PostMapping("/register")
@@ -40,8 +46,9 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/status")
-    public User updateUserStatus(@PathVariable Long id, @RequestBody User user) {
-        return userService.updateUserStatus(id, user.getEnabled());
+    public User updateUserStatus(@PathVariable Long id, @RequestBody Map<String, Integer> statusUpdate) {
+        Integer enabled = statusUpdate.get("enabled");
+        return userService.updateUserStatus(id, enabled);
     }
 
     @GetMapping("/{id}/roles")

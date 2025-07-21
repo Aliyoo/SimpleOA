@@ -1,6 +1,8 @@
 package com.example.simpleoa.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
@@ -36,6 +38,7 @@ public class User implements UserDetails {
     private String phoneNumber;
 
     @Column(nullable = false)
+    @JsonProperty("enabled")
     private Integer enabled = 1;
 
     @ManyToMany(fetch = FetchType.EAGER)
@@ -44,10 +47,12 @@ public class User implements UserDetails {
         joinColumns = @JoinColumn(name = "user_id"),
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
+    @JsonManagedReference
     private List<Role> roles;
 
     @ManyToOne
     @JoinColumn(name = "position_id")
+    @JsonIgnore // 添加JsonIgnore避免循环引用
     private Position position;
 
     @Column
@@ -97,5 +102,15 @@ public class User implements UserDetails {
     @JsonIgnore
     public boolean isEnabled() {
         return enabled == 1;
+    }
+    
+    // 显式提供enabled字段的getter
+    public Integer getEnabled() {
+        return enabled;
+    }
+    
+    // 显式提供enabled字段的setter
+    public void setEnabled(Integer enabled) {
+        this.enabled = enabled;
     }
 }

@@ -134,19 +134,26 @@
         <div v-show="activeTab === 'stats'" class="tab-pane">
           <div class="stats-container">
             <div class="stats-header">
-              <div class="stats-filters">
-                <el-date-picker
-                  v-model="statsDateRange"
-                  type="daterange"
-                  range-separator="至"
-                  start-placeholder="开始日期"
-                  end-placeholder="结束日期"
-                  format="YYYY-MM-DD"
-                  value-format="YYYY-MM-DD"
-                  :default-value="getDefaultDateRangeDates()"
-                  @change="onStatsDateRangeChange"
-                />
-              </div>
+            <div class="stats-filters">
+              <el-date-picker
+                v-model="statsDateRange"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                format="YYYY-MM-DD"
+                value-format="YYYY-MM-DD"
+                :default-value="getDefaultDateRangeDates()"
+                @change="onStatsDateRangeChange"
+              />
+              <el-switch
+                v-model="showAllProjectsStats"
+                active-text="所有项目"
+                inactive-text="我管理的项目"
+                style="margin-left: 15px;"
+                @change="onStatsProjectScopeChange"
+              />
+            </div>
               <div>
                 <el-button type="primary" @click="fetchProjectsStats">刷新统计</el-button>
                 <el-button type="success" :icon="Download" @click="exportStatisticalReportData">导出Excel</el-button>
@@ -332,6 +339,7 @@ const batchLoading = ref(false)
 
 // 统计报表相关数据
 const statsDateRange = ref([])
+const showAllProjectsStats = ref(false)  // 是否显示所有项目统计
 const statsLoading = ref(false)
 const overallStats = ref({
   totalHours: 0,
@@ -897,6 +905,12 @@ const initBatchDateRange = () => {
       }
     }
 
+    // 切换统计项目范围
+    const onStatsProjectScopeChange = (showAll) => {
+      console.log('切换统计项目范围:', showAll ? '所有项目' : '我管理的项目')
+      fetchProjectsStats()
+    }
+
     // 获取项目经理管理的所有项目的工时统计数据
     const fetchProjectsStats = async () => {
       if (!currentUser.value || !currentUser.value.id) {
@@ -912,15 +926,29 @@ const initBatchDateRange = () => {
       try {
         statsLoading.value = true
 
-        // 获取项目经理管理的项目列表
-        if (managedProjects.value.length === 0) {
-          await fetchManagedProjects()
-        }
+        // 根据选择的范围获取项目列表
+        if (showAllProjectsStats.value) {
+          // 获取所有项目列表
+          if (allProjects.value.length === 0) {
+            await fetchAllProjects()
+          }
+          
+          if (allProjects.value.length === 0) {
+            ElMessage.warning('未找到任何项目')
+            statsLoading.value = false
+            return
+          }
+        } else {
+          // 获取项目经理管理的项目列表
+          if (managedProjects.value.length === 0) {
+            await fetchManagedProjects()
+          }
 
-        if (managedProjects.value.length === 0) {
-          ElMessage.warning('未找到您管理的项目')
-          statsLoading.value = false
-          return
+          if (managedProjects.value.length === 0) {
+            ElMessage.warning('未找到您管理的项目')
+            statsLoading.value = false
+            return
+          }
         }
 
         // 获取所有项目的工时统计数据
@@ -948,45 +976,46 @@ const initBatchDateRange = () => {
         // 处理项目工时数据
         const projectHours = stats.projects || {}
 
-        // 过滤出项目经理管理的项目
-        const managedProjectIds = managedProjects.value.map(p => p.id)
+        // 根据选择的范围确定要统计的项目
+        const targetProjects = showAllProjectsStats.value ? allProjects.value : managedProjects.value
+        const targetProjectIds = targetProjects.map(p => p.id)
 
-        // 只保留项目经理管理的项目的工时数据
-        const managedProjectHours = {}
-        let managedTotalHours = 0
+        // 只保留目标项目的工时数据
+        const targetProjectHours = {}
+        let targetTotalHours = 0
 
-        // 从所有项目中筛选出管理的项目，并计算总工时
+        // 从所有项目中筛选出目标项目，并计算总工时
         Object.entries(projectHours).forEach(([projectId, hours]) => {
           const projectIdNum = parseInt(projectId)
-          if (managedProjectIds.includes(projectIdNum)) {
-            managedProjectHours[projectId] = hours
-            managedTotalHours += hours
+          if (targetProjectIds.includes(projectIdNum)) {
+            targetProjectHours[projectId] = hours
+            targetTotalHours += hours
           }
         })
 
         // 构建项目统计数据
-        projectsStats.value = Object.entries(managedProjectHours)
+        projectsStats.value = Object.entries(targetProjectHours)
           .map(([projectId, hours]) => {
-            const project = managedProjects.value.find(p => p.id === parseInt(projectId)) || { name: '未知项目' }
+            const project = targetProjects.find(p => p.id === parseInt(projectId)) || { name: '未知项目' }
             return {
               projectId: parseInt(projectId),
               projectName: project.name,
               totalHours: hours,
-              percentage: managedTotalHours > 0 ? ((hours / managedTotalHours) * 100).toFixed(2) + '%' : '0%'
+              percentage: targetTotalHours > 0 ? ((hours / targetTotalHours) * 100).toFixed(2) + '%' : '0%'
             }
           })
 
         // 按工时降序排序
         projectsStats.value.sort((a, b) => b.totalHours - a.totalHours)
 
-        // 更新总体统计数据，只包含项目经理管理的项目
-        let managedRecordCount = 0
-        let managedOvertimeHours = 0
-        let managedAverageHoursPerRecord = 0
-        let managedWorkload = 0
+        // 更新总体统计数据，包含目标范围的项目
+        let targetRecordCount = 0
+        let targetOvertimeHours = 0
+        let targetAverageHoursPerRecord = 0
+        let targetWorkload = 0
 
-        // 获取管理项目的详细统计数据
-        for (const project of managedProjects.value) {
+        // 获取目标项目的详细统计数据
+        for (const project of targetProjects) {
           try {
             // 获取项目详情统计数据
             const projectResponse = await api.get(`/api/worktime/project/${project.id}/stats`, {
@@ -1006,12 +1035,12 @@ const initBatchDateRange = () => {
             }
 
             // 累加记录数和加班工时
-            managedRecordCount += projectStats.recordCount || 0
-            managedOvertimeHours += projectStats.overtimeHours || 0
+            targetRecordCount += projectStats.recordCount || 0
+            targetOvertimeHours += projectStats.overtimeHours || 0
 
             // 工作负荷取平均值
             if (projectStats.workload) {
-              managedWorkload += projectStats.workload
+              targetWorkload += projectStats.workload
             }
           } catch (error) {
             console.error(`获取项目 ${project.id} 统计数据失败:`, error)
@@ -1019,28 +1048,28 @@ const initBatchDateRange = () => {
         }
 
         // 计算平均工时/记录
-        managedAverageHoursPerRecord = managedRecordCount > 0 ? managedTotalHours / managedRecordCount : 0
+        targetAverageHoursPerRecord = targetRecordCount > 0 ? targetTotalHours / targetRecordCount : 0
 
         // 计算平均工作负荷
-        managedWorkload = managedProjects.value.length > 0 ? managedWorkload / managedProjects.value.length : 0
+        targetWorkload = targetProjects.length > 0 ? targetWorkload / targetProjects.length : 0
 
         // 更新总体统计数据
         overallStats.value = {
-          totalHours: managedTotalHours,
-          recordCount: managedRecordCount,
-          averageHoursPerRecord: managedAverageHoursPerRecord,
-          overtimeHours: managedOvertimeHours,
-          workload: managedWorkload
+          totalHours: targetTotalHours,
+          recordCount: targetRecordCount,
+          averageHoursPerRecord: targetAverageHoursPerRecord,
+          overtimeHours: targetOvertimeHours,
+          workload: targetWorkload
         }
 
         console.log('获取到项目统计数据:', projectsStats.value)
         console.log('更新后的总体统计数据:', overallStats.value)
 
-        // 获取所有管理项目的成员工时统计
+        // 获取所有目标项目的成员工时统计
         allMemberStats.value = [] // 清空之前的数据
 
-        // 为每个管理的项目获取成员工时统计
-        for (const project of managedProjects.value) {
+        // 为每个目标项目获取成员工时统计
+        for (const project of targetProjects) {
           try {
             // 获取项目成员列表
             const membersResponse = await api.get(`/api/projects/${project.id}/members`)

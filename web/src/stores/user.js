@@ -1,13 +1,16 @@
 import { defineStore } from 'pinia'
 import api from '../utils/axios'
 import { ElMessage } from 'element-plus'
+import { getItem, setItem, removeItem, clearUserData } from '../utils/storage'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    user: null,
-    token: null, // 不再从 localStorage 获取 token，因为使用 HttpOnly Cookie
-    permissions: JSON.parse(localStorage.getItem('permissions')) || [],
-    menus: JSON.parse(localStorage.getItem('menus')) || []
+    user: getItem('user', null),
+    token: getItem('token', null), // 保留token作为认证状态标识
+    permissions: getItem('permissions', []),
+    menus: getItem('menus', []),
+    isLoading: false, // 添加加载状态
+    isUserDataLoaded: false // 标记用户数据是否已完全加载
   }),
   getters: {
     isAuthenticated: (state) => !!state.user || !!state.token,
@@ -55,6 +58,9 @@ export const useUserStore = defineStore('user', {
         if (response.data && response.data.user && response.data.token) {
             this.user = response.data.user
             this.token = response.data.token // 实际 token 由后端通过 HttpOnly Cookie 设置，这里仅作为标识
+            // 保存用户信息到localStorage
+            setItem('user', this.user)
+            setItem('token', this.token)
             // 在登录成功后立即获取用户权限和菜单
             await this.fetchUserPermissions()
             await this.fetchUserMenus()
@@ -76,8 +82,8 @@ export const useUserStore = defineStore('user', {
         this.token = null // 清除 token 标识，实际 HttpOnly Cookie 由后端清除
         this.permissions = []
         this.menus = []
-        localStorage.removeItem('permissions')
-        localStorage.removeItem('menus')
+        // 清除localStorage中的所有用户相关数据
+        clearUserData()
         ElMessage.success('登出成功')
       } catch (error) {
         console.error('登出操作失败:', error)
@@ -85,8 +91,8 @@ export const useUserStore = defineStore('user', {
         this.token = null // 清除 token 标识
         this.permissions = []
         this.menus = []
-        localStorage.removeItem('permissions')
-        localStorage.removeItem('menus')
+        // 即使出错也要清除localStorage
+        clearUserData()
       }
     },
     async fetchUser() {
@@ -111,6 +117,9 @@ export const useUserStore = defineStore('user', {
             if (userData && userData.id) {
                 this.user = userData;
                 this.token = 'authenticated'; // 设置认证标识
+                // 保存用户信息到localStorage
+                setItem('user', this.user)
+                setItem('token', this.token)
                 
                 // 获取用户权限和菜单（不阻塞主流程）
                 try {
@@ -136,6 +145,9 @@ export const useUserStore = defineStore('user', {
                             console.log('从500错误中恢复用户数据:', userData);
                             this.user = userData;
                             this.token = 'authenticated';
+                            // 保存用户信息到localStorage
+                            setItem('user', this.user)
+                            setItem('token', this.token)
                             
                             // 尝试获取权限和菜单
                             try {
@@ -157,8 +169,7 @@ export const useUserStore = defineStore('user', {
             this.token = null;
             this.permissions = [];
             this.menus = [];
-            localStorage.removeItem('permissions');
-            localStorage.removeItem('menus');
+            clearUserData();
             throw error; // 重新抛出错误以便调用者处理
         }
     },
@@ -168,7 +179,7 @@ export const useUserStore = defineStore('user', {
             const response = await api.get('/api/auth/permissions');
             if (response.data) {
                 this.permissions = response.data;
-                localStorage.setItem('permissions', JSON.stringify(this.permissions));
+                setItem('permissions', this.permissions);
                 this.token = 'authenticated'; // 设置一个标识表示已认证
             }
         } catch (error) {
@@ -181,7 +192,7 @@ export const useUserStore = defineStore('user', {
             const response = await api.get('/api/menus/user/tree');
             if (response.data) {
                 this.menus = response.data;
-                localStorage.setItem('menus', JSON.stringify(this.menus));
+                setItem('menus', this.menus);
                 if (!this.token) {
                     this.token = 'authenticated'; // 设置一个标识表示已认证
                 }

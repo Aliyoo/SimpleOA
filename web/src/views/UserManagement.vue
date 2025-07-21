@@ -4,27 +4,32 @@
     <el-button type="primary" @click="showAddDialog">添加用户</el-button>
     
     <el-table :data="userList" style="width: 100%">
-      <el-table-column prop="username" label="用户名" width="180" />
-      <el-table-column prop="realName" label="真实姓名" width="180" />
+      <el-table-column prop="username" label="用户名" />
+      <el-table-column prop="realName" label="真实姓名" />
       <el-table-column prop="email" label="邮箱" />
       <el-table-column prop="phoneNumber" label="电话" />
-      <el-table-column label="状态" width="120">
+      <el-table-column label="状态">
         <template #default="scope">
           <el-switch
             v-model="scope.row.enabled"
             :active-value="1"
             :inactive-value="0"
+            active-text="启用"
+            inactive-text="禁用"
             :loading="scope.row.statusLoading"
             :before-change="() => confirmStatusChange(scope.row)"
           />
         </template>
       </el-table-column>
-      <el-table-column label="角色" width="200">
+      <el-table-column label="角色">
         <template #default="scope">
-          <el-tag v-for="role in (Array.isArray(scope.row.roles) ? scope.row.roles : [])" :key="role.id" style="margin-right: 5px">{{ role.name }}</el-tag>
+          <template v-if="scope.row.roles && scope.row.roles.length > 0">
+            <el-tag v-for="role in scope.row.roles" :key="role.id" style="margin-right: 5px">{{ role.name }}</el-tag>
+          </template>
+          <span v-else style="color: #909399;">暂无角色</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="scope">
           <el-button size="small" @click="handleEdit(scope.row)">编辑</el-button>
           <el-button size="small" type="danger" @click="handleDelete(scope.row)">删除</el-button>
@@ -137,11 +142,27 @@ const rules = {
 const fetchUsers = async () => {
   try {
     const response = await api.get('/api/users')
-    userList.value = response.data.map(user => ({ 
+    console.log('获取到的用户数据:', response.data) // 添加日志
+    userList.value = response.data.map(user => {
+      // 处理enabled字段，确保是数字类型
+      let enabledValue = user.enabled
+      if (typeof enabledValue === 'string') {
+        enabledValue = parseInt(enabledValue, 10)
+      } else if (typeof enabledValue === 'boolean') {
+        enabledValue = enabledValue ? 1 : 0
+      } else if (enabledValue === null || enabledValue === undefined) {
+        enabledValue = 0 // 默认为禁用
+      }
+      
+      console.log(`用户 ${user.username} 的enabled值:`, user.enabled, '->', enabledValue)
+      
+      return { 
         ...user, 
-        enabled: typeof user.enabled === 'string' ? parseInt(user.enabled, 10) : user.enabled, 
+        enabled: enabledValue, 
         statusLoading: false 
-    }))
+      }
+    })
+    console.log('处理后的用户列表:', userList.value) // 添加日志
   } catch (error) {
     ElMessage.error('获取用户列表失败: ' + error.message)
   }

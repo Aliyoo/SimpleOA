@@ -258,6 +258,24 @@ const router = createRouter({
           meta: { requiresAuth: true }
         },
         {
+          path: 'calendar',
+          name: 'Calendar',
+          component: () => import('@/views/CalendarView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'workday-management',
+          name: 'WorkdayManagement',
+          component: () => import('@/views/WorkdayManagement.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'holiday-management',
+          name: 'HolidayManagement',
+          component: () => import('@/views/HolidayManagement.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
           path: 'profile',
           name: 'Profile',
           component: () => import('@/views/Profile.vue'),
@@ -290,32 +308,74 @@ const routePermissionMap = {
   'Notification': 'notification:view',
   'Announcement': 'announcement:view',
   'SystemConfig': 'system:view',
+  'Calendar': 'calendar:view',
+  'WorkdayManagement': 'workday:view',
+  'HolidayManagement': 'holiday:view',
   'Profile': 'profile:view'
 };
 
-router.beforeEach((to, from, next) => {
+// 添加全局状态标记
+let isUserRestoring = false;
+
+router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore();
 
   // 检查是否需要登录
   if (to.matched.some(record => record.meta.requiresAuth)) {
-    if (!userStore.isAuthenticated) {
+    // 如果没有认证状态且不在恢复过程中，跳转到登录页
+    if (!userStore.isAuthenticated && !isUserRestoring) {
       next({ name: 'Login', query: { redirect: to.fullPath } });
       return;
     }
-    // 即使有 token，也要验证其有效性，但避免不必要的重复验证
-    if (userStore.user) {
-      // 如果已经有用户信息，检查权限后继续导航
-      checkPermissionAndNavigate(to, next, userStore);
-    } else {
-      userStore.fetchUser().then(() => {
-        // 获取用户信息后检查权限
-        checkPermissionAndNavigate(to, next, userStore);
-      }).catch((error) => {
-        console.error("验证用户信息失败:", error);
-        // 认证失败，跳转到登录页
-        next({ name: 'Login', query: { redirect: to.fullPath } });
-      });
+    
+    // 如果有认证状态但没有用户信息，尝试获取用户信息
+    if (!userStore.user && userStore.isAuthenticated) {
+      if (!isUserRestoring) {
+        isUserRestoring = true;
+        try {
+          await userStore.fetchUser();
+          // 确保权限和菜单也已加载
+          if (userStore.permissions.length === 0) {
+            await userStore.fetchUserPermissions();
+          }
+          if (userStore.menus.length === 0) {
+            await userStore.fetchUserMenus();
+          }
+          isUserRestoring = false;
+          checkPermissionAndNavigate(to, next, userStore);
+        } catch (error) {
+          console.error("验证用户信息失败:", error);
+          isUserRestoring = false;
+          // 认证失败，跳转到登录页
+          next({ name: 'Login', query: { redirect: to.fullPath } });
+        }
+        return;
+      } else {
+        // 如果正在恢复过程中，等待一段时间再重试
+        setTimeout(() => {
+          next({ ...to, replace: true });
+        }, 100);
+        return;
+      }
     }
+    
+    // 已经有用户信息，但可能缺少权限或菜单，尝试补全
+    if (userStore.user && (userStore.permissions.length === 0 || userStore.menus.length === 0)) {
+      try {
+        if (userStore.permissions.length === 0) {
+          await userStore.fetchUserPermissions();
+        }
+        if (userStore.menus.length === 0) {
+          await userStore.fetchUserMenus();
+        }
+      } catch (error) {
+        console.warn("补全用户权限或菜单失败:", error);
+        // 不阻塞导航，继续执行
+      }
+    }
+    
+    // 检查权限后继续导航
+    checkPermissionAndNavigate(to, next, userStore);
     return;
   }
 

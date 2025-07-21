@@ -78,4 +78,23 @@ public interface WorkTimeRecordRepository extends JpaRepository<WorkTimeRecord, 
     // 按日期范围统计总工时
     @Query("SELECT SUM(w.hours) FROM WorkTimeRecord w WHERE w.date BETWEEN :startDate AND :endDate")
     Double sumHoursByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    
+    // 优化的聚合统计查询
+    @Query("SELECT w.project.id, SUM(w.hours) as totalHours " +
+           "FROM WorkTimeRecord w " +
+           "WHERE w.date BETWEEN :startDate AND :endDate " +
+           "GROUP BY w.project.id " +
+           "ORDER BY totalHours DESC")
+    List<Object[]> aggregateProjectStats(@Param("startDate") LocalDate startDate, 
+                                        @Param("endDate") LocalDate endDate);
+    
+    // 获取基本统计数据（总工时、记录数、加班工时）
+    @Query("SELECT " +
+           "SUM(w.hours), " +
+           "COUNT(w), " +
+           "SUM(CASE WHEN w.hours > 8.0 THEN (w.hours - 8.0) ELSE 0 END) " +
+           "FROM WorkTimeRecord w " +
+           "WHERE w.date BETWEEN :startDate AND :endDate")
+    Object[] getBasicStats(@Param("startDate") LocalDate startDate, 
+                          @Param("endDate") LocalDate endDate);
 }

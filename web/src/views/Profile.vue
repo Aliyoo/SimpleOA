@@ -28,7 +28,7 @@
       </el-tab-pane>
       
       <el-tab-pane label="修改密码" name="password">
-        <el-form :model="passwordForm" label-width="100px" class="password-form" :rules="passwordRules" ref="passwordForm">
+        <el-form :model="passwordForm" label-width="100px" class="password-form" :rules="passwordRules" ref="passwordFormRef">
           <el-form-item label="原密码" prop="oldPassword">
             <el-input v-model="passwordForm.oldPassword" type="password" show-password />
           </el-form-item>
@@ -54,10 +54,13 @@
 import { ref, reactive, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '../stores/user'
 
 const activeTab = ref('info')
+const userStore = useUserStore()
 
 const userInfo = reactive({
+  id: null,
   username: '',
   name: '',
   email: '',
@@ -97,37 +100,76 @@ const passwordFormRef = ref(null)
 
 const fetchUserInfo = async () => {
   try {
-    const response = await api.get('/api/user/profile')
+    const response = await api.get('/api/auth/profile')
     Object.assign(userInfo, response.data)
   } catch (error) {
-    ElMessage.error('获取用户信息失败: ' + error.message)
+    console.error('获取用户信息失败:', error)
+    ElMessage.error('获取用户信息失败: ' + (error.response?.data?.message || error.message))
   }
 }
 
 const updateProfile = async () => {
   try {
-    await api.put('/api/user/profile', userInfo)
-    ElMessage.success('个人信息更新成功')
+    const response = await api.put('/api/auth/profile', {
+      name: userInfo.name,
+      email: userInfo.email,
+      phone: userInfo.phone
+    })
+    
+    if (response.data.status === 'success') {
+      // 更新用户store中的信息
+      if (response.data.user) {
+        userStore.user = response.data.user
+        // 同步更新本地缓存
+        const { setItem } = await import('../utils/storage')
+        setItem('user', userStore.user)
+      }
+      ElMessage.success('个人信息更新成功')
+    } else {
+      ElMessage.error('更新失败: ' + response.data.message)
+    }
   } catch (error) {
-    ElMessage.error('更新失败: ' + error.message)
+    console.error('更新个人信息失败:', error)
+    ElMessage.error('更新失败: ' + (error.response?.data?.message || error.message))
   }
 }
 
-const changePassword = () => {
-  passwordFormRef.value.validate(async (valid) => {
+const changePassword = async () => {
+  if (!passwordFormRef.value) {
+    ElMessage.error('表单引用未找到，请刷新页面重试')
+    return
+  }
+  
+  try {
+    const valid = await passwordFormRef.value.validate()
     if (valid) {
-      try {
-        await api.post('/api/user/change-password', {
-          oldPassword: passwordForm.oldPassword,
-          newPassword: passwordForm.newPassword
-        })
+      const response = await api.post('/api/auth/change-password', {
+        oldPassword: passwordForm.oldPassword,
+        newPassword: passwordForm.newPassword
+      })
+      
+      if (response.data.status === 'success') {
         ElMessage.success('密码修改成功')
+        // 重置表单数据
+        passwordForm.oldPassword = ''
+        passwordForm.newPassword = ''
+        passwordForm.confirmPassword = ''
+        // 清除表单验证状态
         passwordFormRef.value.resetFields()
-      } catch (error) {
-        ElMessage.error('密码修改失败: ' + error.message)
+      } else {
+        ElMessage.error('密码修改失败: ' + response.data.message)
       }
     }
-  })
+  } catch (error) {
+    console.error('密码修改失败:', error)
+    if (error.response?.data?.message) {
+      ElMessage.error('密码修改失败: ' + error.response.data.message)
+    } else if (error.message) {
+      ElMessage.error('密码修改失败: ' + error.message)
+    } else {
+      ElMessage.error('密码修改失败，请重试')
+    }
+  }
 }
 
 onMounted(() => {

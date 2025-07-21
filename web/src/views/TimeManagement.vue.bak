@@ -56,7 +56,7 @@
         </el-form>
       </el-tab-pane>
 
-      <el-tab-pane label="审批列表" name="approval">
+      <el-tab-pane label="工时列表" name="approval">
         <div class="approval-container">
           <!-- 搜索和筛选区域 -->
           <div class="search-bar">

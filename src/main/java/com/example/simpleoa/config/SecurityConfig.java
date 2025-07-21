@@ -63,12 +63,43 @@ public class    SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // 允许所有来源 - 使用 allowedOriginPatterns 而不是 allowedOrigins 来支持 credentials
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
-        configuration.setExposedHeaders(Arrays.asList("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"));
+        
+        // 明确指定允许的域名，而不是使用通配符
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "http://192.168.*.*:*",
+            "http://10.*.*.*:*"
+        ));
+        
+        // 允许的HTTP方法
+        configuration.setAllowedMethods(Arrays.asList(
+            "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"
+        ));
+        
+        // 允许的请求头
+        configuration.setAllowedHeaders(Arrays.asList(
+            "Authorization", 
+            "Content-Type", 
+            "X-Requested-With", 
+            "Accept", 
+            "Origin", 
+            "Access-Control-Request-Method", 
+            "Access-Control-Request-Headers",
+            "Cache-Control"
+        ));
+        
+        // 暴露的响应头
+        configuration.setExposedHeaders(Arrays.asList(
+            "Access-Control-Allow-Origin", 
+            "Access-Control-Allow-Credentials",
+            "Set-Cookie"
+        ));
+        
+        // 允许发送Cookie
         configuration.setAllowCredentials(true);
+        
+        // 预检请求缓存时间（秒）
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

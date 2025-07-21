@@ -1,10 +1,12 @@
 package com.example.simpleoa.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.Set;
 
@@ -12,6 +14,7 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"users", "permissions"})
 public class Role {
     @Override
     public int hashCode() {
@@ -56,7 +59,7 @@ public class Role {
         joinColumns = @JoinColumn(name = "role_id"),
         inverseJoinColumns = @JoinColumn(name = "user_id")
     )
-    @JsonIgnore
+    @JsonBackReference
     private Set<User> users;
 
     @ManyToMany(fetch = FetchType.EAGER)

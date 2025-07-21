@@ -52,7 +52,7 @@
         </el-form>
       </el-tab-pane>
       
-      <el-tab-pane label="审批列表" name="approval">
+      <el-tab-pane label="外包列表" name="approval">
         <el-table :data="approvalList" style="width: 100%">
           <el-table-column prop="projectName" label="项目名称" width="180" />
           <el-table-column prop="company" label="外包公司" width="180" />

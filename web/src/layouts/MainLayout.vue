@@ -28,7 +28,7 @@
             </el-menu-item>
             <el-menu-item index="/project-manager-time">
               <el-icon><Clock /></el-icon>
-              <span>项目经理工时</span>
+              <span>项目工时</span>
             </el-menu-item>
             <el-menu-item index="/leave-management">
               <el-icon><Calendar /></el-icon>
@@ -45,6 +45,18 @@
             <el-menu-item index="/approvals">
               <el-icon><Document /></el-icon>
               <span>审批管理</span>
+            </el-menu-item>
+            <el-menu-item index="/calendar">
+              <el-icon><Calendar /></el-icon>
+              <span>日历管理</span>
+            </el-menu-item>
+            <el-menu-item index="/workday-management">
+              <el-icon><Calendar /></el-icon>
+              <span>工作日管理</span>
+            </el-menu-item>
+            <el-menu-item index="/holiday-management">
+              <el-icon><Calendar /></el-icon>
+              <span>节假日管理</span>
             </el-menu-item>
           </el-sub-menu>
 
@@ -183,7 +195,7 @@
             <el-dropdown>
               <span class="user-dropdown">
                 <el-avatar size="small" :src="userStore.user?.avatar || defaultAvatar" style="margin-right: 8px;"></el-avatar>
-                {{ userStore.user?.username || '用户' }}
+                {{ userStore.user?.realName || userStore.user?.name || userStore.user?.username || '用户' }}
                 <el-icon class="el-icon--right"><arrow-down /></el-icon>
               </span>
               <template #dropdown>
@@ -272,6 +284,7 @@ const getIconComponent = (iconName) => {
     'notification': 'Bell',
     'announcement': 'Notification',
     'system-config': 'Tools',
+    'calendar': 'Calendar',
     'profile': 'User',
     'oa': 'OfficeBuilding',
     'pm': 'Folder',

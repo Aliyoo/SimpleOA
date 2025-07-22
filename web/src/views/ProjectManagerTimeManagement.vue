@@ -355,6 +355,9 @@ const currentProjectDetail = ref({})
 const memberStats = ref([])
 const allMemberStats = ref([])
 
+// 工作日缓存
+const workdayCache = ref(new Map())
+
 // 获取项目经理管理的项目列表
 const fetchManagedProjects = async () => {
   if (!currentUser.value || !currentUser.value.id) {

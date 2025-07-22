@@ -138,7 +138,7 @@ public class PermissionServiceImpl implements PermissionService {
         Map<String, String> resourceNameMap = new HashMap<>();
         resourceNameMap.put("DASHBOARD", "仪表盘");
         resourceNameMap.put("WORKTIME", "工时管理");
-        resourceNameMap.put("MANAGER_WORKTIME", "项目经理工时");
+        resourceNameMap.put("MANAGER_WORKTIME", "项目工时");
         resourceNameMap.put("LEAVE", "请假管理");
         resourceNameMap.put("TRAVEL", "出差管理");
         resourceNameMap.put("REIMBURSEMENT", "报销管理");

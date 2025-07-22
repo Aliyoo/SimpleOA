@@ -42,7 +42,7 @@ VALUES
 INSERT INTO menu (id, name, path, component, parent_id, icon, sort_order, is_hidden, description)
 VALUES
 (10, '工时管理', '/time-management', 'TimeManagement', 2, 'Clock', 1, FALSE, '工时管理'),
-(11, '项目经理工时', '/project-manager-time', 'ProjectManagerTimeManagement', 2, 'Clock', 2, FALSE, '项目经理工时管理'),
+(11, '项目工时', '/project-manager-time', 'ProjectManagerTimeManagement', 2, 'Clock', 2, FALSE, '项目工时管理'),
 (12, '请假管理', '/leave-management', 'LeaveManagement', 2, 'Calendar', 3, FALSE, '请假管理'),
 (13, '出差管理', '/travel-management', 'TravelManagement', 2, 'Position', 4, FALSE, '出差管理'),
 (14, '报销管理', '/reimbursement', 'Reimbursement', 2, 'Wallet', 5, FALSE, '报销管理'),
@@ -90,11 +90,11 @@ VALUES
 ('time:approve', '审批工时', 'FUNCTIONAL', 'WORKTIME', 'APPROVE', TRUE),
 ('time:batch', '批量操作工时', 'FUNCTIONAL', 'WORKTIME', 'BATCH', TRUE);
 
--- 功能权限 - 项目经理工时
+-- 功能权限 - 项目工时
 INSERT INTO permission (name, description, permission_type, resource, action, is_active)
 VALUES
-('manager-time:view', '查看项目经理工时', 'FUNCTIONAL', 'MANAGER_WORKTIME', 'READ', TRUE),
-('manager-time:manage', '管理项目经理工时', 'FUNCTIONAL', 'MANAGER_WORKTIME', 'MANAGE', TRUE);
+('manager-time:view', '查看项目工时', 'FUNCTIONAL', 'MANAGER_WORKTIME', 'READ', TRUE),
+('manager-time:manage', '管理项目工时', 'FUNCTIONAL', 'MANAGER_WORKTIME', 'MANAGE', TRUE);
 
 -- 功能权限 - 请假管理
 INSERT INTO permission (name, description, permission_type, resource, action, is_active)

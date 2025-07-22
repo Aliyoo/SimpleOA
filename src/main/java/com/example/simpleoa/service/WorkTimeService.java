@@ -21,7 +21,10 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
+@Transactional
 public class WorkTimeService {
     private final WorkTimeRecordRepository workTimeRecordRepository;
 
@@ -63,22 +66,35 @@ public class WorkTimeService {
         List<WorkTimeRecord> savedRecords = new ArrayList<>();
         Map<String, WorkTimeRecord> existingRecordsMap = new HashMap<>();
 
-        // 首先收集所有需要检查的用户-项目-日期组合
+        // ========== 性能优化：批量查询现有记录 ==========
+        // 收集所有需要检查的用户-项目-日期组合
+        List<String> checkKeys = new ArrayList<>();
         for (WorkTimeRecord record : workTimeRecords) {
             if (record.getUser() != null && record.getProject() != null && record.getDate() != null) {
-                // 查找是否已存在相同用户、项目和日期的记录
-                List<WorkTimeRecord> existingRecords = workTimeRecordRepository.findByUserAndProjectAndDate(
-                        record.getUser(), record.getProject(), record.getDate());
+                String key = record.getUser().getId() + "-" + record.getProject().getId() + "-" + record.getDate();
+                checkKeys.add(key);
+            }
+        }
 
-                // 如果存在记录，保存到映射中以便后续更新
-                if (!existingRecords.isEmpty()) {
-                    String key = record.getUser().getId() + "-" + record.getProject().getId() + "-" + record.getDate();
-                    existingRecordsMap.put(key, existingRecords.get(0));
+        // 批量查询现有记录，避免N+1问题
+        if (!checkKeys.isEmpty()) {
+            List<String> existingKeys = workTimeRecordRepository.findExistingKeys(checkKeys);
+            
+            // 如果有现有记录，批量获取它们
+            if (!existingKeys.isEmpty()) {
+                List<Object[]> existingRecordsData = workTimeRecordRepository.findByUserProjectDateKeys(existingKeys);
+                for (Object[] data : existingRecordsData) {
+                    String key = (String) data[0];
+                    WorkTimeRecord record = (WorkTimeRecord) data[1];
+                    existingRecordsMap.put(key, record);
                 }
             }
         }
 
-        // 验证工时记录
+        // ========== 批量处理工时记录 ==========
+        List<WorkTimeRecord> recordsToSave = new ArrayList<>();
+        List<WorkTimeRecord> recordsToUpdate = new ArrayList<>();
+
         for (WorkTimeRecord record : workTimeRecords) {
             // 确保工时数在 0-8 之间
             if (record.getHours() < 0) {
@@ -91,10 +107,8 @@ public class WorkTimeService {
             String key = record.getUser().getId() + "-" + record.getProject().getId() + "-" + record.getDate();
             WorkTimeRecord existingRecord = existingRecordsMap.get(key);
 
-            WorkTimeRecord savedRecord;
-
             if (existingRecord != null) {
-                // 如果存在记录，则更新工时和描述
+                // 更新现有记录
                 existingRecord.setHours(record.getHours());
                 if (record.getDescription() != null && !record.getDescription().isEmpty()) {
                     existingRecord.setDescription(record.getDescription());
@@ -102,45 +116,68 @@ public class WorkTimeService {
                 if (record.getWorkType() != null && !record.getWorkType().isEmpty()) {
                     existingRecord.setWorkType(record.getWorkType());
                 }
-                // 保留原有的审批状态
                 if (record.isApproved()) {
                     existingRecord.setApproved(true);
                 }
                 if (record.getStatus() != null && !record.getStatus().isEmpty()) {
                     existingRecord.setStatus(record.getStatus());
                 }
-
-                // 保存更新后的记录
-                savedRecord = workTimeRecordRepository.save(existingRecord);
-                System.out.println("更新已存在的工时记录: 用户ID=" + record.getUser().getId() +
+                recordsToUpdate.add(existingRecord);
+                System.out.println("标记更新已存在的工时记录: 用户ID=" + record.getUser().getId() +
                                   ", 项目ID=" + record.getProject().getId() +
                                   ", 日期=" + record.getDate());
             } else {
-                // 如果不存在记录，则创建新记录
-                savedRecord = workTimeRecordRepository.save(record);
+                // 新建记录
+                recordsToSave.add(record);
+            }
+        }
 
-                try {
-                    // 获取项目经理作为审批人
-                    if (savedRecord.getProject() != null && savedRecord.getProject().getId() != null) {
-                        Project project = projectService.getProjectById(savedRecord.getProject().getId());
-                        if (project != null && project.getManager() != null) {
-                            // 创建审批流程
-                            ApprovalFlow approvalFlow = approvalFlowService.createApprovalFlow(savedRecord, project.getManager());
-                            
-                            // 如果工时记录已经是审批通过状态（比如项目经理填写的），同时更新审批流程状态
-                            if (savedRecord.isApproved()) {
-                                approvalFlowService.updateApprovalFlowStatus(approvalFlow.getId(), "APPROVED", "项目经理填写，自动审批通过");
-                                System.out.println("工时记录ID " + savedRecord.getId() + " 已自动审批通过");
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    // 如果创建审批流程失败，记录错误但不影响工时记录的保存
-                    System.err.println("创建审批流程失败: " + e.getMessage());
+        // ========== 批量保存操作 ==========
+        List<WorkTimeRecord> allRecordsToSave = new ArrayList<>();
+        allRecordsToSave.addAll(recordsToUpdate);  // 更新的记录
+        allRecordsToSave.addAll(recordsToSave);    // 新建的记录
+
+        // 使用批量保存，减少数据库往返
+        savedRecords = workTimeRecordRepository.saveAll(allRecordsToSave);
+
+        // ========== 批量创建审批流程 ==========
+        try {
+            // 收集需要创建审批流程的项目ID
+            Set<Long> projectIds = recordsToSave.stream()
+                .filter(r -> r.getProject() != null && r.getProject().getId() != null)
+                .map(r -> r.getProject().getId())
+                .collect(Collectors.toSet());
+
+            // 批量获取项目信息
+            Map<Long, Project> projectMap = new HashMap<>();
+            for (Long projectId : projectIds) {
+                Project project = projectService.getProjectById(projectId);
+                if (project != null) {
+                    projectMap.put(projectId, project);
                 }
             }
 
-            savedRecords.add(savedRecord);
+            // 为新记录创建审批流程
+            for (WorkTimeRecord savedRecord : savedRecords) {
+                if (recordsToSave.contains(savedRecord) && 
+                    savedRecord.getProject() != null && 
+                    savedRecord.getProject().getId() != null) {
+                    
+                    Project project = projectMap.get(savedRecord.getProject().getId());
+                    if (project != null && project.getManager() != null) {
+                        ApprovalFlow approvalFlow = approvalFlowService.createApprovalFlow(savedRecord, project.getManager());
+                        
+                        // 如果工时记录已经是审批通过状态，同时更新审批流程状态
+                        if (savedRecord.isApproved()) {
+                            approvalFlowService.updateApprovalFlowStatus(approvalFlow.getId(), "APPROVED", "项目经理填写，自动审批通过");
+                            System.out.println("工时记录ID " + savedRecord.getId() + " 已自动审批通过");
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // 如果创建审批流程失败，记录错误但不影响工时记录的保存
+            System.err.println("批量创建审批流程失败: " + e.getMessage());
         }
 
         return savedRecords;
@@ -584,5 +621,108 @@ public class WorkTimeService {
             }
         }
         return successCount;
+    }
+
+    // ========== 批量填写页面性能优化方法 ==========
+    
+    /**
+     * 批量获取多个项目的工时数据，优化前端批量填写页面性能
+     * 
+     * @param projectIds 项目ID列表
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @return 按项目分组的工时记录Map
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, List<WorkTimeRecord>> getBatchWorkTimeByProjects(
+            List<Long> projectIds, LocalDate startDate, LocalDate endDate) {
+        
+        // 使用优化的批量查询
+        List<WorkTimeRecord> allRecords = workTimeRecordRepository
+            .findByProjectIdsAndDateRangeWithJoins(projectIds, startDate, endDate);
+        
+        // 按项目ID分组
+        return allRecords.stream()
+            .collect(Collectors.groupingBy(record -> record.getProject().getId()));
+    }
+    
+    /**
+     * 批量获取项目用户统计信息，优化仪表板性能
+     * 
+     * @param projectIds 项目ID列表
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @return 统计信息列表
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getBatchProjectUserStats(
+            List<Long> projectIds, LocalDate startDate, LocalDate endDate) {
+        
+        List<Object[]> statsData = workTimeRecordRepository
+            .getProjectUserStatsBatch(projectIds, startDate, endDate);
+        
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object[] data : statsData) {
+            Map<String, Object> stat = new HashMap<>();
+            stat.put("projectId", data[0]);
+            stat.put("userId", data[1]);
+            stat.put("totalHours", data[2]);
+            stat.put("recordCount", data[3]);
+            stat.put("avgHours", data[4]);
+            result.add(stat);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 高效的存在性检查，避免查询完整记录
+     * 
+     * @param userId 用户ID
+     * @param projectId 项目ID
+     * @param date 日期
+     * @return 是否存在记录
+     */
+    @Transactional(readOnly = true)
+    public boolean existsWorkTimeRecord(Long userId, Long projectId, LocalDate date) {
+        return workTimeRecordRepository.existsByUserIdAndProjectIdAndDate(userId, projectId, date);
+    }
+    
+    /**
+     * 优化的流式过滤方法，替代原有的内存过滤
+     * 
+     * @param project 项目
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @param approved 审批状态
+     * @param user 用户
+     * @param workType 工作类型
+     * @return 过滤后的记录列表
+     */
+    @Transactional(readOnly = true)
+    public List<WorkTimeRecord> getOptimizedFilteredRecords(
+            Project project,
+            LocalDate startDate,
+            LocalDate endDate,
+            Boolean approved,
+            User user,
+            String workType) {
+        
+        // 使用数据库层面的过滤，而不是内存过滤
+        if (project != null && approved != null) {
+            return workTimeRecordRepository.findByProjectAndDateBetweenAndApproved(
+                project, startDate, endDate, approved);
+        } else {
+            List<WorkTimeRecord> records = workTimeRecordRepository.findByProjectAndDateBetween(
+                project, startDate, endDate);
+            
+            // 只在必要时使用流过滤
+            return records.stream()
+                .filter(record -> approved == null || Boolean.valueOf(record.isApproved()).equals(approved))
+                .filter(record -> user == null || record.getUser().getId().equals(user.getId()))
+                .filter(record -> workType == null || workType.isEmpty() || workType.equals(record.getWorkType()))
+                .sorted((a, b) -> b.getDate().compareTo(a.getDate()))
+                .collect(Collectors.toList());
+        }
     }
 }

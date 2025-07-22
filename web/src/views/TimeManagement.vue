@@ -79,7 +79,7 @@
         </el-form>
         </div>
 
-        <!-- 审批列表 Tab -->
+        <!-- 工时列表 Tab -->
         <div v-show="activeTab === 'approval'" class="tab-pane">
           <div class="approval-container">
           <!-- 搜索和筛选区域 -->
@@ -468,7 +468,7 @@ import { Calendar } from '@element-plus/icons-vue'
 const tabs = [
   { name: 'report', label: '工时填报' },
   { name: 'batch', label: '批量填写' },
-  { name: 'approval', label: '审批列表' },
+  { name: 'approval', label: '工时列表' },
   { name: 'statistics', label: '统计报表' }
 ]
 
@@ -535,7 +535,7 @@ const batchDates = ref([])
     const batchLoading = ref(false)
     const workdayCache = ref(new Map()) // 工作日缓存
 
-// 审批列表相关数据
+// 工时列表相关数据
 const approvalLoading = ref(false)
 const approvalSearchForm = reactive({
   projectId: '',
@@ -705,7 +705,7 @@ const fetchProjects = async (forceRefresh = false) => {
       }
     }
 
-    // 搜索审批列表
+    // 搜索工时列表
     const searchApprovalList = () => {
       approvalPagination.currentPage = 1 // 重置到第一页
       fetchApprovalList()
@@ -1779,7 +1779,7 @@ const fetchProjects = async (forceRefresh = false) => {
 
     onMounted(async () => {
       try {
-        // 初始化审批搜索表单
+        // 初始化工时列表搜索表单
         initApprovalSearchForm()
 
         // 在页面加载时确保从缓存中获取用户信息，如果没有则从服务器获取
@@ -1797,7 +1797,7 @@ const fetchProjects = async (forceRefresh = false) => {
         // 先获取项目列表
         await fetchProjects()
 
-        // 然后获取审批列表
+        // 然后获取工时列表
         await fetchApprovalList()
       } catch (error) {
         console.error('组件初始化失败:', error)

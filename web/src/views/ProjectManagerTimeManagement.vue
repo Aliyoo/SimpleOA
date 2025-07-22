@@ -104,7 +104,7 @@
                         :controls="false"
                         size="small"
                         style="width: 60px"
-                        :disabled="!isProjectManager(project)"
+                        :disabled="!isProjectManager(project) || !isWorkdayForDate(date)"
                         @change="validateHours(scope.row.hours[date])"
                       />
                     </template>
@@ -650,6 +650,85 @@ const initBatchDateRange = () => {
       }
     }
 
+    // 获取工作日数据
+    const fetchWorkdays = async (dateRange) => {
+      if (!dateRange || dateRange.length !== 2) {
+        console.warn('日期范围无效')
+        return
+      }
+      
+      const cacheKey = `${dateRange[0]}_${dateRange[1]}`
+      if (workdayCache.value.has(cacheKey)) {
+        console.log('使用缓存的工作日数据')
+        return workdayCache.value.get(cacheKey)
+      }
+      
+      try {
+        const startDate = new Date(dateRange[0])
+        const endDate = new Date(dateRange[1])
+        
+        const response = await api.get('/api/workdays/by-range', {
+          params: {
+            startDate: dateRange[0],
+            endDate: dateRange[1]
+          }
+        })
+        
+        const workdays = response.data || []
+        // 后端已修复时区问题，直接使用日期字符串
+        const workdaySet = new Set(workdays.map(wd => {
+          // 如果后端返回的是 'yyyy-MM-dd' 格式，直接使用
+          if (typeof wd.date === 'string' && wd.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return wd.date
+          }
+          // 如果是时间戳格式，则提取日期部分
+          return wd.date.split('T')[0]
+        }))
+        
+        // 缓存结果
+        workdayCache.value.set(cacheKey, workdaySet)
+        console.log('获取到工作日数据:', workdaySet.size, '个工作日')
+        console.log('工作日列表:', Array.from(workdaySet).sort())
+        
+        return workdaySet
+      } catch (error) {
+        console.error('获取工作日数据失败:', error)
+        ElMessage.error('获取工作日数据失败')
+        return new Set()
+      }
+    }
+    
+    // 检查是否为工作日
+    const isWorkday = async (date) => {
+      if (!batchDateRange.value || batchDateRange.value.length !== 2) {
+        // 如果没有日期范围，默认按周末判断
+        const day = new Date(date).getDay()
+        return day !== 0 && day !== 6
+      }
+      
+      const workdaySet = await fetchWorkdays(batchDateRange.value)
+      return workdaySet.has(date)
+    }
+    
+    // 同步检查是否为工作日（用于模板中的禁用状态）
+    const isWorkdayForDate = (date) => {
+      if (!batchDateRange.value || batchDateRange.value.length !== 2) {
+        // 如果没有日期范围，默认按周末判断
+        const day = new Date(date).getDay()
+        return day !== 0 && day !== 6
+      }
+      
+      const cacheKey = `${batchDateRange.value[0]}_${batchDateRange.value[1]}`
+      const workdaySet = workdayCache.value.get(cacheKey)
+      if (workdaySet) {
+        return workdaySet.has(date)
+      }
+      
+      // 如果没有缓存，默认按周末判断
+      const day = new Date(date).getDay()
+      return day !== 0 && day !== 6
+    }
+
     // 加载已提交的工时数据
     const loadSubmittedWorkTime = async () => {
       if (!batchDateRange.value || batchDateRange.value.length !== 2) {
@@ -829,6 +908,20 @@ const initBatchDateRange = () => {
       if (columnIndex > 2 && columnIndex < batchDates.value.length + 3) {
         const date = batchDates.value[columnIndex - 3]
         const day = new Date(date).getDay()
+        
+        // 检查是否在工作日缓存中
+        if (batchDateRange.value && batchDateRange.value.length === 2) {
+          const cacheKey = `${batchDateRange.value[0]}_${batchDateRange.value[1]}`
+          const workdaySet = workdayCache.value.get(cacheKey)
+          if (workdaySet) {
+            const isWorkday = workdaySet.has(date);
+            if (!isWorkday) {
+              return 'non-workday-cell' // 非工作日样式
+            }
+          }
+        }
+        
+        // 周末样式（作为备用）
         if (day === 0 || day === 6) {
           return 'weekend-cell'
         }
@@ -836,10 +929,34 @@ const initBatchDateRange = () => {
       return ''
     }
 
-    const onBatchDateRangeChange = (range) => {
+    const onBatchDateRangeChange = async (range) => {
       if (range && range.length === 2) {
-        batchDateRange.value = range
-        generateBatchTable()
+        try {
+          const startDate = new Date(range[0]);
+          const endDate = new Date(range[1]);
+
+          if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            console.error('日期格式无效');
+            ElMessage.warning('日期格式无效，请重新选择');
+            return;
+          }
+
+          if (startDate > endDate) {
+            console.error('开始日期不能晚于结束日期');
+            ElMessage.warning('开始日期不能晚于结束日期');
+            return;
+          }
+
+          batchDateRange.value = range;
+          
+          // 预加载工作日数据
+          await fetchWorkdays(range);
+          
+          generateBatchTable();
+        } catch (error) {
+          console.error('处理日期范围时出错:', error);
+          ElMessage.error('处理日期范围时出错: ' + error.message);
+        }
       }
     }
 

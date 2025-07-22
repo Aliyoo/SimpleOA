@@ -51,7 +51,7 @@
         </el-form>
       </el-tab-pane>
 
-      <el-tab-pane label="我的申请" name="myApplications">
+      <el-tab-pane label="请假列表" name="myApplications">
         <el-table :data="myApplicationsList" style="width: 100%">
           <el-table-column prop="leaveType" label="请假类型" width="120">
             <template #default="scope">
@@ -68,7 +68,6 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="applicant" label="申请人" width="120"/>
           <el-table-column prop="applyDate" label="申请时间" width="180"/>
         </el-table>
       </el-tab-pane>

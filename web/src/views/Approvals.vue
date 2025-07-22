@@ -20,21 +20,6 @@
           />
         </el-form-item>
 
-        <!-- 审批类型筛选 -->
-        <el-form-item label="审批类型">
-          <el-select
-            v-model="filterForm.requestType"
-            placeholder="全部类型"
-            clearable
-            style="width: 150px;"
-          >
-            <el-option label="工时" value="WORKTIME" />
-            <el-option label="请假" value="LEAVE" />
-            <el-option label="出差" value="BUSINESS_TRIP" />
-            <el-option label="报销" value="REIMBURSEMENT" />
-          </el-select>
-        </el-form-item>
-
         <!-- 审批状态筛选 -->
         <el-form-item label="审批状态">
           <el-select
@@ -50,7 +35,7 @@
         </el-form-item>
 
         <!-- 项目筛选 -->
-        <el-form-item label="项目" v-if="filterForm.requestType === 'WORKTIME'">
+        <el-form-item label="项目" v-if="activeTab === 'WORKTIME'">
           <el-select
             v-model="filterForm.projectId"
             placeholder="全部项目"
@@ -85,130 +70,375 @@
       <el-button type="danger" @click="handleBatchReject" :disabled="selectedApprovals.length === 0">批量拒绝</el-button>
     </div>
 
-    <!-- 使用更简单的表格结构，确保对齐 -->
-    <el-table
-      ref="approvalTable"
-      :data="filteredApprovals"
-      style="width: 100%"
-      border
-      :header-cell-style="{background:'#f5f7fa', color:'#606266'}"
-      :row-style="{height: '55px'}"
-      @selection-change="handleSelectionChange"
-      v-loading="loading"
-    >
-      <!-- 选择列 -->
-      <el-table-column type="selection" width="55" :selectable="isSelectable" />
+    <!-- TAB区域 -->
+    <el-tabs v-model="activeTab" class="approval-tabs" @tab-change="handleTabChange">
+      <!-- 工时审批 -->
+      <el-tab-pane label="工时审批" name="WORKTIME">
+        <el-table
+          ref="worktimeApprovalTable"
+          :data="getApprovalsByType('WORKTIME')"
+          style="width: 100%"
+          border
+          :header-cell-style="{background:'#f5f7fa', color:'#606266'}"
+          :row-style="{height: '55px'}"
+          @selection-change="handleSelectionChange"
+          v-loading="loading"
+        >
+          <!-- 选择列 -->
+          <el-table-column type="selection" width="55" :selectable="isSelectable" />
 
-      <!-- 审批标题 -->
-      <el-table-column prop="title" label="审批标题" min-width="180">
-        <template #default="{row}">
-          {{ getApprovalTitle(row) }}
-        </template>
-      </el-table-column>
+          <!-- 审批标题 -->
+          <el-table-column prop="title" label="审批标题" min-width="180">
+            <template #default="{row}">
+              {{ getApprovalTitle(row) }}
+            </template>
+          </el-table-column>
 
-      <!-- 类型 -->
-      <el-table-column prop="requestType" label="类型" width="80">
-        <template #default="{row}">
-          {{ getRequestTypeText(row.requestType) }}
-        </template>
-      </el-table-column>
+          <!-- 项目 -->
+          <el-table-column prop="project" label="项目" min-width="120">
+            <template #default="{row}">
+              <template v-if="row.workTimeRecord && row.workTimeRecord.project">
+                {{ row.workTimeRecord.project.name }}
+              </template>
+            </template>
+          </el-table-column>
 
-      <!-- 项目 -->
-      <el-table-column prop="project" label="项目" min-width="120">
-        <template #default="{row}">
-          <template v-if="row.requestType === 'WORKTIME' && row.workTimeRecord && row.workTimeRecord.project">
-            {{ row.workTimeRecord.project.name }}
-          </template>
-        </template>
-      </el-table-column>
+          <!-- 日期 -->
+          <el-table-column prop="date" label="日期" width="100">
+            <template #default="{row}">
+              <template v-if="row.workTimeRecord && row.workTimeRecord.date">
+                {{ formatDate(row.workTimeRecord.date) }}
+              </template>
+            </template>
+          </el-table-column>
 
-      <!-- 日期 -->
-      <el-table-column prop="date" label="日期" width="100">
-        <template #default="{row}">
-          <template v-if="row.requestType === 'WORKTIME' && row.workTimeRecord && row.workTimeRecord.date">
-            {{ formatDate(row.workTimeRecord.date) }}
-          </template>
-          <template v-else-if="row.requestType === 'LEAVE' && row.leaveRequest && row.leaveRequest.startDate">
-            {{ formatDate(row.leaveRequest.startDate) }}
-          </template>
-          <template v-else-if="row.requestType === 'BUSINESS_TRIP' && row.businessTripRequest && row.businessTripRequest.startDate">
-            {{ formatDate(row.businessTripRequest.startDate) }}
-          </template>
-        </template>
-      </el-table-column>
-
-      <!-- 详情 -->
-      <el-table-column prop="details" label="详情" min-width="150">
-        <template #default="{row}">
           <!-- 工时详情 -->
-          <template v-if="row.requestType === 'WORKTIME' && row.workTimeRecord && row.workTimeRecord.hours">
-            {{ row.workTimeRecord.hours }} 小时
-          </template>
-
-          <!-- 请假详情 -->
-          <template v-else-if="row.requestType === 'LEAVE' && row.leaveRequest">
-            {{ row.leaveRequest.type || '' }}
-            <template v-if="row.leaveRequest.endDate">
-              至 {{ formatDate(row.leaveRequest.endDate) }}
+          <el-table-column prop="details" label="工时" min-width="100">
+            <template #default="{row}">
+              <template v-if="row.workTimeRecord && row.workTimeRecord.hours">
+                {{ row.workTimeRecord.hours }} 小时
+              </template>
             </template>
-          </template>
+          </el-table-column>
 
-          <!-- 出差详情 -->
-          <template v-else-if="row.requestType === 'BUSINESS_TRIP' && row.businessTripRequest">
-            {{ row.businessTripRequest.destination || '' }}
-            <template v-if="row.businessTripRequest.endDate">
-              至 {{ formatDate(row.businessTripRequest.endDate) }}
+          <!-- 状态 -->
+          <el-table-column prop="status" label="状态" width="90">
+            <template #default="{row}">
+              <el-tag :type="getStatusTagType(row.status)">
+                {{ getStatusText(row.status) }}
+              </el-tag>
             </template>
-          </template>
+          </el-table-column>
 
-          <!-- 报销详情 -->
-          <template v-else-if="row.requestType === 'REIMBURSEMENT' && row.reimbursementRequest">
-            {{ row.reimbursementRequest.expenseType || '' }}
-            <template v-if="row.reimbursementRequest.amount">
-              ¥{{ row.reimbursementRequest.amount }}
+          <!-- 创建时间 -->
+          <el-table-column prop="createTime" label="创建时间" width="160">
+            <template #default="{row}">
+              {{ formatDateTime(row.createTime) }}
             </template>
-          </template>
-        </template>
-      </el-table-column>
+          </el-table-column>
 
-      <!-- 状态 -->
-      <el-table-column prop="status" label="状态" width="90">
-        <template #default="{row}">
-          <el-tag :type="getStatusTagType(row.status)">
-            {{ getStatusText(row.status) }}
-          </el-tag>
-        </template>
-      </el-table-column>
+          <!-- 操作 -->
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{row}">
+              <el-button size="small" @click="handleView(row)">查看</el-button>
+              <el-button size="small" type="success" @click="handleApprove(row)" v-if="row.status === 'PENDING'">同意</el-button>
+              <el-button size="small" type="danger" @click="handleReject(row)" v-if="row.status === 'PENDING'">拒绝</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <!-- 工时审批分页 -->
+        <div class="pagination-container" v-if="getApprovalsByType('WORKTIME').length > 0">
+          <el-pagination
+            v-model="currentPage"
+            :page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="getApprovalsTotalByType('WORKTIME')"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
+        
+        <!-- 空状态 -->
+        <div v-else class="empty-state">
+          <el-empty description="暂无工时审批" />
+        </div>
+      </el-tab-pane>
 
-      <!-- 创建时间 -->
-      <el-table-column prop="createTime" label="创建时间" width="160">
-        <template #default="{row}">
-          {{ formatDateTime(row.createTime) }}
-        </template>
-      </el-table-column>
+      <!-- 请假审批 -->
+      <el-tab-pane label="请假审批" name="LEAVE">
+        <el-table
+          ref="leaveApprovalTable"
+          :data="getApprovalsByType('LEAVE')"
+          style="width: 100%"
+          border
+          :header-cell-style="{background:'#f5f7fa', color:'#606266'}"
+          :row-style="{height: '55px'}"
+          @selection-change="handleSelectionChange"
+          v-loading="loading"
+        >
+          <!-- 选择列 -->
+          <el-table-column type="selection" width="55" :selectable="isSelectable" />
 
-      <!-- 操作 -->
-      <el-table-column label="操作" width="180" fixed="right">
-        <template #default="{row}">
-          <el-button size="small" @click="handleView(row)">查看</el-button>
-          <el-button size="small" type="success" @click="handleApprove(row)" v-if="row.status === 'PENDING'">同意</el-button>
-          <el-button size="small" type="danger" @click="handleReject(row)" v-if="row.status === 'PENDING'">拒绝</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+          <!-- 审批标题 -->
+          <el-table-column prop="title" label="审批标题" min-width="180">
+            <template #default="{row}">
+              {{ getApprovalTitle(row) }}
+            </template>
+          </el-table-column>
 
-    <!-- 分页组件 -->
-    <div class="pagination-container">
-      <el-pagination
-        v-model="currentPage"
-        :page-size="pageSize"
-        :page-sizes="[10, 20, 50, 100]"
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="totalCount"
-        @size-change="handleSizeChange"
-        @current-change="handleCurrentChange"
-      />
-    </div>
+          <!-- 请假类型 -->
+          <el-table-column prop="leaveType" label="请假类型" width="100">
+            <template #default="{row}">
+              <template v-if="row.leaveRequest">
+                {{ row.leaveRequest.type || '' }}
+              </template>
+            </template>
+          </el-table-column>
+
+          <!-- 开始日期 -->
+          <el-table-column prop="startDate" label="开始日期" width="100">
+            <template #default="{row}">
+              <template v-if="row.leaveRequest && row.leaveRequest.startDate">
+                {{ formatDate(row.leaveRequest.startDate) }}
+              </template>
+            </template>
+          </el-table-column>
+
+          <!-- 结束日期 -->
+          <el-table-column prop="endDate" label="结束日期" width="100">
+            <template #default="{row}">
+              <template v-if="row.leaveRequest && row.leaveRequest.endDate">
+                {{ formatDate(row.leaveRequest.endDate) }}
+              </template>
+            </template>
+          </el-table-column>
+
+          <!-- 状态 -->
+          <el-table-column prop="status" label="状态" width="90">
+            <template #default="{row}">
+              <el-tag :type="getStatusTagType(row.status)">
+                {{ getStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <!-- 创建时间 -->
+          <el-table-column prop="createTime" label="创建时间" width="160">
+            <template #default="{row}">
+              {{ formatDateTime(row.createTime) }}
+            </template>
+          </el-table-column>
+
+          <!-- 操作 -->
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{row}">
+              <el-button size="small" @click="handleView(row)">查看</el-button>
+              <el-button size="small" type="success" @click="handleApprove(row)" v-if="row.status === 'PENDING'">同意</el-button>
+              <el-button size="small" type="danger" @click="handleReject(row)" v-if="row.status === 'PENDING'">拒绝</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <!-- 请假审批分页 -->
+        <div class="pagination-container" v-if="getApprovalsByType('LEAVE').length > 0">
+          <el-pagination
+            v-model="currentPage"
+            :page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="getApprovalsTotalByType('LEAVE')"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
+        
+        <!-- 空状态 -->
+        <div v-else class="empty-state">
+          <el-empty description="暂无请假审批" />
+        </div>
+      </el-tab-pane>
+
+      <!-- 出差审批 -->
+      <el-tab-pane label="出差审批" name="BUSINESS_TRIP">
+        <el-table
+          ref="businessTripApprovalTable"
+          :data="getApprovalsByType('BUSINESS_TRIP')"
+          style="width: 100%"
+          border
+          :header-cell-style="{background:'#f5f7fa', color:'#606266'}"
+          :row-style="{height: '55px'}"
+          @selection-change="handleSelectionChange"
+          v-loading="loading"
+        >
+          <!-- 选择列 -->
+          <el-table-column type="selection" width="55" :selectable="isSelectable" />
+
+          <!-- 审批标题 -->
+          <el-table-column prop="title" label="审批标题" min-width="180">
+            <template #default="{row}">
+              {{ getApprovalTitle(row) }}
+            </template>
+          </el-table-column>
+
+          <!-- 目的地 -->
+          <el-table-column prop="destination" label="目的地" min-width="120">
+            <template #default="{row}">
+              <template v-if="row.businessTripRequest">
+                {{ row.businessTripRequest.destination || '' }}
+              </template>
+            </template>
+          </el-table-column>
+
+          <!-- 开始日期 -->
+          <el-table-column prop="startDate" label="开始日期" width="100">
+            <template #default="{row}">
+              <template v-if="row.businessTripRequest && row.businessTripRequest.startDate">
+                {{ formatDate(row.businessTripRequest.startDate) }}
+              </template>
+            </template>
+          </el-table-column>
+
+          <!-- 结束日期 -->
+          <el-table-column prop="endDate" label="结束日期" width="100">
+            <template #default="{row}">
+              <template v-if="row.businessTripRequest && row.businessTripRequest.endDate">
+                {{ formatDate(row.businessTripRequest.endDate) }}
+              </template>
+            </template>
+          </el-table-column>
+
+          <!-- 状态 -->
+          <el-table-column prop="status" label="状态" width="90">
+            <template #default="{row}">
+              <el-tag :type="getStatusTagType(row.status)">
+                {{ getStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <!-- 创建时间 -->
+          <el-table-column prop="createTime" label="创建时间" width="160">
+            <template #default="{row}">
+              {{ formatDateTime(row.createTime) }}
+            </template>
+          </el-table-column>
+
+          <!-- 操作 -->
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{row}">
+              <el-button size="small" @click="handleView(row)">查看</el-button>
+              <el-button size="small" type="success" @click="handleApprove(row)" v-if="row.status === 'PENDING'">同意</el-button>
+              <el-button size="small" type="danger" @click="handleReject(row)" v-if="row.status === 'PENDING'">拒绝</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <!-- 出差审批分页 -->
+        <div class="pagination-container" v-if="getApprovalsByType('BUSINESS_TRIP').length > 0">
+          <el-pagination
+            v-model="currentPage"
+            :page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="getApprovalsTotalByType('BUSINESS_TRIP')"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
+        
+        <!-- 空状态 -->
+        <div v-else class="empty-state">
+          <el-empty description="暂无出差审批" />
+        </div>
+      </el-tab-pane>
+
+      <!-- 报销审批 -->
+      <el-tab-pane label="报销审批" name="REIMBURSEMENT">
+        <el-table
+          ref="reimbursementApprovalTable"
+          :data="getApprovalsByType('REIMBURSEMENT')"
+          style="width: 100%"
+          border
+          :header-cell-style="{background:'#f5f7fa', color:'#606266'}"
+          :row-style="{height: '55px'}"
+          @selection-change="handleSelectionChange"
+          v-loading="loading"
+        >
+          <!-- 选择列 -->
+          <el-table-column type="selection" width="55" :selectable="isSelectable" />
+
+          <!-- 审批标题 -->
+          <el-table-column prop="title" label="审批标题" min-width="180">
+            <template #default="{row}">
+              {{ getApprovalTitle(row) }}
+            </template>
+          </el-table-column>
+
+          <!-- 报销类型 -->
+          <el-table-column prop="expenseType" label="报销类型" min-width="100">
+            <template #default="{row}">
+              <template v-if="row.reimbursementRequest">
+                {{ row.reimbursementRequest.expenseType || '' }}
+              </template>
+            </template>
+          </el-table-column>
+
+          <!-- 报销金额 -->
+          <el-table-column prop="amount" label="报销金额" width="100">
+            <template #default="{row}">
+              <template v-if="row.reimbursementRequest && row.reimbursementRequest.amount">
+                ¥{{ row.reimbursementRequest.amount }}
+              </template>
+            </template>
+          </el-table-column>
+
+          <!-- 状态 -->
+          <el-table-column prop="status" label="状态" width="90">
+            <template #default="{row}">
+              <el-tag :type="getStatusTagType(row.status)">
+                {{ getStatusText(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <!-- 创建时间 -->
+          <el-table-column prop="createTime" label="创建时间" width="160">
+            <template #default="{row}">
+              {{ formatDateTime(row.createTime) }}
+            </template>
+          </el-table-column>
+
+          <!-- 操作 -->
+          <el-table-column label="操作" width="180" fixed="right">
+            <template #default="{row}">
+              <el-button size="small" @click="handleView(row)">查看</el-button>
+              <el-button size="small" type="success" @click="handleApprove(row)" v-if="row.status === 'PENDING'">同意</el-button>
+              <el-button size="small" type="danger" @click="handleReject(row)" v-if="row.status === 'PENDING'">拒绝</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <!-- 报销审批分页 -->
+        <div class="pagination-container" v-if="getApprovalsByType('REIMBURSEMENT').length > 0">
+          <el-pagination
+            v-model="currentPage"
+            :page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="getApprovalsTotalByType('REIMBURSEMENT')"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
+        
+        <!-- 空状态 -->
+        <div v-else class="empty-state">
+          <el-empty description="暂无报销审批" />
+        </div>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -229,6 +459,9 @@ const selectedApprovals = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const totalCount = ref(0)
+
+// TAB相关
+const activeTab = ref('WORKTIME')
 
 // 筛选表单
 const filterForm = ref({
@@ -718,6 +951,86 @@ const formatDate = (dateStr) => {
   }
 }
 
+// TAB相关函数
+// 根据类型获取审批数据
+const getApprovalsByType = (type) => {
+  let result = approvals.value.filter(item => item.requestType === type)
+  
+  // 应用筛选条件
+  if (filterForm.value.status) {
+    result = result.filter(item => item.status === filterForm.value.status)
+  }
+
+  if (filterForm.value.dateRange && filterForm.value.dateRange.length === 2) {
+    const startDate = new Date(filterForm.value.dateRange[0])
+    const endDate = new Date(filterForm.value.dateRange[1])
+    endDate.setHours(23, 59, 59, 999)
+
+    result = result.filter(item => {
+      const createTime = new Date(item.createTime)
+      return createTime >= startDate && createTime <= endDate
+    })
+  }
+
+  if (filterForm.value.projectId && type === 'WORKTIME') {
+    result = result.filter(item =>
+      item.workTimeRecord &&
+      item.workTimeRecord.project &&
+      item.workTimeRecord.project.id === filterForm.value.projectId
+    )
+  }
+
+  // 分页处理
+  const startIndex = (currentPage.value - 1) * pageSize.value
+  const endIndex = startIndex + pageSize.value
+  return result.slice(startIndex, endIndex)
+}
+
+// 获取指定类型的审批总数
+const getApprovalsTotalByType = (type) => {
+  let result = approvals.value.filter(item => item.requestType === type)
+  
+  // 应用筛选条件
+  if (filterForm.value.status) {
+    result = result.filter(item => item.status === filterForm.value.status)
+  }
+
+  if (filterForm.value.dateRange && filterForm.value.dateRange.length === 2) {
+    const startDate = new Date(filterForm.value.dateRange[0])
+    const endDate = new Date(filterForm.value.dateRange[1])
+    endDate.setHours(23, 59, 59, 999)
+
+    result = result.filter(item => {
+      const createTime = new Date(item.createTime)
+      return createTime >= startDate && createTime <= endDate
+    })
+  }
+
+  if (filterForm.value.projectId && type === 'WORKTIME') {
+    result = result.filter(item =>
+      item.workTimeRecord &&
+      item.workTimeRecord.project &&
+      item.workTimeRecord.project.id === filterForm.value.projectId
+    )
+  }
+  
+  return result.length
+}
+
+// TAB切换事件
+const handleTabChange = (tabName) => {
+  activeTab.value = tabName
+  currentPage.value = 1 // 重置分页
+  selectedApprovals.value = [] // 清空选中
+  
+  // 如果切换到非工时类型，清除项目筛选
+  if (tabName !== 'WORKTIME') {
+    filterForm.value.projectId = ''
+  }
+  
+  console.log('切换到TAB:', tabName)
+}
+
 onMounted(async () => {
   await fetchApprovals() // 先获取审批列表
   fetchProjects() // 然后获取项目列表用于筛选
@@ -810,5 +1123,85 @@ onMounted(async () => {
   margin-top: 20px;
   display: flex;
   justify-content: center;
+}
+
+/* TAB样式优化 */
+.approval-tabs {
+  margin-top: 20px;
+}
+
+.approval-tabs .el-tabs__header {
+  margin-bottom: 0;
+}
+
+.approval-tabs .el-tabs__nav-wrap::after {
+  background-color: #e4e7ed;
+}
+
+.approval-tabs .el-tabs__item {
+  padding: 0 24px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.approval-tabs .el-tabs__item.is-active {
+  color: #409eff;
+  font-weight: 600;
+}
+
+/* 空状态样式 */
+.empty-state {
+  padding: 60px 0;
+  text-align: center;
+  background-color: #fafafa;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  margin-top: 20px;
+}
+
+.empty-state .el-empty {
+  padding: 20px 0;
+}
+
+.empty-state .el-empty__description {
+  color: #909399;
+  font-size: 14px;
+}
+
+/* TAB内容区域样式 */
+.el-tab-pane {
+  margin-top: 20px;
+}
+
+/* 表格容器样式 */
+.approval-tabs .el-table {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .filter-form {
+    flex-direction: column;
+  }
+  
+  .filter-form .el-form-item {
+    margin-right: 0;
+    margin-bottom: 15px;
+  }
+  
+  .operation-container {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .operation-container .el-button {
+    width: 100%;
+  }
+  
+  .approval-tabs .el-tabs__item {
+    padding: 0 12px;
+    font-size: 14px;
+  }
 }
 </style>

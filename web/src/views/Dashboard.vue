@@ -8,7 +8,33 @@
         <span class="last-login">上次登录: {{ formatDate(currentUser.lastLogin) }}</span>
       </div>
     </div>
-    
+
+    <!-- 快速操作区域 -->
+    <div class="quick-actions">
+      <div class="action-buttons">
+        <div class="action-item">
+          <router-link to="/time-management">
+            <el-button type="primary" icon="Clock" size="default">填报工时</el-button>
+          </router-link>
+        </div>
+        <div class="action-item">
+          <router-link to="/leave-management">
+            <el-button type="success" icon="Calendar" size="default">申请请假</el-button>
+          </router-link>
+        </div>
+        <div class="action-item">
+          <router-link to="/reimbursement">
+            <el-button type="warning" icon="Money" size="default">申请报销</el-button>
+          </router-link>
+        </div>
+        <div class="action-item">
+          <router-link to="/projects">
+            <el-button type="info" icon="FolderOpened" size="default">项目管理</el-button>
+          </router-link>
+        </div>
+      </div>
+    </div>
+
     <!-- 核心指标卡片 -->
     <div class="stat-cards">
       <el-row :gutter="20">
@@ -24,7 +50,7 @@
             </div>
           </el-card>
         </el-col>
-        
+
         <el-col :span="6">
           <el-card shadow="hover" class="stat-card project-stat">
             <div class="stat-icon">
@@ -37,7 +63,7 @@
             </div>
           </el-card>
         </el-col>
-        
+
         <el-col :span="6">
           <el-card shadow="hover" class="stat-card approval-stat">
             <div class="stat-icon">
@@ -50,9 +76,9 @@
             </div>
           </el-card>
         </el-col>
-        
+
         <el-col :span="6">
-          <el-card shadow="hover" class="stat-card budget-stat">
+          <el-card shadow="hover" class="stat-card budget-stat" v-if="userStore.isAdmin || userStore.hasPermission('budget:view')">
             <div class="stat-icon">
               <el-icon><Money /></el-icon>
             </div>
@@ -62,10 +88,21 @@
               <div class="stat-trend">总预算: {{ formatCurrency(stats.totalBudget) }}</div>
             </div>
           </el-card>
+          <!-- 普通用户显示任务统计 -->
+          <el-card shadow="hover" class="stat-card task-stat" v-else>
+            <div class="stat-icon">
+              <el-icon><DocumentChecked /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-title">我的任务</div>
+              <div class="stat-value">{{ stats.myTaskCount || 0 }}</div>
+              <div class="stat-trend">未完成: {{ stats.pendingTaskCount || 0 }}</div>
+            </div>
+          </el-card>
         </el-col>
       </el-row>
     </div>
-    
+
     <!-- 工时统计区域 -->
     <div class="worktime-section">
       <el-row :gutter="20">
@@ -83,7 +120,7 @@
             </div>
           </el-card>
         </el-col>
-        
+
         <el-col :span="8">
           <el-card shadow="hover" class="worktime-card">
             <template #header>
@@ -98,7 +135,7 @@
             </div>
           </el-card>
         </el-col>
-        
+
         <el-col :span="8">
           <el-card shadow="hover" class="worktime-card">
             <template #header>
@@ -115,7 +152,7 @@
         </el-col>
       </el-row>
     </div>
-    
+
     <!-- 图表区域 -->
     <div class="charts-section">
       <el-row :gutter="20">
@@ -133,7 +170,7 @@
             <div id="worktimeChart" style="width: 100%; height: 300px;"></div>
           </el-card>
         </el-col>
-        
+
         <el-col :span="12">
           <el-card shadow="hover">
             <template #header>
@@ -147,16 +184,16 @@
         </el-col>
       </el-row>
     </div>
-    
+
     <!-- 审批流程和财务概览 -->
     <div class="bottom-section">
       <el-row :gutter="20">
-        <el-col :span="12">
+        <el-col :span="userStore.isAdmin || userStore.hasPermission('budget:view') ? 12 : 24">
           <el-card shadow="hover">
             <template #header>
               <div class="card-header">
                 <span>审批流程统计</span>
-                <router-link to="/approval-management">
+                <router-link to="/approvals">
                   <el-button type="text" size="small">查看详情</el-button>
                 </router-link>
               </div>
@@ -164,8 +201,8 @@
             <div id="approvalChart" style="width: 100%; height: 250px;"></div>
           </el-card>
         </el-col>
-        
-        <el-col :span="12">
+
+        <el-col :span="12" v-if="userStore.isAdmin || userStore.hasPermission('budget:view')">
           <el-card shadow="hover">
             <template #header>
               <div class="card-header">
@@ -196,29 +233,6 @@
           </el-card>
         </el-col>
       </el-row>
-    </div>
-    
-    <!-- 快速操作区域 -->
-    <div class="quick-actions">
-      <el-card shadow="hover">
-        <template #header>
-          <span>快速操作</span>
-        </template>
-        <div class="action-buttons">
-          <router-link to="/time-management">
-            <el-button type="primary" icon="Clock">填报工时</el-button>
-          </router-link>
-          <router-link to="/leave-application">
-            <el-button type="success" icon="Calendar">申请请假</el-button>
-          </router-link>
-          <router-link to="/reimbursement">
-            <el-button type="warning" icon="Money">申请报销</el-button>
-          </router-link>
-          <router-link to="/project-management">
-            <el-button type="info" icon="FolderOpened">项目管理</el-button>
-          </router-link>
-        </div>
-      </el-card>
     </div>
   </div>
 </template>
@@ -255,7 +269,9 @@ const stats = ref({
   monthWorkHours: 0,
   monthLeaveCount: 0,
   monthReimbursementCount: 0,
-  monthReimbursementAmount: 0
+  monthReimbursementAmount: 0,
+  myTaskCount: 0,
+  pendingTaskCount: 0
 })
 
 const trendPeriod = ref(30)
@@ -290,7 +306,9 @@ const fetchStats = async () => {
       monthWorkHours: 152.5,
       monthLeaveCount: 8,
       monthReimbursementCount: 25,
-      monthReimbursementAmount: 45600
+      monthReimbursementAmount: 45600,
+      myTaskCount: 12,
+      pendingTaskCount: 5
     }
     await nextTick()
     initCharts()
@@ -618,6 +636,8 @@ onMounted(() => {
   gap: 15px;
   border-radius: 8px;
   transition: transform 0.2s;
+  min-height: 120px;
+  height: 120px;
 }
 
 .stat-card:hover {
@@ -633,6 +653,7 @@ onMounted(() => {
   justify-content: center;
   font-size: 24px;
   color: white;
+  flex-shrink: 0;
 }
 
 .user-stat .stat-icon {
@@ -651,27 +672,45 @@ onMounted(() => {
   background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
 }
 
+.task-stat .stat-icon {
+  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+}
+
 .stat-content {
   flex: 1;
   text-align: left;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .stat-title {
   font-size: 14px;
   color: #909399;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-value {
   font-size: 28px;
   font-weight: bold;
   color: #303133;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-trend {
   font-size: 12px;
   color: #67C23A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 工时统计区域 */
@@ -759,22 +798,40 @@ onMounted(() => {
 
 /* 快速操作区域 */
 .quick-actions {
-  margin-bottom: 20px;
+  margin-bottom: 25px;
+  padding: 15px 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .action-buttons {
   display: flex;
   gap: 15px;
-  padding: 10px 0;
+  justify-content: center;
+  align-items: center;
 }
 
-.action-buttons a {
+.action-item {
+  text-decoration: none;
+}
+
+.action-item a {
   text-decoration: none;
 }
 
 .action-buttons .el-button {
+  min-width: 100px;
   padding: 12px 20px;
   border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.action-buttons .el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* 响应式设计 */

@@ -7,7 +7,7 @@ SELECT 1, id FROM permission WHERE name = 'dashboard:view';
 INSERT INTO menu_permission (menu_id, permission_id)
 SELECT 10, id FROM permission WHERE name IN ('time:view', 'time:add', 'time:edit', 'time:delete', 'time:approve', 'time:batch');
 
--- 项目经理工时
+-- 项目工时
 INSERT INTO menu_permission (menu_id, permission_id)
 SELECT 11, id FROM permission WHERE name IN ('manager-time:view', 'manager-time:manage');
 

@@ -97,4 +97,70 @@ public interface WorkTimeRecordRepository extends JpaRepository<WorkTimeRecord, 
            "WHERE w.date BETWEEN :startDate AND :endDate")
     Object[] getBasicStats(@Param("startDate") LocalDate startDate, 
                           @Param("endDate") LocalDate endDate);
+
+    // ========== 批量填写页面性能优化查询方法 ==========
+    
+    // 批量查询多个项目的工时记录，使用FETCH JOIN避免N+1问题
+    @Query("SELECT w FROM WorkTimeRecord w " +
+           "LEFT JOIN FETCH w.user " +
+           "LEFT JOIN FETCH w.project " +
+           "WHERE w.project.id IN :projectIds " +
+           "AND w.date BETWEEN :startDate AND :endDate " +
+           "ORDER BY w.project.id, w.user.id, w.date")
+    List<WorkTimeRecord> findByProjectIdsAndDateRangeWithJoins(
+        @Param("projectIds") List<Long> projectIds,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate);
+    
+    // 批量查询去重检查，一次性检查多个用户-项目-日期组合
+    @Query("SELECT CONCAT(w.user.id, '-', w.project.id, '-', w.date) as key, w " +
+           "FROM WorkTimeRecord w " +
+           "WHERE CONCAT(w.user.id, '-', w.project.id, '-', w.date) IN :keys")
+    List<Object[]> findByUserProjectDateKeys(@Param("keys") List<String> keys);
+    
+    // 优化的项目工时统计，批量获取多个项目的统计信息
+    @Query("SELECT " +
+           "w.project.id as projectId, " +
+           "w.user.id as userId, " +
+           "SUM(w.hours) as totalHours, " +
+           "COUNT(w) as recordCount, " +
+           "AVG(w.hours) as avgHours " +
+           "FROM WorkTimeRecord w " +
+           "WHERE w.project.id IN :projectIds " +
+           "AND w.date BETWEEN :startDate AND :endDate " +
+           "GROUP BY w.project.id, w.user.id")
+    List<Object[]> getProjectUserStatsBatch(@Param("projectIds") List<Long> projectIds,
+                                           @Param("startDate") LocalDate startDate, 
+                                           @Param("endDate") LocalDate endDate);
+    
+    // 批量查询用户在指定项目和日期范围内的工时，使用游标分页
+    @Query("SELECT w FROM WorkTimeRecord w " +
+           "LEFT JOIN FETCH w.user " +
+           "LEFT JOIN FETCH w.project " +
+           "WHERE w.id > :lastId " +
+           "AND w.user.id IN :userIds " +
+           "AND w.date BETWEEN :startDate AND :endDate " +
+           "ORDER BY w.id ASC")
+    List<WorkTimeRecord> findByUserIdsAndDateRangeCursor(
+        @Param("userIds") List<Long> userIds,
+        @Param("startDate") LocalDate startDate,
+        @Param("endDate") LocalDate endDate,
+        @Param("lastId") Long lastId,
+        Pageable pageable);
+    
+    // 高效的存在性检查，避免返回完整对象
+    @Query("SELECT COUNT(w) > 0 FROM WorkTimeRecord w " +
+           "WHERE w.user.id = :userId " +
+           "AND w.project.id = :projectId " +
+           "AND w.date = :date")
+    boolean existsByUserIdAndProjectIdAndDate(
+        @Param("userId") Long userId,
+        @Param("projectId") Long projectId,
+        @Param("date") LocalDate date);
+    
+    // 批量存在性检查
+    @Query("SELECT CONCAT(w.user.id, '-', w.project.id, '-', w.date) " +
+           "FROM WorkTimeRecord w " +
+           "WHERE CONCAT(w.user.id, '-', w.project.id, '-', w.date) IN :keys")
+    List<String> findExistingKeys(@Param("keys") List<String> keys);
 }

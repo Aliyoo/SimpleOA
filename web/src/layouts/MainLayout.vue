@@ -46,10 +46,6 @@
               <el-icon><Document /></el-icon>
               <span>审批管理</span>
             </el-menu-item>
-            <el-menu-item index="/calendar">
-              <el-icon><Calendar /></el-icon>
-              <span>日历管理</span>
-            </el-menu-item>
             <el-menu-item index="/workday-management">
               <el-icon><Calendar /></el-icon>
               <span>工作日管理</span>
@@ -226,26 +222,26 @@ import { ArrowDown } from '@element-plus/icons-vue'
 // 导入所有需要的图标组件
 const {
   Odometer,
-  Folder,
-  List,
+  OfficeBuilding,
+  Clock,
+  Calendar,
+  Position,
+  Wallet,
   Document,
+  Folder,
+  Tickets,
+  List,
+  Connection,
+  Money,
+  Coin,
+  DataAnalysis,
   Setting,
   User,
   Lock,
   Key,
+  DocumentCopy,
   Bell,
   Notification,
-  Calendar,
-  Money,
-  Wallet,
-  OfficeBuilding,
-  Clock,
-  Position,
-  Tickets,
-  Coin,
-  DataAnalysis,
-  Connection,
-  DocumentCopy,
   Tools
 } = ElementPlusIconsVue
 
@@ -255,43 +251,43 @@ const userStore = useUserStore()
 
 // 获取图标组件
 const getIconComponent = (iconName) => {
-  if (!iconName) return 'Document' // 默认图标
+  if (!iconName) return ElementPlusIconsVue.Document // 默认图标
 
   // 如果图标名称存在于ElementPlusIconsVue中，则返回对应的组件
   if (ElementPlusIconsVue[iconName]) {
-    return iconName
+    return ElementPlusIconsVue[iconName]
   }
 
   // 根据路径或名称映射图标
   const iconMap = {
-    'dashboard': 'Odometer',
-    'time-management': 'Clock',
-    'project-manager-time': 'Clock',
-    'leave-management': 'Calendar',
-    'travel-management': 'Position',
-    'reimbursement': 'Wallet',
-    'approvals': 'Document',
-    'projects': 'Tickets',
-    'tasks': 'List',
-    'outsourcing-management': 'Connection',
-    'payment-management': 'Money',
-    'budget-management': 'Coin',
-    'performance-management': 'DataAnalysis',
-    'user-management': 'User',
-    'role-management': 'Lock',
-    'permission-management': 'Key',
-    'log-management': 'DocumentCopy',
-    'notification': 'Bell',
-    'announcement': 'Notification',
-    'system-config': 'Tools',
-    'calendar': 'Calendar',
-    'profile': 'User',
-    'oa': 'OfficeBuilding',
-    'pm': 'Folder',
-    'sys': 'Setting'
+    'dashboard': ElementPlusIconsVue.Odometer,
+    'time-management': ElementPlusIconsVue.Clock,
+    'project-manager-time': ElementPlusIconsVue.Clock,
+    'leave-management': ElementPlusIconsVue.Calendar,
+    'travel-management': ElementPlusIconsVue.Position,
+    'reimbursement': ElementPlusIconsVue.Wallet,
+    'approvals': ElementPlusIconsVue.Document,
+    'projects': ElementPlusIconsVue.Tickets,
+    'tasks': ElementPlusIconsVue.List,
+    'outsourcing-management': ElementPlusIconsVue.Connection,
+    'payment-management': ElementPlusIconsVue.Money,
+    'budget-management': ElementPlusIconsVue.Coin,
+    'performance-management': ElementPlusIconsVue.DataAnalysis,
+    'user-management': ElementPlusIconsVue.User,
+    'role-management': ElementPlusIconsVue.Lock,
+    'permission-management': ElementPlusIconsVue.Key,
+    'log-management': ElementPlusIconsVue.DocumentCopy,
+    'notification': ElementPlusIconsVue.Bell,
+    'announcement': ElementPlusIconsVue.Notification,
+    'system-config': ElementPlusIconsVue.Tools,
+    'calendar': ElementPlusIconsVue.Calendar,
+    'profile': ElementPlusIconsVue.User,
+    'oa': ElementPlusIconsVue.OfficeBuilding,
+    'pm': ElementPlusIconsVue.Folder,
+    'sys': ElementPlusIconsVue.Setting
   }
 
-  return iconMap[iconName] || 'Document'
+  return iconMap[iconName] || ElementPlusIconsVue.Document
 }
 
 // 获取可见的子菜单

@@ -258,12 +258,6 @@ const router = createRouter({
           meta: { requiresAuth: true }
         },
         {
-          path: 'calendar',
-          name: 'Calendar',
-          component: () => import('@/views/CalendarView.vue'),
-          meta: { requiresAuth: true }
-        },
-        {
           path: 'workday-management',
           name: 'WorkdayManagement',
           component: () => import('@/views/WorkdayManagement.vue'),
@@ -308,7 +302,6 @@ const routePermissionMap = {
   'Notification': 'notification:view',
   'Announcement': 'announcement:view',
   'SystemConfig': 'system:view',
-  'Calendar': 'calendar:view',
   'WorkdayManagement': 'workday:view',
   'HolidayManagement': 'holiday:view',
   'Profile': 'profile:view'

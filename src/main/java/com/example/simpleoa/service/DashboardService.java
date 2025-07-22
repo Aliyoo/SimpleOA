@@ -3,6 +3,8 @@ package com.example.simpleoa.service;
 import com.example.simpleoa.model.*;
 import com.example.simpleoa.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -18,6 +20,7 @@ public class DashboardService {
     private final BudgetRepository budgetRepository;
     private final ReimbursementRequestRepository reimbursementRequestRepository;
     private final LeaveRepository leaveRepository;
+    private final TaskRepository taskRepository;
 
     @Autowired
     public DashboardService(UserRepository userRepository,
@@ -25,13 +28,15 @@ public class DashboardService {
                            WorkTimeRecordRepository workTimeRecordRepository,
                            BudgetRepository budgetRepository,
                            ReimbursementRequestRepository reimbursementRequestRepository,
-                           LeaveRepository leaveRepository) {
+                           LeaveRepository leaveRepository,
+                           TaskRepository taskRepository) {
         this.userRepository = userRepository;
         this.projectRepository = projectRepository;
         this.workTimeRecordRepository = workTimeRecordRepository;
         this.budgetRepository = budgetRepository;
         this.reimbursementRequestRepository = reimbursementRequestRepository;
         this.leaveRepository = leaveRepository;
+        this.taskRepository = taskRepository;
     }
 
     /**
@@ -89,6 +94,20 @@ public class DashboardService {
             // 忽略错误，使用默认值
         }
         
+        // 任务统计 - 获取当前用户的任务统计
+        long myTaskCount = 0;
+        long pendingTaskCount = 0;
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.getPrincipal() instanceof User) {
+                User currentUser = (User) authentication.getPrincipal();
+                myTaskCount = taskRepository.countByAssignee(currentUser);
+                pendingTaskCount = taskRepository.countPendingTasksByAssignee(currentUser);
+            }
+        } catch (Exception e) {
+            // 忽略错误，使用默认值
+        }
+        
         stats.put("userCount", userCount);
         stats.put("activeUserCount", activeUserCount);
         stats.put("projectCount", projectCount);
@@ -104,6 +123,8 @@ public class DashboardService {
         stats.put("monthReimbursementAmount", monthReimbursementAmount);
         stats.put("monthReimbursementCount", monthReimbursementCount);
         stats.put("monthLeaveCount", monthLeaveCount);
+        stats.put("myTaskCount", myTaskCount);
+        stats.put("pendingTaskCount", pendingTaskCount);
         
         return stats;
     }

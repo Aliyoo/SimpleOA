@@ -9,6 +9,7 @@
       label-position="left"
     >
       <h3 class="title">SimpleOA 登录</h3>
+      <p class="subtitle">SuperOA By AI Coding</p>
       <el-form-item prop="username">
         <el-input
           ref="usernameInput"
@@ -18,7 +19,7 @@
           placeholder="用户名"
           :disabled="loading"
           @keyup.enter="handleLogin"
-        />
+        ></el-input>
       </el-form-item>
       <el-form-item prop="password">
         <el-input
@@ -29,13 +30,13 @@
           show-password
           :disabled="loading"
           @keyup.enter="handleLogin"
-        />
+        ></el-input>
       </el-form-item>
       <el-form-item>
         <el-button
           :loading="loading"
           type="primary"
-          style="width:100%;"
+          class="login-button"
           @click="handleLogin"
         >
           {{ loading ? '登录中...' : '登录' }}
@@ -98,24 +99,50 @@ onMounted(() => {
 
 <style scoped>
 .login-container {
-  min-height: 100%;
+  min-height: 100vh;
   width: 100%;
   background-color: #2d3a4b;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
 }
+
 .login-form {
   position: relative;
-  width: 520px;
+  width: 400px;
   max-width: 100%;
-  padding: 160px 35px 0;
-  margin: 0 auto;
+  padding: 40px 35px;
+  margin: 0;
   overflow: hidden;
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
 }
+
 .title {
   font-size: 26px;
-  color: #eee;
-  margin: 0 auto 40px auto;
+  color: #333;
+  margin: 0 auto 10px auto;
   text-align: center;
   font-weight: bold;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #999;
+  margin: 0 auto 30px auto;
+  text-align: center;
+  font-weight: normal;
+}
+
+.login-button {
+  width: 100%;
+  background-color: #409eff;
+  border-radius: 6px;
+  color: #fff;
+  border: none;
+  font-weight: 500;
 }
 </style>

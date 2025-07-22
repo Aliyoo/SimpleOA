@@ -47,6 +47,5 @@ CREATE TABLE IF NOT EXISTS reimbursement_attachments
   COLLATE = utf8mb4_unicode_ci COMMENT ='报销申请附件表';
 
 -- 更新审批流程表的外键约束
-ALTER TABLE approval_flow DROP FOREIGN KEY approval_flow_ibfk_4;
-ALTER TABLE approval_flow ADD CONSTRAINT approval_flow_ibfk_4 
+ALTER TABLE approval_flow ADD CONSTRAINT approval_flow_ibfk_6
     FOREIGN KEY (reimbursement_request_id) REFERENCES reimbursement_request (id) ON DELETE CASCADE;

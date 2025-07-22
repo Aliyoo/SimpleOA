@@ -1,5 +1,6 @@
 package com.example.simpleoa.controller;
 
+import com.example.simpleoa.dto.UserDTO;
 import com.example.simpleoa.model.Role;
 import com.example.simpleoa.model.User;
 import com.example.simpleoa.service.UserService;
@@ -11,6 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
+@CrossOrigin(origins = "*")
 public class UserController {
     private final UserService userService;
 
@@ -25,18 +27,56 @@ public class UserController {
     }
 
     @PostMapping
-    public User createUser(@RequestBody User user) {
+    public User createUser(@RequestBody UserDTO userDTO) {
+        // Convert DTO to Entity
+        User user = new User();
+        user.setUsername(userDTO.getUsername());
+        user.setPassword(userDTO.getPassword());
+        user.setRealName(userDTO.getRealName());
+        user.setEmail(userDTO.getEmail());
+        user.setPhoneNumber(userDTO.getPhoneNumber());
+        user.setEnabled(userDTO.getEnabled());
+        user.setDepartment(userDTO.getDepartment());
+        user.setEmployeeNumber(userDTO.getEmployeeNumber());
+        user.setHireDate(userDTO.getHireDate());
+        
         return userService.registerUser(user);
     }
 
     @PostMapping("/register")
-    public User registerUser(@RequestBody User user) {
+    public User registerUser(@RequestBody UserDTO userDTO) {
+        // Convert DTO to Entity
+        User user = new User();
+        user.setUsername(userDTO.getUsername());
+        user.setPassword(userDTO.getPassword());
+        user.setRealName(userDTO.getRealName());
+        user.setEmail(userDTO.getEmail());
+        user.setPhoneNumber(userDTO.getPhoneNumber());
+        user.setEnabled(userDTO.getEnabled());
+        user.setDepartment(userDTO.getDepartment());
+        user.setEmployeeNumber(userDTO.getEmployeeNumber());
+        user.setHireDate(userDTO.getHireDate());
+        
         return userService.registerUser(user);
     }
 
     @PutMapping("/{id}")
-    public User updateUser(@PathVariable Long id, @RequestBody User user) {
+    public User updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO) {
+        // Convert DTO to Entity
+        User user = new User();
         user.setId(id);
+        user.setUsername(userDTO.getUsername());
+        if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
+            user.setPassword(userDTO.getPassword());
+        }
+        user.setRealName(userDTO.getRealName());
+        user.setEmail(userDTO.getEmail());
+        user.setPhoneNumber(userDTO.getPhoneNumber());
+        user.setEnabled(userDTO.getEnabled());
+        user.setDepartment(userDTO.getDepartment());
+        user.setEmployeeNumber(userDTO.getEmployeeNumber());
+        user.setHireDate(userDTO.getHireDate());
+        
         return userService.updateUser(user);
     }
 

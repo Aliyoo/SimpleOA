@@ -96,6 +96,8 @@ tmp/
 # Application specific directories
 /target/
 /out/
+/web/dist/
+/web/node_modules/
 
 # Test reports
 test-output/

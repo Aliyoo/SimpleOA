@@ -1,195 +1,249 @@
 <template>
   <div class="reimbursement-container">
-    <h1>报销管理</h1>
+    <div class="page-header">
+      <h1>报销管理</h1>
+    </div>
     
     <el-tabs v-model="activeTab">
       <el-tab-pane label="报销申请" name="apply">
-        <el-form :model="reimbursementForm" :rules="formRules" ref="reimbursementFormRef" label-width="120px" class="apply-form">
-          <el-form-item label="报销标题" prop="title">
-            <el-input v-model="reimbursementForm.title" placeholder="请输入报销标题" />
-          </el-form-item>
+        <div class="tab-content">
+          <!-- 基本信息区域 -->
+          <div class="form-section">
+            <div class="section-header">
+              <h3>基本信息</h3>
+            </div>
+            <div class="form-content">
+              <el-form :model="reimbursementForm" :rules="formRules" ref="reimbursementFormRef" label-width="120px">
+                <el-row :gutter="20">
+                  <el-col :span="12">
+                    <el-form-item label="报销标题" prop="title">
+                      <el-input v-model="reimbursementForm.title" placeholder="请输入报销标题" />
+                    </el-form-item>
+                  </el-col>
+                  <el-col :span="12">
+                    <el-form-item label="关联项目" prop="projectId">
+                      <el-select v-model="reimbursementForm.projectId" placeholder="请选择关联项目" clearable style="width: 100%;">
+                        <el-option
+                          v-for="project in projectList"
+                          :key="project.id"
+                          :label="project.name"
+                          :value="project.id"
+                        />
+                      </el-select>
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              </el-form>
+            </div>
+          </div>
           
-          <el-form-item label="关联项目" prop="projectId">
-            <el-select v-model="reimbursementForm.projectId" placeholder="请选择关联项目" clearable style="width: 100%;">
-              <el-option
-                v-for="project in projectList"
-                :key="project.id"
-                :label="project.name"
-                :value="project.id"
-              />
-            </el-select>
-          </el-form-item>
+          <!-- 费用明细区域 -->
+          <div class="form-section">
+            <div class="section-header">
+              <h3>费用明细</h3>
+            </div>
+            <div class="form-content">
+              <el-table :data="reimbursementForm.items" size="small" style="margin-bottom: 20px;">
+                <el-table-column label="费用日期" width="150" align="left">
+                  <template #default="{ row, $index }">
+                    <el-date-picker 
+                      v-model="row.expenseDate" 
+                      type="date" 
+                      value-format="YYYY-MM-DD"
+                      placeholder="选择费用日期"
+                      size="small"
+                      style="width: 100%"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column label="费用类别" width="120" align="left">
+                  <template #default="{ row, $index }">
+                    <el-select v-model="row.itemCategory" placeholder="选择费用类别" size="small" style="width: 100%">
+                      <el-option label="交通费" value="交通费" />
+                      <el-option label="住宿费" value="住宿费" />
+                      <el-option label="餐费" value="餐费" />
+                      <el-option label="办公用品" value="办公用品" />
+                      <el-option label="通讯费" value="通讯费" />
+                      <el-option label="其他" value="其他" />
+                    </el-select>
+                  </template>
+                </el-table-column>
+                <el-table-column label="费用说明" align="left">
+                  <template #default="{ row, $index }">
+                    <el-input v-model="row.description" placeholder="请输入费用说明" size="small" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="金额" width="120" align="left">
+                  <template #default="{ row, $index }">
+                    <el-input-number v-model="row.amount" :precision="2" :min="0" size="small" style="width: 100%" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="80" align="left">
+                  <template #default="{ $index }">
+                    <el-button type="danger" size="small" @click="removeItem($index)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="table-actions">
+                <el-button @click="addItem" type="primary" plain>添加明细</el-button>
+              </div>
+              
+              <el-form :model="reimbursementForm" label-width="120px" style="margin-top: 20px;">
+                <el-row :gutter="20">
+                  <el-col :span="12">
+                    <el-form-item label="总金额">
+                      <el-input-number v-model="totalAmount" :precision="2" disabled style="width: 100%" />
+                    </el-form-item>
+                  </el-col>
+                </el-row>
+              </el-form>
+            </div>
+          </div>
           
-          <el-divider>费用明细</el-divider>
-          <el-table :data="reimbursementForm.items" size="small" style="margin-bottom: 20px;">
-            <el-table-column label="费用日期">
-              <template #default="{ row, $index }">
-                <el-date-picker 
-                  v-model="row.expenseDate" 
-                  type="date" 
-                  value-format="YYYY-MM-DD"
-                  placeholder="选择费用日期"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column label="费用类别">
-              <template #default="{ row, $index }">
-                <el-select v-model="row.itemCategory" placeholder="选择费用类别">
-                  <el-option label="交通费" value="交通费" />
-                  <el-option label="住宿费" value="住宿费" />
-                  <el-option label="餐费" value="餐费" />
-                  <el-option label="办公用品" value="办公用品" />
-                  <el-option label="通讯费" value="通讯费" />
-                  <el-option label="其他" value="其他" />
-                </el-select>
-              </template>
-            </el-table-column>
-            <el-table-column label="费用说明">
-              <template #default="{ row, $index }">
-                <el-input v-model="row.description" placeholder="请输入费用说明" />
-              </template>
-            </el-table-column>
-            <el-table-column label="金额">
-              <template #default="{ row, $index }">
-                <el-input-number v-model="row.amount" :precision="2" :min="0" />
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="100">
-              <template #default="{ $index }">
-                <el-button type="danger" size="small" @click="removeItem($index)">删除</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <el-button @click="addItem" style="margin-bottom: 20px;">添加明细</el-button>
+          <!-- 凭证上传区域 -->
+          <div class="form-section">
+            <div class="section-header">
+              <h3>凭证上传</h3>
+            </div>
+            <div class="form-content">
+              <el-upload
+                v-model:file-list="fileList"
+                action="/api/files/upload" 
+                multiple
+                :on-success="handleUploadSuccess"
+                list-type="picture-card">
+                <el-icon><Plus /></el-icon>
+              </el-upload>
+            </div>
+          </div>
           
-          <el-form-item label="总金额">
-            <el-input-number v-model="totalAmount" :precision="2" disabled />
-          </el-form-item>
-          
-          <el-divider>凭证上传</el-divider>
-          <el-upload
-            v-model:file-list="fileList"
-            action="/api/files/upload" 
-            multiple
-            :on-success="handleUploadSuccess"
-            list-type="picture-card">
-            <el-icon><Plus /></el-icon>
-          </el-upload>
-          
-          <el-form-item>
-            <el-button type="primary" @click="submitReimbursement">提交申请</el-button>
-            <el-button @click="resetForm">重置表单</el-button>
-          </el-form-item>
-        </el-form>
+          <!-- 操作按钮区域 -->
+          <div class="form-section">
+            <div class="form-actions">
+              <el-button type="primary" @click="submitReimbursement" size="large">提交申请</el-button>
+              <el-button @click="resetForm" size="large">重置表单</el-button>
+            </div>
+          </div>
+        </div>
       </el-tab-pane>
       
       <el-tab-pane label="报销列表" name="list">
-        <!-- 筛选查询栏 -->
-        <div class="filter-container">
-          <el-row :gutter="20">
-            <el-col :span="6">
-              <el-select v-model="listFilters.status" placeholder="选择状态" clearable @change="fetchReimbursementList">
-                <el-option label="全部状态" :value="null" />
-                <el-option
-                  v-for="status in statusOptions"
-                  :key="status.value"
-                  :label="status.label"
-                  :value="status.value"
-                />
-              </el-select>
-            </el-col>
-            <el-col :span="6">
-              <el-date-picker
-                v-model="listFilters.startDate"
-                type="date"
-                placeholder="开始日期"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                @change="fetchReimbursementList"
-              />
-            </el-col>
-            <el-col :span="6">
-              <el-date-picker
-                v-model="listFilters.endDate"
-                type="date"
-                placeholder="结束日期"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
-                @change="fetchReimbursementList"
-              />
-            </el-col>
-            <el-col :span="6">
-              <el-input
-                v-model="listFilters.keyword"
-                placeholder="搜索标题关键字"
-                clearable
-                @clear="fetchReimbursementList"
-                @keyup.enter="fetchReimbursementList"
-              >
-                <template #append>
-                  <el-button @click="fetchReimbursementList">
-                    <el-icon><Search /></el-icon>
+        <div class="tab-content">
+          <!-- 查询操作区域 -->
+          <div class="operation-section">
+            <div class="filter-container">
+              <el-row :gutter="16" align="middle">
+                <el-col :span="4">
+                  <el-select v-model="listFilters.status" placeholder="选择状态" clearable @change="fetchReimbursementList" style="width: 100%">
+                    <el-option label="全部状态" :value="null" />
+                    <el-option
+                      v-for="status in statusOptions"
+                      :key="status.value"
+                      :label="status.label"
+                      :value="status.value"
+                    />
+                  </el-select>
+                </el-col>
+                <el-col :span="8">
+                  <el-date-picker
+                    v-model="listFilters.dateRange"
+                    type="daterange"
+                    range-separator="至"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    @change="onDateRangeChange"
+                    clearable
+                    style="width: 100%"
+                  />
+                </el-col>
+                <el-col :span="6">
+                  <el-input
+                    v-model="listFilters.keyword"
+                    placeholder="搜索标题关键字"
+                    clearable
+                    @clear="fetchReimbursementList"
+                    @keyup.enter="fetchReimbursementList"
+                  >
+                    <template #append>
+                      <el-button @click="fetchReimbursementList">
+                        <el-icon><Search /></el-icon>
+                      </el-button>
+                    </template>
+                  </el-input>
+                </el-col>
+                <el-col :span="6">
+                  <el-button @click="resetFilters">重置</el-button>
+                  <el-button type="primary" @click="fetchReimbursementList">查询</el-button>
+                </el-col>
+              </el-row>
+            </div>
+          </div>
+          
+          <div class="table-section">
+            <div class="section-header">
+              <h3>报销记录</h3>
+            </div>
+            <el-table :data="reimbursementList" style="width: 100%" v-loading="listLoading">
+              <el-table-column prop="title" label="报销标题" width="200" show-overflow-tooltip align="left" />
+              <el-table-column label="关联项目" width="150" show-overflow-tooltip align="left">
+                <template #default="scope">
+                  {{ scope.row.project?.name || '无关联项目' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="totalAmount" label="总金额" width="120" align="left">
+                <template #default="scope">
+                  ¥{{ scope.row.totalAmount }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="status" label="状态" width="150" align="left">
+                <template #default="scope">
+                  <el-tag :type="getStatusTagType(scope.row.status)">
+                    {{ formatStatus(scope.row.status) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="createTime" label="申请时间" width="180" align="left" />
+              <el-table-column label="操作" width="250" align="left" fixed="right">
+                <template #default="scope">
+                  <el-button 
+                    size="small" 
+                    type="primary" 
+                    @click="editReimbursement(scope.row)"
+                    :disabled="scope.row.status !== 'DRAFT'"
+                  >
+                    编辑
+                  </el-button>
+                  <el-button 
+                    size="small" 
+                    type="danger" 
+                    @click="deleteReimbursement(scope.row)"
+                    :disabled="scope.row.status !== 'DRAFT'"
+                  >
+                    删除
+                  </el-button>
+                  <el-button 
+                    v-if="canApprove(scope.row)" 
+                    size="small" 
+                    type="warning" 
+                    @click="openApprovalDialog(scope.row)"
+                  >
+                    审批
                   </el-button>
                 </template>
-              </el-input>
-            </el-col>
-          </el-row>
-          <el-row style="margin-top: 10px;">
-            <el-col :span="24">
-              <el-button @click="resetFilters">重置筛选</el-button>
-              <el-button type="primary" @click="fetchReimbursementList">查询</el-button>
-            </el-col>
-          </el-row>
+              </el-table-column>
+            </el-table>
+          </div>
         </div>
-        <el-table :data="reimbursementList" style="width: 100%" v-loading="listLoading">
-          <el-table-column prop="title" label="报销标题" width="200" />
-          <el-table-column prop="projectName" label="关联项目" width="150" />
-          <el-table-column prop="totalAmount" label="总金额" width="120">
-            <template #default="scope">
-              ¥{{ scope.row.totalAmount }}
-            </template>
-          </el-table-column>
-          <el-table-column prop="status" label="状态" width="150">
-            <template #default="scope">
-              <el-tag :type="getStatusTagType(scope.row.status)">
-                {{ formatStatus(scope.row.status) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="createTime" label="申请时间" width="180" />
-          <el-table-column label="操作" width="200">
-            <template #default="scope">
-              <el-button 
-                size="small" 
-                type="primary" 
-                @click="editReimbursement(scope.row)"
-                :disabled="scope.row.status !== 'DRAFT'"
-              >
-                编辑
-              </el-button>
-              <el-button 
-                size="small" 
-                type="danger" 
-                @click="deleteReimbursement(scope.row)"
-                :disabled="scope.row.status !== 'DRAFT'"
-              >
-                删除
-              </el-button>
-              <el-button 
-                v-if="canApprove(scope.row)" 
-                size="small" 
-                type="warning" 
-                @click="openApprovalDialog(scope.row)"
-              >
-                审批
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
       </el-tab-pane>
       
       <el-tab-pane label="统计报表" name="statistics">
-        <div class="statistics-container">
+        <div class="tab-content">
+          <div class="statistics-section">
+            <div class="section-header">
+              <h3>统计查询</h3>
+            </div>
           <el-date-picker
             v-model="statisticsDateRange"
             type="monthrange"
@@ -200,10 +254,14 @@
             value-format="YYYY-MM"
             @change="fetchStatisticsData"
           />
-          <el-button type="primary" @click="fetchStatisticsData" style="margin-left: 10px">查询</el-button>
+            <el-button type="primary" @click="fetchStatisticsData" style="margin-left: 10px">查询</el-button>
+          </div>
           
-          <!-- 汇总信息卡片 -->
-          <div class="summary-cards">
+          <div class="summary-section">
+            <div class="section-header">
+              <h3>数据汇总</h3>
+            </div>
+            <div class="summary-cards">
             <el-card class="summary-card">
               <div class="card-content">
                 <div class="card-title">报销总额</div>
@@ -234,19 +292,30 @@
                 <div class="card-value">¥{{ statisticsSummary.avgAmount || 0 }}</div>
               </div>
             </el-card>
+            </div>
           </div>
           
-          <el-table :data="statisticsData" style="width: 100%; margin-top: 20px">
-            <el-table-column prop="category" label="费用类别" />
-            <el-table-column prop="totalAmount" label="总金额" />
-            <el-table-column prop="count" label="次数" />
-            <el-table-column prop="avgAmount" label="平均金额" />
-          </el-table>
+          <div class="table-section">
+            <div class="section-header">
+              <h3>明细统计</h3>
+            </div>
+            <el-table :data="statisticsData" style="width: 100%">
+              <el-table-column prop="category" label="费用类别" />
+              <el-table-column prop="totalAmount" label="总金额" />
+              <el-table-column prop="count" label="次数" />
+              <el-table-column prop="avgAmount" label="平均金额" />
+            </el-table>
+          </div>
           
-          <div class="chart-container">
-            <el-empty description="暂无数据" v-if="!statisticsData.length" />
-            <div v-else>
-              <div id="reimbursementStatisticsChart" style="width: 100%; height: 400px"></div>
+          <div class="chart-section">
+            <div class="section-header">
+              <h3>图表分析</h3>
+            </div>
+            <div class="chart-container">
+              <el-empty description="暂无数据" v-if="!statisticsData.length" />
+              <div v-else>
+                <div id="reimbursementStatisticsChart" style="width: 100%; height: 400px"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -377,8 +446,7 @@ const fileList = ref([])
 // 筛选相关变量
 const listFilters = reactive({
   status: null,
-  startDate: null,
-  endDate: null,
+  dateRange: null,
   keyword: ''
 })
 const listLoading = ref(false)
@@ -415,7 +483,8 @@ const fetchProjects = async () => {
   }
   try {
     const response = await api.get(`/api/projects/user/${currentUser.value.id}`);
-    projectList.value = response.data || [];
+    // API 返回格式: { code: 200, message: "操作成功", data: [...] }
+    projectList.value = response.data.data || response.data || [];
   } catch (error) {
     console.error('获取项目列表失败:', error);
     // 不显示错误消息，因为项目列表不是必需的
@@ -577,6 +646,12 @@ const initializeStatusOptions = () => {
   ]
 }
 
+// 日期范围变化处理
+const onDateRangeChange = (dateRange) => {
+  listFilters.dateRange = dateRange
+  fetchReimbursementList()
+}
+
 // 筛选功能的列表获取函数
 const fetchReimbursementList = async () => {
   listLoading.value = true
@@ -587,18 +662,19 @@ const fetchReimbursementList = async () => {
     if (listFilters.status) {
       params.status = listFilters.status
     }
-    if (listFilters.startDate) {
-      params.startDate = listFilters.startDate
-    }
-    if (listFilters.endDate) {
-      params.endDate = listFilters.endDate
+    if (listFilters.dateRange && listFilters.dateRange.length === 2) {
+      params.startDate = listFilters.dateRange[0]
+      params.endDate = listFilters.dateRange[1]
     }
     if (listFilters.keyword && listFilters.keyword.trim()) {
       params.keyword = listFilters.keyword.trim()
     }
     
     const response = await api.get('/api/oa/reimbursement', { params })
-    reimbursementList.value = response.data.content || response.data
+    // API 返回格式: { code: 200, message: "操作成功", data: Page<ReimbursementRequest> }
+    // Page 格式: { content: [...], totalElements: 10, ... }
+    const pageData = response.data.data || response.data
+    reimbursementList.value = pageData.content || pageData
   } catch (error) {
     console.error('获取报销列表失败:', error)
     ElMessage.error('获取报销列表失败: ' + (error.response?.data?.message || error.message))
@@ -611,8 +687,7 @@ const fetchReimbursementList = async () => {
 const resetFilters = () => {
   Object.assign(listFilters, {
     status: null,
-    startDate: null,
-    endDate: null,
+    dateRange: null,
     keyword: ''
   })
   fetchReimbursementList()
@@ -669,8 +744,10 @@ const fetchStatisticsData = async () => {
         endDate: endDateString
       }
     })
-    statisticsData.value = response.data.details || []
-    statisticsSummary.value = response.data.summary || {}
+    // API 返回格式: { code: 200, message: "操作成功", data: { details: [...], summary: {...} } }
+    const statisticsResponse = response.data.data || response.data
+    statisticsData.value = statisticsResponse.details || []
+    statisticsSummary.value = statisticsResponse.summary || {}
     renderChart()
   } catch (error) {
     console.error('获取统计数据失败:', error)
@@ -872,49 +949,199 @@ const handleUploadSuccess = (response, file) => {
 <style scoped>
 .reimbursement-container {
   padding: 20px;
+  max-width: 100%;
 }
 
-.apply-form {
-  max-width: 800px;
-  margin-top: 20px;
-}
-
-.statistics-container {
-  margin-top: 20px;
-}
-
-.chart-container {
-  margin-top: 30px;
-}
-
-.filter-container {
+.page-header {
   margin-bottom: 20px;
 }
 
-.summary-cards {
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #303133;
+  font-weight: 600;
+}
+
+
+.tab-content {
+  padding: 20px;
+}
+
+.form-section,
+.operation-section,
+.table-section,
+.statistics-section,
+.summary-section,
+.chart-section {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f2f5;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #303133;
+  font-weight: 600;
+}
+
+.form-content {
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.table-actions {
+  margin-bottom: 20px;
   display: flex;
-  gap: 20px;
-  margin: 20px 0;
+  justify-content: flex-start;
+}
+
+.upload-section {
+  margin-bottom: 24px;
+}
+
+.form-actions {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e4e7ed;
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.filter-container {
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.table-section {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+  overflow: hidden;
+}
+
+.table-section .el-table {
+  border: none;
+}
+
+.statistics-section,
+.summary-section,
+.chart-section {
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.chart-container {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 0;
 }
 
 .summary-card {
-  flex: 1;
-  text-align: center;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.summary-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
 }
 
 .card-content {
   padding: 20px;
+  text-align: center;
 }
 
 .card-title {
   font-size: 14px;
-  color: #666;
-  margin-bottom: 10px;
+  color: #909399;
+  margin-bottom: 12px;
+  font-weight: 500;
 }
 
 .card-value {
   font-size: 24px;
-  font-weight: bold;
+  font-weight: 600;
   color: #409eff;
+  line-height: 1.2;
+}
+
+/* 通用样式优化 */
+.el-table {
+  --el-table-border-color: #e4e7ed;
+  --el-table-header-bg-color: #f5f7fa;
+}
+
+.el-table th {
+  background-color: var(--el-table-header-bg-color);
+  font-weight: 600;
+  color: #303133;
+}
+
+.el-form-item {
+  margin-bottom: 18px;
+}
+
+.el-divider {
+  margin: 20px 0;
+}
+
+.el-divider__text {
+  font-weight: 600;
+  color: #303133;
+  background-color: #fafafa;
+  padding: 0 16px;
+}
+
+/* 响应式布局优化 */
+@media (max-width: 768px) {
+  .tab-content {
+    padding: 16px;
+  }
+  
+  .summary-cards {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .form-actions .el-button {
+    margin-bottom: 8px;
+  }
+}
+
+/* 交互效果增强 */
+.form-section:hover,
+.operation-section:hover,
+.table-section:hover,
+.statistics-section:hover,
+.summary-section:hover,
+.chart-section:hover {
+  border-color: #c6e2ff;
+  transition: border-color 0.3s ease;
 }
 </style>

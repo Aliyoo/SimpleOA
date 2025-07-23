@@ -62,22 +62,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     public User updateUser(@PathVariable Long id, @RequestBody UserDTO userDTO) {
-        // Convert DTO to Entity
-        User user = new User();
-        user.setId(id);
-        user.setUsername(userDTO.getUsername());
-        if (userDTO.getPassword() != null && !userDTO.getPassword().isEmpty()) {
-            user.setPassword(userDTO.getPassword());
-        }
-        user.setRealName(userDTO.getRealName());
-        user.setEmail(userDTO.getEmail());
-        user.setPhoneNumber(userDTO.getPhoneNumber());
-        user.setEnabled(userDTO.getEnabled());
-        user.setDepartment(userDTO.getDepartment());
-        user.setEmployeeNumber(userDTO.getEmployeeNumber());
-        user.setHireDate(userDTO.getHireDate());
-        
-        return userService.updateUser(user);
+        return userService.updateUser(id, userDTO);
     }
 
     @DeleteMapping("/{id}")

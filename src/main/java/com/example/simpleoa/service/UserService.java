@@ -1,5 +1,6 @@
 package com.example.simpleoa.service;
 
+import com.example.simpleoa.dto.UserDTO;
 import com.example.simpleoa.model.Role;
 import com.example.simpleoa.model.User;
 import com.example.simpleoa.repository.PermissionRepository;
@@ -77,6 +78,27 @@ public class UserService implements UserDetailsService {
         return userRepository.save(user);
     }
 
+    public User updateUser(Long id, UserDTO userDTO) {
+        User existingUser = userRepository.findById(id).orElseThrow(() -> new RuntimeException("用户不存在"));
+        
+        // 更新用户信息，保留原有密码
+        existingUser.setUsername(userDTO.getUsername());
+        existingUser.setRealName(userDTO.getRealName());
+        existingUser.setEmail(userDTO.getEmail());
+        existingUser.setPhoneNumber(userDTO.getPhoneNumber());
+        existingUser.setEnabled(userDTO.getEnabled());
+        existingUser.setDepartment(userDTO.getDepartment());
+        existingUser.setEmployeeNumber(userDTO.getEmployeeNumber());
+        existingUser.setHireDate(userDTO.getHireDate());
+        
+        // 只有当提供了新密码时才更新密码
+        if (userDTO.getPassword() != null && !userDTO.getPassword().trim().isEmpty()) {
+            existingUser.setPassword(this.passwordEncoder.encode(userDTO.getPassword()));
+        }
+        
+        return userRepository.save(existingUser);
+    }
+
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
             throw new RuntimeException("用户不存在");
@@ -118,5 +140,9 @@ public class UserService implements UserDetailsService {
         // 这里可以添加逻辑来获取可选用户，除开管理员都可以选中
         List<String> usernames = Arrays.asList("admin");
         return userRepository.findByUsernameNotIn(usernames);
+    }
+
+    public User getUserById(Long id) {
+        return userRepository.findById(id).orElseThrow(() -> new RuntimeException("用户不存在"));
     }
 }

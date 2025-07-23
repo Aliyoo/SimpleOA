@@ -387,7 +387,7 @@ const fetchBudgetAlerts = async () => {
 const fetchProjectsForSelect = async () => {
     try {
         // Assuming an endpoint to fetch projects suitable for selection
-        const response = await api.get('/api/projects/selectable'); // Or /api/projects
+        const response = await api.get('/api/projects');
         projectOptions.value = response.data; // Expecting [{id: 1, name: 'Project A'}, ...]
     } catch (error) {
         ElMessage.error('获取项目列表失败: ' + error.message);

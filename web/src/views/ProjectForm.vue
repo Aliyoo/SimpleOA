@@ -133,15 +133,25 @@ const submitForm = async () => {
   await projectFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
+        // 使用原始实体格式发送数据
         const payload = {
-          ...projectForm.value,
+          name: projectForm.value.name,
+          description: projectForm.value.description,
+          startDate: projectForm.value.startDate,
+          endDate: projectForm.value.endDate,
+          status: projectForm.value.status,
+          priority: projectForm.value.priority,
+          type: projectForm.value.type,
           manager: projectForm.value.managerId ? { id: projectForm.value.managerId } : null,
-          members: projectForm.value.memberIds.map(id => ({ id })),
+          members: projectForm.value.memberIds ? projectForm.value.memberIds.map(id => ({ id })) : []
         };
-        delete payload.managerId;
-        delete payload.memberIds;
 
-        console.log('创建项目的 payload:', payload); // 打印 payload
+        // 如果是编辑模式，添加id
+        if (route.params.id) {
+          payload.id = projectForm.value.id;
+        }
+
+        console.log('提交项目的 payload:', JSON.stringify(payload, null, 2));
 
         if (route.params.id) {
           await api.put(`/api/projects/${route.params.id}`, payload);
@@ -149,13 +159,13 @@ const submitForm = async () => {
         } else {
           await api.post('/api/projects', payload);
           ElMessage.success('项目创建成功');
-          emit('projectCreated'); // 发出事件通知父组件 
+          emit('projectCreated');
         }
         router.push('/projects');
       } catch (error) {
-        const errorMsg = error.response?.data?.message || error.message;
+        console.error("保存项目失败:", error);
+        const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message;
         ElMessage.error(`保存项目失败: ${errorMsg}`);
-        console.error("保存项目失败:", error.response || error);
       }
     }
   });

@@ -1,9 +1,13 @@
 package com.example.simpleoa.controller;
 
+import com.example.simpleoa.dto.BudgetRequestDTO;
+import com.example.simpleoa.dto.BudgetExpenseRequestDTO;
 import com.example.simpleoa.model.Budget;
 import com.example.simpleoa.model.BudgetAlert;
 import com.example.simpleoa.model.BudgetExpense;
 import com.example.simpleoa.model.BudgetItem;
+import com.example.simpleoa.model.Project;
+import com.example.simpleoa.model.User;
 import com.example.simpleoa.service.BudgetService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -25,7 +29,27 @@ public class BudgetController {
 
     // 预算基本管理
     @PostMapping
-    public Budget createBudget(@RequestBody Budget budget) {
+    public Budget createBudget(@RequestBody BudgetRequestDTO budgetRequestDTO) {
+        // 将DTO转换为Budget实体
+        Budget budget = new Budget();
+        budget.setName(budgetRequestDTO.getName());
+        budget.setTotalAmount(budgetRequestDTO.getTotalAmount());
+        budget.setUsedAmount(budgetRequestDTO.getUsedAmount());
+        budget.setRemainingAmount(budgetRequestDTO.getRemainingAmount());
+        budget.setStartDate(budgetRequestDTO.getStartDate());
+        budget.setEndDate(budgetRequestDTO.getEndDate());
+        budget.setStatus(budgetRequestDTO.getStatus());
+        budget.setDescription(budgetRequestDTO.getDescription());
+        budget.setCreateTime(budgetRequestDTO.getCreateTime());
+        budget.setLastUpdateTime(budgetRequestDTO.getLastUpdateTime());
+        
+        // 设置项目关联
+        if (budgetRequestDTO.getProjectId() != null) {
+            Project project = new Project();
+            project.setId(budgetRequestDTO.getProjectId());
+            budget.setProject(project);
+        }
+        
         return budgetService.createBudget(budget);
     }
 
@@ -152,10 +176,80 @@ public class BudgetController {
         budgetExpense.setBudget(budget);
         return budgetService.createBudgetExpense(budgetExpense);
     }
+    
+    // 使用DTO创建预算支出（推荐方式）
+    @PostMapping("/expenses")
+    public BudgetExpense createBudgetExpenseWithDTO(@RequestBody BudgetExpenseRequestDTO expenseRequestDTO) {
+        // 将DTO转换为BudgetExpense实体
+        BudgetExpense budgetExpense = new BudgetExpense();
+        budgetExpense.setAmount(expenseRequestDTO.getAmount());
+        budgetExpense.setExpenseDate(expenseRequestDTO.getExpenseDate());
+        budgetExpense.setExpenseType(expenseRequestDTO.getExpenseType());
+        budgetExpense.setReferenceNumber(expenseRequestDTO.getReferenceNumber());
+        budgetExpense.setStatus(expenseRequestDTO.getStatus());
+        budgetExpense.setDescription(expenseRequestDTO.getDescription());
+        budgetExpense.setRecordTime(expenseRequestDTO.getRecordTime());
+        budgetExpense.setCreateTime(expenseRequestDTO.getCreateTime());
+        budgetExpense.setLastUpdateTime(expenseRequestDTO.getLastUpdateTime());
+        
+        // 设置预算关联
+        if (expenseRequestDTO.getBudgetId() != null) {
+            Budget budget = new Budget();
+            budget.setId(expenseRequestDTO.getBudgetId());
+            budgetExpense.setBudget(budget);
+        }
+        
+        // 设置预算项目关联（可选）
+        if (expenseRequestDTO.getBudgetItemId() != null) {
+            BudgetItem budgetItem = new BudgetItem();
+            budgetItem.setId(expenseRequestDTO.getBudgetItemId());
+            budgetExpense.setBudgetItem(budgetItem);
+        }
+        
+        // 设置记录人关联（可选）
+        if (expenseRequestDTO.getRecordedBy() != null) {
+            User recordedBy = new User();
+            recordedBy.setId(expenseRequestDTO.getRecordedBy());
+            budgetExpense.setRecordedBy(recordedBy);
+        }
+        
+        return budgetService.createBudgetExpense(budgetExpense);
+    }
 
     @PutMapping("/expenses/{id}")
-    public BudgetExpense updateBudgetExpense(@PathVariable Long id, @RequestBody BudgetExpense budgetExpense) {
+    public BudgetExpense updateBudgetExpense(@PathVariable Long id, @RequestBody BudgetExpenseRequestDTO expenseRequestDTO) {
+        // 将DTO转换为BudgetExpense实体
+        BudgetExpense budgetExpense = new BudgetExpense();
         budgetExpense.setId(id);
+        budgetExpense.setAmount(expenseRequestDTO.getAmount());
+        budgetExpense.setExpenseDate(expenseRequestDTO.getExpenseDate());
+        budgetExpense.setExpenseType(expenseRequestDTO.getExpenseType());
+        budgetExpense.setReferenceNumber(expenseRequestDTO.getReferenceNumber());
+        budgetExpense.setStatus(expenseRequestDTO.getStatus());
+        budgetExpense.setDescription(expenseRequestDTO.getDescription());
+        budgetExpense.setRecordTime(expenseRequestDTO.getRecordTime());
+        
+        // 设置预算关联
+        if (expenseRequestDTO.getBudgetId() != null) {
+            Budget budget = new Budget();
+            budget.setId(expenseRequestDTO.getBudgetId());
+            budgetExpense.setBudget(budget);
+        }
+        
+        // 设置预算项目关联（可选）
+        if (expenseRequestDTO.getBudgetItemId() != null) {
+            BudgetItem budgetItem = new BudgetItem();
+            budgetItem.setId(expenseRequestDTO.getBudgetItemId());
+            budgetExpense.setBudgetItem(budgetItem);
+        }
+        
+        // 设置记录人关联（可选）
+        if (expenseRequestDTO.getRecordedBy() != null) {
+            User recordedBy = new User();
+            recordedBy.setId(expenseRequestDTO.getRecordedBy());
+            budgetExpense.setRecordedBy(recordedBy);
+        }
+        
         return budgetService.updateBudgetExpense(budgetExpense);
     }
 
@@ -167,6 +261,11 @@ public class BudgetController {
     @GetMapping("/expenses/{id}")
     public BudgetExpense getBudgetExpenseById(@PathVariable Long id) {
         return budgetService.getBudgetExpenseById(id);
+    }
+
+    @GetMapping("/expenses")
+    public List<BudgetExpense> getAllBudgetExpenses() {
+        return budgetService.getAllBudgetExpenses();
     }
 
     @GetMapping("/{budgetId}/expenses")

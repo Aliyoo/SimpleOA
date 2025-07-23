@@ -69,6 +69,11 @@ const router = createRouter({
           path: 'budget-management',
           name: 'BudgetManagement',
           component: () => import('@/views/BudgetManagement.vue'),
+        },
+        {
+          path: 'budget-expense-management',
+          name: 'BudgetExpenseManagement',
+          component: () => import('@/views/BudgetExpenseManagement.vue'),
           meta: { requiresAuth: true },
           children: [
             {
@@ -288,6 +293,7 @@ const routePermissionMap = {
   'OutsourcingManagement': 'outsourcing:view',
   'PaymentManagement': 'payment:view',
   'BudgetManagement': 'budget:view',
+  'BudgetExpenseManagement': 'budget:expense:view',
   'PerformanceManagement': 'performance:view',
   'TimeManagement': 'time:view',
   'ProjectManagerTime': 'manager-time:view',

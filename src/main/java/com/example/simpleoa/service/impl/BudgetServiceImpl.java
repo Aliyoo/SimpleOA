@@ -42,10 +42,14 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     @Transactional
     public Budget createBudget(Budget budget) {
+        // 处理项目关联，支持前端只发送projectId的情况
         if (budget.getProject() != null && budget.getProject().getId() != null) {
             Project project = projectRepository.findById(budget.getProject().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Project not found"));
             budget.setProject(project);
+        } else {
+            // 如果project为null但前端可能通过其他方式传递了projectId，这里需要额外处理
+            throw new IllegalArgumentException("Project is required for budget creation");
         }
         
         if (budget.getUsedAmount() == null) {
@@ -130,7 +134,7 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     public List<Budget> getAllBudgets() {
-        return budgetRepository.findAll();
+        return budgetRepository.findAllWithProject();
     }
 
     @Override
@@ -315,29 +319,73 @@ public class BudgetServiceImpl implements BudgetService {
         BudgetExpense existingExpense = budgetExpenseRepository.findById(budgetExpense.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Budget expense not found"));
 
-        // Update associated Budget's used and remaining amounts
-        if (existingExpense.getBudget() != null) {
-            Budget budget = existingExpense.getBudget();
-            budget.setUsedAmount(budget.getUsedAmount() - existingExpense.getAmount() + budgetExpense.getAmount());
-            budget.setRemainingAmount(budget.getRemainingAmount() + existingExpense.getAmount() - budgetExpense.getAmount());
-            budget.setLastUpdateTime(new Date());
-            budgetRepository.save(budget);
+        // 处理预算关联变更
+        Budget oldBudget = existingExpense.getBudget();
+        Budget newBudget = null;
+        
+        if (budgetExpense.getBudget() != null && budgetExpense.getBudget().getId() != null) {
+            newBudget = budgetRepository.findById(budgetExpense.getBudget().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Budget not found"));
+        }
+        
+        // 从旧预算中减去支出金额
+        if (oldBudget != null) {
+            oldBudget.setUsedAmount(oldBudget.getUsedAmount() - existingExpense.getAmount());
+            oldBudget.setRemainingAmount(oldBudget.getRemainingAmount() + existingExpense.getAmount());
+            oldBudget.setLastUpdateTime(new Date());
+            budgetRepository.save(oldBudget);
+        }
+        
+        // 向新预算中添加支出金额
+        if (newBudget != null) {
+            newBudget.setUsedAmount(newBudget.getUsedAmount() + budgetExpense.getAmount());
+            newBudget.setRemainingAmount(newBudget.getRemainingAmount() - budgetExpense.getAmount());
+            newBudget.setLastUpdateTime(new Date());
+            budgetRepository.save(newBudget);
+            existingExpense.setBudget(newBudget);
         }
 
-        // Update associated BudgetItem's used and remaining amounts
-        if (existingExpense.getBudgetItem() != null) {
-            BudgetItem budgetItem = existingExpense.getBudgetItem();
-            budgetItem.setUsedAmount(budgetItem.getUsedAmount() - existingExpense.getAmount() + budgetExpense.getAmount());
-            budgetItem.setRemainingAmount(budgetItem.getRemainingAmount() + existingExpense.getAmount() - budgetExpense.getAmount());
-            budgetItem.setLastUpdateTime(new Date());
-            budgetItemRepository.save(budgetItem);
+        // 处理预算项目关联变更
+        BudgetItem oldBudgetItem = existingExpense.getBudgetItem();
+        BudgetItem newBudgetItem = null;
+        
+        if (budgetExpense.getBudgetItem() != null && budgetExpense.getBudgetItem().getId() != null) {
+            newBudgetItem = budgetItemRepository.findById(budgetExpense.getBudgetItem().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Budget item not found"));
+        }
+        
+        // 从旧预算项目中减去支出金额
+        if (oldBudgetItem != null) {
+            oldBudgetItem.setUsedAmount(oldBudgetItem.getUsedAmount() - existingExpense.getAmount());
+            oldBudgetItem.setRemainingAmount(oldBudgetItem.getRemainingAmount() + existingExpense.getAmount());
+            oldBudgetItem.setLastUpdateTime(new Date());
+            budgetItemRepository.save(oldBudgetItem);
+        }
+        
+        // 向新预算项目中添加支出金额
+        if (newBudgetItem != null) {
+            newBudgetItem.setUsedAmount(newBudgetItem.getUsedAmount() + budgetExpense.getAmount());
+            newBudgetItem.setRemainingAmount(newBudgetItem.getRemainingAmount() - budgetExpense.getAmount());
+            newBudgetItem.setLastUpdateTime(new Date());
+            budgetItemRepository.save(newBudgetItem);
+            existingExpense.setBudgetItem(newBudgetItem);
+        }
+        
+        // 处理记录人关联
+        if (budgetExpense.getRecordedBy() != null && budgetExpense.getRecordedBy().getId() != null) {
+            User recordedBy = userRepository.findById(budgetExpense.getRecordedBy().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("User not found"));
+            existingExpense.setRecordedBy(recordedBy);
         }
 
+        // 更新基本字段
         existingExpense.setAmount(budgetExpense.getAmount());
         existingExpense.setExpenseType(budgetExpense.getExpenseType());
         existingExpense.setDescription(budgetExpense.getDescription());
         existingExpense.setExpenseDate(budgetExpense.getExpenseDate());
         existingExpense.setStatus(budgetExpense.getStatus());
+        existingExpense.setReferenceNumber(budgetExpense.getReferenceNumber());
+        existingExpense.setRecordTime(budgetExpense.getRecordTime());
         existingExpense.setLastUpdateTime(new Date());
 
         return budgetExpenseRepository.save(existingExpense);
@@ -374,6 +422,29 @@ public class BudgetServiceImpl implements BudgetService {
     public BudgetExpense getBudgetExpenseById(Long id) {
         return budgetExpenseRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Budget expense not found"));
+    }
+
+    @Override
+    public List<BudgetExpense> getAllBudgetExpenses() {
+        // 获取所有支出记录，确保关联对象被正确加载
+        List<BudgetExpense> expenses = budgetExpenseRepository.findAll();
+        // 为了确保前端能获取到完整的关联对象数据，手动初始化懒加载关系
+        expenses.forEach(expense -> {
+            if (expense.getBudget() != null) {
+                // 初始化预算和项目信息
+                expense.getBudget().getName(); // 触发加载
+                if (expense.getBudget().getProject() != null) {
+                    expense.getBudget().getProject().getName(); // 触发项目加载
+                }
+            }
+            if (expense.getBudgetItem() != null) {
+                expense.getBudgetItem().getName(); // 触发预算项目加载
+            }
+            if (expense.getRecordedBy() != null) {
+                expense.getRecordedBy().getRealName(); // 触发用户加载
+            }
+        });
+        return expenses;
     }
 
     @Override

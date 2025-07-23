@@ -42,4 +42,7 @@ public interface BudgetRepository extends JpaRepository<Budget, Long> {
 
     @Query("SELECT SUM(b.remainingAmount) FROM Budget b")
     Double sumRemainingAmount();
+    
+    @Query("SELECT b FROM Budget b LEFT JOIN FETCH b.project LEFT JOIN FETCH b.createdBy")
+    List<Budget> findAllWithProject();
 }

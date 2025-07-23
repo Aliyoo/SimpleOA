@@ -1,6 +1,7 @@
 package com.example.simpleoa.config;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -27,6 +28,12 @@ public class JacksonConfig {
         
         // 在序列化失败时不抛出异常
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        
+        // 忽略未知属性，避免反序列化失败
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        
+        // 忽略循环引用问题
+        mapper.configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false);
         
         return mapper;
     }

@@ -52,22 +52,29 @@ public class RoleServiceImpl implements RoleService {
     @Override
     @Transactional
     public Role updateRoleWithPermissions(Role role, List<Long> permissionIds) {
-        // 先更新角色基本信息
-        Role savedRole = roleRepository.save(role);
+        // 获取现有的角色，保留用户关联关系
+        Role existingRole = roleRepository.findById(role.getId())
+            .orElseThrow(() -> new RuntimeException("角色不存在"));
+        
+        // 只更新基本信息，保留用户关联
+        existingRole.setName(role.getName());
+        existingRole.setDescription(role.getDescription());
         
         // 设置权限（包括清空权限的情况）
         if (permissionIds != null) {
             if (permissionIds.isEmpty()) {
                 // 清空权限
-                savedRole.setPermissions(new HashSet<>());
+                existingRole.setPermissions(new HashSet<>());
             } else {
                 // 设置新权限
                 List<Permission> permissions = permissionRepository.findAllById(permissionIds);
                 Set<Permission> permissionSet = new HashSet<>(permissions);
-                savedRole.setPermissions(permissionSet);
+                existingRole.setPermissions(permissionSet);
             }
-            savedRole = roleRepository.save(savedRole);
         }
+        
+        // 保存更新后的角色（保留用户关联）
+        Role savedRole = roleRepository.save(existingRole);
         
         return savedRole;
     }
@@ -94,9 +101,20 @@ public class RoleServiceImpl implements RoleService {
     public void assignPermissionsToRole(Long roleId, List<Long> permissionIds) {
         Role role = roleRepository.findById(roleId)
             .orElseThrow(() -> new RuntimeException("角色不存在"));
-        List<Permission> permissions = permissionRepository.findAllById(permissionIds);
-        Set<Permission> existingPermissions = new HashSet<>(permissions);
-        role.setPermissions(existingPermissions);
+        
+        // 处理权限分配
+        if (permissionIds != null) {
+            if (permissionIds.isEmpty()) {
+                // 清空权限
+                role.setPermissions(new HashSet<>());
+            } else {
+                // 设置新权限
+                List<Permission> permissions = permissionRepository.findAllById(permissionIds);
+                Set<Permission> permissionSet = new HashSet<>(permissions);
+                role.setPermissions(permissionSet);
+            }
+        }
+        
         roleRepository.save(role);
     }
 } 

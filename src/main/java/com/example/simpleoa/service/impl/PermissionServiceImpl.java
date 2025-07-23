@@ -38,23 +38,25 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     @Transactional
     public void assignPermissionsToRole(Long roleId, List<Long> permissionIds) {
-        // First remove existing permissions for this role
-        rolePermissionRepository.deleteByRoleId(roleId);
-
-        // Then add new permissions
-        List<RolePermission> rolePermissions = new ArrayList<>();
-        for (Long permissionId : permissionIds) {
-            RolePermission rolePermission = new RolePermission();
-            // 查询角色信息
-            Role role = roleRepository.findById(roleId)
-                    .orElseThrow(() -> new NoSuchElementException("Role not found with id: " + roleId));
-            rolePermission.setRole(role);
-            // 查询权限信息
-            Permission permission = permissionRepository.findById(permissionId)
-                    .orElseThrow(() -> new NoSuchElementException("Permission not found with id: " + permissionId));
-            rolePermission.setPermission(permission);
-            rolePermissions.add(rolePermissionRepository.save(rolePermission));
+        // 获取现有角色，保留用户关联
+        Role role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new NoSuchElementException("Role not found with id: " + roleId));
+        
+        // 处理权限分配
+        if (permissionIds != null) {
+            if (permissionIds.isEmpty()) {
+                // 清空权限
+                role.setPermissions(new HashSet<>());
+            } else {
+                // 设置新权限
+                List<Permission> permissions = permissionRepository.findAllById(permissionIds);
+                Set<Permission> permissionSet = new HashSet<>(permissions);
+                role.setPermissions(permissionSet);
+            }
         }
+        
+        // 保存角色（这会自动处理role_permission关联表）
+        roleRepository.save(role);
     }
 
     public List<Permission> findPermissionsByRoleId(Long roleId) {

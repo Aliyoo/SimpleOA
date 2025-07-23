@@ -20,6 +20,7 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("/api/projects")
+@CrossOrigin(origins = "*")
 public class ProjectController {
     private static final Logger logger = LoggerFactory.getLogger(ProjectController.class);
 
@@ -33,16 +34,7 @@ public class ProjectController {
     @PostMapping
     public ResponseEntity<?> createProject(@RequestBody Project project) {
         try {
-            //Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            //logger.info("Creating project: {}, User: {}", project.getName(), auth.getName());
-
-            // 记录关键数据内容，帮助调试
-            logger.info("Project data - name: {}, status: {}, manager: {}, members count: {}",
-                project.getName(),
-                project.getStatus(),
-                project.getManager() != null ? project.getManager().getId() : "null",
-                project.getMembers() != null ? project.getMembers().size() : 0);
-
+            logger.info("Creating project: {}", project.getName());
             Project savedProject = projectService.createProject(project);
             logger.info("Project created successfully: ID={}", savedProject.getId());
             return ResponseEntity.ok(savedProject);

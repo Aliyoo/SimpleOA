@@ -1,10 +1,16 @@
 package com.example.simpleoa.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.util.Date;
 
 @Entity
 @Table(name = "budget_expense")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class BudgetExpense {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,108 +58,4 @@ public class BudgetExpense {
     @Column
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastUpdateTime;
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Budget getBudget() {
-        return budget;
-    }
-
-    public void setBudget(Budget budget) {
-        this.budget = budget;
-    }
-
-    public BudgetItem getBudgetItem() {
-        return budgetItem;
-    }
-
-    public void setBudgetItem(BudgetItem budgetItem) {
-        this.budgetItem = budgetItem;
-    }
-
-    public Double getAmount() {
-        return amount;
-    }
-
-    public void setAmount(Double amount) {
-        this.amount = amount;
-    }
-
-    public Date getExpenseDate() {
-        return expenseDate;
-    }
-
-    public void setExpenseDate(Date expenseDate) {
-        this.expenseDate = expenseDate;
-    }
-
-    public String getExpenseType() {
-        return expenseType;
-    }
-
-    public void setExpenseType(String expenseType) {
-        this.expenseType = expenseType;
-    }
-
-    public String getReferenceNumber() {
-        return referenceNumber;
-    }
-
-    public void setReferenceNumber(String referenceNumber) {
-        this.referenceNumber = referenceNumber;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public User getRecordedBy() {
-        return recordedBy;
-    }
-
-    public void setRecordedBy(User recordedBy) {
-        this.recordedBy = recordedBy;
-    }
-
-    public Date getRecordTime() {
-        return recordTime;
-    }
-
-    public void setRecordTime(Date recordTime) {
-        this.recordTime = recordTime;
-    }
-
-    public Date getCreateTime() {
-        return createTime;
-    }
-
-    public void setCreateTime(Date createTime) {
-        this.createTime = createTime;
-    }
-
-    public Date getLastUpdateTime() {
-        return lastUpdateTime;
-    }
-
-    public void setLastUpdateTime(Date lastUpdateTime) {
-        this.lastUpdateTime = lastUpdateTime;
-    }
 }

@@ -82,6 +82,10 @@
               <el-icon><Coin /></el-icon>
               <span>预算管理</span>
             </el-menu-item>
+            <el-menu-item index="/budget-expense-management">
+              <el-icon><Coin /></el-icon>
+              <span>预算支出管理</span>
+            </el-menu-item>
             <el-menu-item index="/performance-management">
               <el-icon><DataAnalysis /></el-icon>
               <span>绩效管理</span>
@@ -272,6 +276,7 @@ const getIconComponent = (iconName) => {
     'outsourcing-management': ElementPlusIconsVue.Connection,
     'payment-management': ElementPlusIconsVue.Money,
     'budget-management': ElementPlusIconsVue.Coin,
+    'budget-expense-management': ElementPlusIconsVue.Coin,
     'performance-management': ElementPlusIconsVue.DataAnalysis,
     'user-management': ElementPlusIconsVue.User,
     'role-management': ElementPlusIconsVue.Lock,

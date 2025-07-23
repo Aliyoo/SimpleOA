@@ -41,6 +41,7 @@ public interface BudgetService {
     BudgetExpense updateBudgetExpense(BudgetExpense budgetExpense);
     void deleteBudgetExpense(Long id);
     BudgetExpense getBudgetExpenseById(Long id);
+    List<BudgetExpense> getAllBudgetExpenses();
     List<BudgetExpense> getBudgetExpensesByBudget(Long budgetId);
     List<BudgetExpense> getBudgetExpensesByBudgetItem(Long budgetItemId);
     List<BudgetExpense> getBudgetExpensesByExpenseType(String expenseType);

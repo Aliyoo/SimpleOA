@@ -376,20 +376,31 @@
             </template>
           </el-table-column>
 
-          <!-- 报销类型 -->
-          <el-table-column prop="expenseType" label="报销类型" min-width="100">
+          <!-- 报销标题 -->
+          <el-table-column prop="title" label="报销标题" min-width="150">
             <template #default="{row}">
               <template v-if="row.reimbursementRequest">
-                {{ row.reimbursementRequest.expenseType || '' }}
+                {{ row.reimbursementRequest.title || '' }}
               </template>
             </template>
           </el-table-column>
 
           <!-- 报销金额 -->
-          <el-table-column prop="amount" label="报销金额" width="100">
+          <el-table-column prop="totalAmount" label="报销金额" width="120">
             <template #default="{row}">
-              <template v-if="row.reimbursementRequest && row.reimbursementRequest.amount">
-                ¥{{ row.reimbursementRequest.amount }}
+              <template v-if="row.reimbursementRequest && row.reimbursementRequest.totalAmount">
+                <span class="amount-text">
+                  ¥{{ row.reimbursementRequest.totalAmount }}
+                </span>
+              </template>
+            </template>
+          </el-table-column>
+
+          <!-- 申请人 -->
+          <el-table-column prop="applicant" label="申请人" width="100">
+            <template #default="{row}">
+              <template v-if="row.reimbursementRequest && row.reimbursementRequest.applicant">
+                {{ row.reimbursementRequest.applicant.username || row.reimbursementRequest.applicant.name }}
               </template>
             </template>
           </el-table-column>
@@ -1083,6 +1094,11 @@ onMounted(async () => {
   text-align: center;
   color: #909399;
   font-size: 14px;
+}
+
+.amount-text {
+  font-weight: 600;
+  color: #f56c6c;
 }
 
 .operation-container {

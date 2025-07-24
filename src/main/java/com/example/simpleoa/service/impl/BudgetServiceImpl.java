@@ -713,4 +713,14 @@ public class BudgetServiceImpl implements BudgetService {
         // Or, ideally, use native queries or more advanced JPA features for monthly aggregation.
         return trendData;
     }
+
+    @Override
+    public List<BudgetExpense> getBudgetExpensesByReimbursement(Long reimbursementId) {
+        return budgetExpenseRepository.findByReimbursementRequestId(reimbursementId);
+    }
+
+    @Override
+    public List<Budget> getAvailableBudgetsForProject(Long projectId) {
+        return budgetRepository.findAvailableBudgetsByProject(projectId);
+    }
 }

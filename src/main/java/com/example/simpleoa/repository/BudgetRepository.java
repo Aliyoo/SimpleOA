@@ -45,4 +45,7 @@ public interface BudgetRepository extends JpaRepository<Budget, Long> {
     
     @Query("SELECT b FROM Budget b LEFT JOIN FETCH b.project LEFT JOIN FETCH b.createdBy")
     List<Budget> findAllWithProject();
+
+    @Query("SELECT b FROM Budget b WHERE b.project.id = ?1 AND b.remainingAmount > 0 AND b.status = 'ACTIVE'")
+    List<Budget> findAvailableBudgetsByProject(Long projectId);
 }

@@ -23,6 +23,8 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
     private final ApprovalFlowRepository approvalFlowRepository;
 
     private final UserRepository userRepository;
+    
+    private ReimbursementServiceImpl reimbursementService;
 
     public ApprovalFlowServiceImpl(ApprovalFlowRepository approvalFlowRepository, UserRepository userRepository) {
         this.approvalFlowRepository = approvalFlowRepository;
@@ -44,6 +46,12 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
     @Autowired
     @Lazy
     private WorkTimeService workTimeService;
+    
+    @Autowired
+    @Lazy
+    public void setReimbursementService(ReimbursementServiceImpl reimbursementService) {
+        this.reimbursementService = reimbursementService;
+    }
 
     @Override
     @Transactional
@@ -76,6 +84,36 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
                 }
             } else {
                 System.err.println("无法更新工时记录状态: workTimeService 为 null");
+            }
+        }
+        
+        // 如果是报销审批，处理报销状态和预算扣除
+        if ("REIMBURSEMENT".equals(flow.getRequestType()) && flow.getReimbursementRequest() != null) {
+            ReimbursementRequest reimbursementRequest = flow.getReimbursementRequest();
+            if ("APPROVED".equals(status)) {
+                // 判断是否为财务审批（最终审批）
+                if (isFinanceApproval(flow)) {
+                    // 财务审批通过，处理预算扣除并设置最终状态
+                    if (reimbursementService != null) {
+                        try {
+                            reimbursementService.processApprovedReimbursement(reimbursementRequest.getId());
+                            System.out.println("报销申请ID " + reimbursementRequest.getId() + " 财务审批通过，预算已扣除");
+                        } catch (Exception e) {
+                            System.err.println("处理报销预算扣除失败: " + e.getMessage());
+                        }
+                    }
+                } else {
+                    // 部门经理审批通过，创建财务审批流程
+                    User financeApprover = findFinanceApprover();
+                    if (financeApprover != null) {
+                        createReimbursementApproval(reimbursementRequest, financeApprover);
+                        System.out.println("报销申请ID " + reimbursementRequest.getId() + " 部门审批通过，已创建财务审批");
+                    }
+                }
+            } else if ("REJECTED".equals(status)) {
+                // 审批拒绝，更新报销状态
+                reimbursementRequest.setStatus(ReimbursementStatus.REJECTED);
+                System.out.println("报销申请ID " + reimbursementRequest.getId() + " 已被拒绝");
             }
         }
 
@@ -331,5 +369,26 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
         }
 
         return updatedCount;
+    }
+    
+    private boolean isFinanceApproval(ApprovalFlow flow) {
+        if (flow.getApprover() == null) return false;
+        return flow.getApprover().getRoles().stream()
+                .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()));
+    }
+    
+    private User findFinanceApprover() {
+        List<User> financeUsers = userRepository.findUsersByRole("ROLE_FINANCE");
+        if (!financeUsers.isEmpty()) {
+            return financeUsers.get(0);
+        }
+        
+        List<User> admins = userRepository.findUsersByRole("ROLE_ADMIN");
+        if (!admins.isEmpty()) {
+            return admins.get(0);
+        }
+        
+        System.err.println("No finance user or admin found for reimbursement approval");
+        return null;
     }
 }

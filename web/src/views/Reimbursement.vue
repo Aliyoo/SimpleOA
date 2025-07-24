@@ -73,9 +73,33 @@
                     <el-input v-model="row.description" placeholder="请输入费用说明" size="small" />
                   </template>
                 </el-table-column>
+                <el-table-column label="预算来源" width="180" align="left">
+                  <template #default="{ row, $index }">
+                    <el-select v-model="row.budgetId" placeholder="选择预算" size="small" style="width: 100%" clearable @change="onBudgetChange(row, $index)">
+                      <el-option
+                        v-for="budget in availableBudgets"
+                        :key="budget.id"
+                        :label="`${budget.name} (余额: ¥${budget.remainingAmount})`"
+                        :value="budget.id"
+                      />
+                    </el-select>
+                  </template>
+                </el-table-column>
+                <el-table-column label="预算明细" width="180" align="left">
+                  <template #default="{ row, $index }">
+                    <el-select v-model="row.budgetItemId" placeholder="选择预算明细" size="small" style="width: 100%" clearable :disabled="!row.budgetId">
+                      <el-option
+                        v-for="item in getBudgetItems(row.budgetId)"
+                        :key="item.id"
+                        :label="`${item.category} (余额: ¥${item.remainingAmount})`"
+                        :value="item.id"
+                      />
+                    </el-select>
+                  </template>
+                </el-table-column>
                 <el-table-column label="金额" width="120" align="left">
                   <template #default="{ row, $index }">
-                    <el-input-number v-model="row.amount" :precision="2" :min="0" size="small" style="width: 100%" />
+                    <el-input-number v-model="row.amount" :precision="2" :min="0" size="small" style="width: 100%" @change="validateBudgetAmount(row)" />
                   </template>
                 </el-table-column>
                 <el-table-column label="操作" width="80" align="left">
@@ -120,7 +144,8 @@
           <!-- 操作按钮区域 -->
           <div class="form-section">
             <div class="form-actions">
-              <el-button type="primary" @click="submitReimbursement" size="large">提交申请</el-button>
+              <el-button @click="saveDraftReimbursement" size="large">保存草稿</el-button>
+              <el-button type="primary" @click="submitReimbursement" size="large">提交审批</el-button>
               <el-button @click="resetForm" size="large">重置表单</el-button>
             </div>
           </div>
@@ -205,7 +230,7 @@
                 </template>
               </el-table-column>
               <el-table-column prop="createTime" label="申请时间" width="180" align="left" />
-              <el-table-column label="操作" width="250" align="left" fixed="right">
+              <el-table-column label="操作" width="320" align="left" fixed="right">
                 <template #default="scope">
                   <el-button 
                     size="small" 
@@ -216,6 +241,14 @@
                     编辑
                   </el-button>
                   <el-button 
+                    v-if="scope.row.status === 'DRAFT'"
+                    size="small" 
+                    type="success" 
+                    @click="submitReimbursementForApproval(scope.row)"
+                  >
+                    提交审批
+                  </el-button>
+                  <el-button 
                     size="small" 
                     type="danger" 
                     @click="deleteReimbursement(scope.row)"
@@ -223,14 +256,19 @@
                   >
                     删除
                   </el-button>
-                  <el-button 
-                    v-if="canApprove(scope.row)" 
-                    size="small" 
-                    type="warning" 
-                    @click="openApprovalDialog(scope.row)"
+                  <el-tooltip 
+                    v-if="canViewApproval(scope.row)" 
+                    content="查看审批状态请前往审批管理模块" 
+                    placement="top"
                   >
-                    审批
-                  </el-button>
+                    <el-button 
+                      size="small" 
+                      type="info" 
+                      @click="goToApprovalManagement(scope.row)"
+                    >
+                      查看审批
+                    </el-button>
+                  </el-tooltip>
                 </template>
               </el-table-column>
             </el-table>
@@ -387,19 +425,6 @@
       </template>
     </el-dialog>
 
-    <!-- Approval Dialog -->
-    <el-dialog v-model="approvalDialogVisible" title="报销审批" width="50%">
-        <!-- Display reimbursement details here -->
-        <p><strong>标题:</strong> {{ currentReimbursement.title }}</p>
-        <p><strong>总金额:</strong> {{ currentReimbursement.totalAmount }}</p>
-        <el-form-item label="审批意见">
-            <el-input type="textarea" v-model="approvalComment"></el-input>
-        </el-form-item>
-        <template #footer>
-            <el-button @click="handleApproval('reject')" type="danger">驳回</el-button>
-            <el-button @click="handleApproval('approve')" type="primary">通过</el-button>
-        </template>
-    </el-dialog>
 
   </div>
 </template>
@@ -407,6 +432,7 @@
 <script setup>
 import { ref, onMounted, computed, reactive, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import api from '../utils/axios.js'
 import { Plus, Search } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
@@ -414,6 +440,7 @@ import * as echarts from 'echarts'
 import { APP_CONFIG } from '../utils/config.js'
 
 const userStore = useUserStore()
+const router = useRouter()
 const currentUser = computed(() => userStore.user)
 
 // Tab控制
@@ -421,6 +448,7 @@ const activeTab = ref('apply')
 
 // 报销申请表单
 const reimbursementForm = reactive({
+  id: null,
   title: '',
   projectId: null,
   items: [],
@@ -442,6 +470,8 @@ const statisticsData = ref([])
 const statisticsSummary = ref({})
 const statisticsDateRange = ref([])
 const fileList = ref([])
+const availableBudgets = ref([])
+const budgetItems = ref([])
 
 // 筛选相关变量
 const listFilters = reactive({
@@ -459,7 +489,6 @@ const totalAmount = computed(() => {
 
 // 原有的弹窗相关变量
 const formDialogVisible = ref(false)
-const approvalDialogVisible = ref(false)
 const isEdit = ref(false)
 
 const initialFormData = () => ({
@@ -471,8 +500,6 @@ const initialFormData = () => ({
 })
 const formData = ref(initialFormData())
 
-const currentReimbursement = ref({})
-const approvalComment = ref('')
 
 // Fetch data - 使用统一的API调用
 const fetchProjects = async () => {
@@ -491,6 +518,43 @@ const fetchProjects = async () => {
     projectList.value = []; // Ensure it's an empty array on error
   }
 };
+
+// 获取可用预算
+const fetchAvailableBudgets = async (projectId) => {
+  if (!projectId) {
+    availableBudgets.value = []
+    budgetItems.value = []
+    return
+  }
+  
+  try {
+    const response = await api.get(`/api/budgets/project/${projectId}/available-budgets`)
+    availableBudgets.value = response.data.data || response.data || []
+    
+    // 获取预算明细
+    const itemsResponse = await api.get(`/api/budgets/project/${projectId}/budget-items`)
+    budgetItems.value = itemsResponse.data.data || itemsResponse.data || []
+  } catch (error) {
+    console.error('获取预算信息失败:', error)
+    availableBudgets.value = []
+    budgetItems.value = []
+  }
+}
+
+// 监听项目变化
+watch(() => reimbursementForm.projectId, (newProjectId) => {
+  if (newProjectId) {
+    fetchAvailableBudgets(newProjectId)
+  } else {
+    availableBudgets.value = []
+    budgetItems.value = []
+    // 清空所有明细项的预算选择
+    reimbursementForm.items.forEach(item => {
+      item.budgetId = null
+      item.budgetItemId = null
+    })
+  }
+})
 
 onMounted(async () => {
   // 首先尝试获取用户信息，但不阻塞其他功能
@@ -585,32 +649,23 @@ const handleDelete = (id) => {
     });
 };
 
-// Approval Dialog Logic
-const openApprovalDialog = (row) => {
-    currentReimbursement.value = row;
-    approvalComment.value = '';
-    approvalDialogVisible.value = true;
-};
-
-const handleApproval = async (decision) => {
-    try {
-        await api.post(`/api/oa/reimbursement/${currentReimbursement.value.id}/approval`, {
-            decision,
-            comment: approvalComment.value
-        });
-        ElMessage.success('审批操作成功');
-        approvalDialogVisible.value = false;
-        fetchReimbursementList();
-    } catch (error) {
-        console.error('审批失败:', error);
-        ElMessage.error('审批失败: ' + (error.response?.data?.message || error.message));
-    }
+// Navigation to Approval Management
+const goToApprovalManagement = (row) => {
+    router.push({
+        path: '/approvals', 
+        query: { 
+            type: 'REIMBURSEMENT',
+            requestId: row.id 
+        }
+    });
 };
 
 // Helpers
-const canApprove = (row) => {
-    // Simplified logic. In a real app, this would check the user's role and the request's status.
-    return row.status === 'PENDING_MANAGER_APPROVAL' || row.status === 'PENDING_FINANCE_APPROVAL';
+const canViewApproval = (row) => {
+    return row.status === 'PENDING_MANAGER_APPROVAL' || 
+           row.status === 'PENDING_FINANCE_APPROVAL' || 
+           row.status === 'APPROVED' || 
+           row.status === 'REJECTED';
 };
 
 const formatStatus = (status) => {
@@ -795,7 +850,8 @@ const renderChart = () => {
   myChart.setOption(option)
 }
 
-const submitReimbursement = async () => {
+// 保存草稿
+const saveDraftReimbursement = async () => {
   // 表单验证
   if (!reimbursementFormRef.value) return
   
@@ -816,8 +872,50 @@ const submitReimbursement = async () => {
       attachments: reimbursementForm.attachments
     }
     
-    await api.post('/api/oa/reimbursement', submitData)
-    ElMessage.success('报销申请提交成功')
+    let response
+    if (reimbursementForm.id) {
+      // 更新草稿
+      response = await api.put(`/api/oa/reimbursement/${reimbursementForm.id}`, submitData)
+      ElMessage.success('报销草稿保存成功')
+    } else {
+      // 创建草稿
+      response = await api.post('/api/oa/reimbursement', submitData)
+      ElMessage.success('报销草稿创建成功')
+      reimbursementForm.id = response.data.data.id
+    }
+    
+    // 刷新列表
+    fetchReimbursementList()
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      ElMessage.error('请正确填写表单信息')
+    } else {
+      ElMessage.error('保存失败: ' + (error.response?.data?.message || error.message))
+    }
+  }
+}
+
+// 提交审批
+const submitReimbursement = async () => {
+  try {
+    // 首先保存草稿（如果需要）
+    if (!reimbursementForm.id) {
+      await saveDraftReimbursement()
+      if (!reimbursementForm.id) {
+        return // 如果保存草稿失败，不继续提交
+      }
+    }
+    
+    // 预算验证
+    const budgetValid = await validateReimbursementBudget()
+    if (!budgetValid) {
+      ElMessage.error('预算不足，无法提交审批')
+      return
+    }
+    
+    // 提交审批
+    await api.post(`/api/oa/reimbursement/${reimbursementForm.id}/submit`)
+    ElMessage.success('报销申请已提交审批')
     
     // 重置表单
     resetForm()
@@ -828,17 +926,14 @@ const submitReimbursement = async () => {
     // 切换到列表页面
     activeTab.value = 'list'
   } catch (error) {
-    if (error.name === 'ValidationError') {
-      ElMessage.error('请正确填写表单信息')
-    } else {
-      ElMessage.error('提交失败: ' + error.message)
-    }
+    ElMessage.error('提交审批失败: ' + (error.response?.data?.message || error.message))
   }
 }
 
 const resetForm = () => {
   // 重置表单数据
   Object.assign(reimbursementForm, {
+    id: null,
     title: '',
     projectId: null,
     items: [],
@@ -860,7 +955,9 @@ const addReimbursementItem = () => {
     expenseDate: '',
     itemCategory: '',
     description: '',
-    amount: 0
+    amount: 0,
+    budgetId: null,
+    budgetItemId: null
   })
 }
 
@@ -941,6 +1038,71 @@ const handleUploadSuccess = (response, file) => {
     // 原有的弹窗上传处理
     formData.value.attachments.push(response.data?.url || response.url)
     fileList.value.push({ name: file.name, url: response.data?.url || response.url })
+  }
+}
+
+// 预算相关方法
+const getBudgetItems = (budgetId) => {
+  if (!budgetId) return []
+  return budgetItems.value.filter(item => item.budget && item.budget.id === budgetId)
+}
+
+const onBudgetChange = (row, index) => {
+  // 清空预算明细选择
+  row.budgetItemId = null
+  // 可以在这里添加预算可用性检查
+  validateBudgetAmount(row)
+}
+
+const validateBudgetAmount = async (row) => {
+  if (!row.amount || row.amount <= 0) return
+  
+  if (row.budgetId) {
+    const budget = availableBudgets.value.find(b => b.id === row.budgetId)
+    if (budget && row.amount > budget.remainingAmount) {
+      ElMessage.warning(`金额超过预算余额 ¥${budget.remainingAmount}`)
+    }
+  }
+  
+  if (row.budgetItemId) {
+    const budgetItem = budgetItems.value.find(item => item.id === row.budgetItemId)
+    if (budgetItem && row.amount > budgetItem.remainingAmount) {
+      ElMessage.warning(`金额超过预算明细余额 ¥${budgetItem.remainingAmount}`)
+    }
+  }
+}
+
+// 验证整个报销申请的预算
+const validateReimbursementBudget = async () => {
+  if (!reimbursementForm.projectId || !reimbursementForm.items.length) {
+    return true
+  }
+  
+  try {
+    const response = await api.post('/api/oa/reimbursement/validate-budget', reimbursementForm)
+    return response.data.data
+  } catch (error) {
+    console.error('预算验证失败:', error)
+    return false
+  }
+}
+
+// 从列表中提交审批
+const submitReimbursementForApproval = async (row) => {
+  try {
+    await ElMessageBox.confirm('确定要提交这个报销申请到审批流程吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await api.post(`/api/oa/reimbursement/${row.id}/submit`)
+    ElMessage.success('报销申请已提交审批')
+    fetchReimbursementList()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('提交审批失败: ' + (error.response?.data?.message || error.message))
+    }
   }
 }
 
@@ -1143,5 +1305,38 @@ const handleUploadSuccess = (response, file) => {
 .chart-section:hover {
   border-color: #c6e2ff;
   transition: border-color 0.3s ease;
+}
+
+/* 审批对话框样式 */
+.approval-content {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.approval-section {
+  margin-bottom: 24px;
+}
+
+.approval-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #303133;
+  font-weight: 600;
+  border-left: 4px solid #409eff;
+  padding-left: 12px;
+}
+
+.amount-highlight {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e6a23c;
+}
+
+.approval-section .el-descriptions {
+  margin-bottom: 16px;
+}
+
+.approval-section .el-table {
+  margin-bottom: 16px;
 }
 </style>

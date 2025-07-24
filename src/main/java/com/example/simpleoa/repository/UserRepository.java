@@ -35,8 +35,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     //List<User> findByLastLoginTimeBetween(Date startDate, Date endDate);
     
     // 查询特定角色的用户
-    //@Query("SELECT u FROM User u JOIN u.roles r WHERE r.id = :roleId")
-    //List<User> findByRoleId(@Param("roleId") Long roleId);
+    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
+    List<User> findUsersByRole(@org.springframework.data.repository.query.Param("roleName") String roleName);
     
     // 查询特定项目的成员
     //@Query("SELECT u FROM User u JOIN u.projects p WHERE p.id = :projectId")

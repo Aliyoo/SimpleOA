@@ -33,4 +33,12 @@ public class ReimbursementItem {
 
     @Column(nullable = false)
     private BigDecimal amount;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "budget_id")
+    private Budget budget;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "budget_item_id")
+    private BudgetItem budgetItem;
 }

@@ -13,6 +13,9 @@ public interface ReimbursementService {
     void deleteReimbursement(Long id);
     ReimbursementRequest getReimbursementById(Long id);
     Page<ReimbursementRequest> getReimbursements(Long userId, int page, int size, ReimbursementStatus status, String startDate, String endDate, String keyword);
+    ReimbursementRequest submitForApproval(Long id, Long submitterId);
     ReimbursementRequest approveOrReject(Long id, String decision, String comment, Long approverId);
     Map<String, Object> getReimbursementStatistics(String startDate, String endDate, Long userId);
+    boolean checkBudgetAvailability(Long reimbursementId);
+    boolean validateReimbursementBudget(ReimbursementRequestDTO dto);
 }

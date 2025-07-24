@@ -37,6 +37,14 @@ public class BudgetExpense {
     @Column
     private String referenceNumber;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reimbursement_request_id")
+    private ReimbursementRequest reimbursementRequest;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reimbursement_item_id")
+    private ReimbursementItem reimbursementItem;
+
     @Column
     private String status;
 

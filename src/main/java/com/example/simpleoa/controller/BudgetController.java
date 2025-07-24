@@ -433,4 +433,22 @@ public class BudgetController {
     public Map<String, Object> getBudgetTrend(@RequestParam(defaultValue = "12") int months) {
         return budgetService.getBudgetTrend(months);
     }
+
+    // 报销相关的预算查询
+    @GetMapping("/expenses/reimbursement/{reimbursementId}")
+    public List<BudgetExpense> getBudgetExpensesByReimbursement(@PathVariable Long reimbursementId) {
+        return budgetService.getBudgetExpensesByReimbursement(reimbursementId);
+    }
+
+    @GetMapping("/project/{projectId}/available-budgets")
+    public List<Budget> getAvailableBudgetsForProject(@PathVariable Long projectId) {
+        return budgetService.getAvailableBudgetsForProject(projectId);
+    }
+
+    @GetMapping("/project/{projectId}/budget-items")
+    public List<BudgetItem> getAvailableBudgetItemsForProject(@PathVariable Long projectId) {
+        return budgetService.getBudgetItemsByProject(projectId).stream()
+                .filter(item -> item.getRemainingAmount() != null && item.getRemainingAmount() > 0)
+                .toList();
+    }
 }

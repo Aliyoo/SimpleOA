@@ -78,6 +78,10 @@ public interface BudgetService {
     boolean checkBudgetAvailability(Long projectId, Double amount);
     boolean checkBudgetItemAvailability(Long budgetItemId, Double amount);
     
+    // 报销相关方法
+    List<BudgetExpense> getBudgetExpensesByReimbursement(Long reimbursementId);
+    List<Budget> getAvailableBudgetsForProject(Long projectId);
+    
     // 预算统计分析
     Map<String, Object> getBudgetStatsByProject(Long projectId);
     Map<String, Object> getBudgetStatsByDateRange(Date startDate, Date endDate);

@@ -5,6 +5,8 @@ import com.example.simpleoa.repository.ProjectRepository;
 import com.example.simpleoa.repository.ReimbursementRequestRepository;
 import com.example.simpleoa.repository.UserRepository;
 import com.example.simpleoa.service.ReimbursementService;
+import com.example.simpleoa.service.BudgetService;
+import com.example.simpleoa.service.ApprovalFlowService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -25,14 +27,20 @@ public class ReimbursementServiceImpl implements ReimbursementService {
     
     private final ReimbursementRequestRepository reimbursementRequestRepository;
     private final UserRepository userRepository;
-    private final ProjectRepository projectRepository; // Added ProjectRepository
+    private final ProjectRepository projectRepository;
+    private final BudgetService budgetService;
+    private final ApprovalFlowService approvalFlowService;
 
     public ReimbursementServiceImpl(ReimbursementRequestRepository reimbursementRequestRepository,
                                     UserRepository userRepository,
-                                    ProjectRepository projectRepository) { // Added to constructor
+                                    ProjectRepository projectRepository,
+                                    BudgetService budgetService,
+                                    ApprovalFlowService approvalFlowService) {
         this.reimbursementRequestRepository = reimbursementRequestRepository;
         this.userRepository = userRepository;
-        this.projectRepository = projectRepository; // Initialize ProjectRepository
+        this.projectRepository = projectRepository;
+        this.budgetService = budgetService;
+        this.approvalFlowService = approvalFlowService;
     }
 
     @Override
@@ -126,40 +134,45 @@ public class ReimbursementServiceImpl implements ReimbursementService {
 
     @Override
     @Transactional
-    public ReimbursementRequest approveOrReject(Long id, String decision, String comment, Long approverId) {
+    public ReimbursementRequest submitForApproval(Long id, Long submitterId) {
         ReimbursementRequest request = getReimbursementById(id);
-        User approver = userRepository.findById(approverId).orElseThrow(() -> new RuntimeException("User not found"));
-
-        boolean isManager = approver.getRoles().stream().anyMatch(role -> "ROLE_MANAGER".equals(role.getName()));
-        boolean isFinance = approver.getRoles().stream().anyMatch(role -> "ROLE_FINANCE".equals(role.getName()));
-
-        switch (request.getStatus()) {
-            case PENDING_MANAGER_APPROVAL:
-                if (!isManager) {
-                    throw new SecurityException("User does not have permission to approve as a manager.");
-                }
-                if ("approve".equalsIgnoreCase(decision)) {
-                    request.setStatus(ReimbursementStatus.PENDING_FINANCE_APPROVAL);
-                } else {
-                    request.setStatus(ReimbursementStatus.REJECTED);
-                }
-                break;
-            case PENDING_FINANCE_APPROVAL:
-                if (!isFinance) {
-                    throw new SecurityException("User does not have permission to approve as finance.");
-                }
-                if ("approve".equalsIgnoreCase(decision)) {
-                    request.setStatus(ReimbursementStatus.APPROVED);
-                } else {
-                    request.setStatus(ReimbursementStatus.REJECTED);
-                }
-                break;
-            default:
-                throw new IllegalStateException("Request is not in a state that can be approved or rejected.");
+        User submitter = userRepository.findById(submitterId).orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // 验证只有申请人可以提交
+        if (!request.getApplicant().getId().equals(submitterId)) {
+            throw new SecurityException("只有申请人可以提交报销申请");
         }
+        
+        // 验证状态必须是草稿
+        if (request.getStatus() != ReimbursementStatus.DRAFT) {
+            throw new IllegalStateException("只有草稿状态的报销申请可以提交审批");
+        }
+        
+        // 验证预算可用性
+        if (!checkBudgetAvailability(id)) {
+            throw new RuntimeException("预算不足，无法提交审批");
+        }
+        
+        // 更改为提交状态，准备进入统一审批流程
+        request.setStatus(ReimbursementStatus.PENDING_MANAGER_APPROVAL);
+        reimbursementRequestRepository.save(request);
+        
+        // 创建统一审批流程 - 部门经理审批
+        User managerApprover = findManagerApprover(request.getApplicant());
+        if (managerApprover != null) {
+            approvalFlowService.createReimbursementApproval(request, managerApprover);
+            logger.info("Created manager approval flow for reimbursement request {}", id);
+        }
+        
+        logger.info("Reimbursement request {} submitted for approval by user {}", id, submitterId);
+        return request;
+    }
 
-        request.setComment(comment);
-        return reimbursementRequestRepository.save(request);
+    @Override
+    @Transactional
+    @Deprecated
+    public ReimbursementRequest approveOrReject(Long id, String decision, String comment, Long approverId) {
+        throw new UnsupportedOperationException("报销审批已迁移到统一审批管理系统，请使用 ApprovalFlowService");
     }
 
     @Override
@@ -249,5 +262,138 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         result.put("details", details);
         
         return result;
+    }
+
+    private void processReimbursementBudgetDeduction(ReimbursementRequest request) {
+        if (request.getProject() == null || request.getItems() == null || request.getItems().isEmpty()) {
+            logger.info("Reimbursement request {} has no project or items, skipping budget deduction", request.getId());
+            return;
+        }
+
+        for (ReimbursementItem item : request.getItems()) {
+            if (item.getBudget() != null) {
+                createBudgetExpenseFromReimbursement(item, request);
+            } else if (item.getBudgetItem() != null) {
+                createBudgetExpenseFromReimbursementItem(item, request);
+            } else {
+                logger.warn("Reimbursement item {} has no budget or budget item association", item.getId());
+            }
+        }
+    }
+
+    private void createBudgetExpenseFromReimbursement(ReimbursementItem item, ReimbursementRequest request) {
+        try {
+            BudgetExpense expense = new BudgetExpense();
+            expense.setBudget(item.getBudget());
+            expense.setBudgetItem(item.getBudgetItem());
+            expense.setAmount(item.getAmount().doubleValue());
+            expense.setExpenseDate(new Date());
+            expense.setExpenseType("REIMBURSEMENT");
+            expense.setReferenceNumber("REIMB-" + request.getId());
+            expense.setReimbursementRequest(request);
+            expense.setReimbursementItem(item);
+            expense.setStatus("APPROVED");
+            expense.setDescription("报销扣除: " + item.getDescription());
+            expense.setRecordedBy(request.getApplicant());
+            expense.setRecordTime(new Date());
+            expense.setCreateTime(new Date());
+            expense.setLastUpdateTime(new Date());
+
+            budgetService.createBudgetExpense(expense);
+            logger.info("Created budget expense for reimbursement item {}, amount: {}", item.getId(), item.getAmount());
+        } catch (Exception e) {
+            logger.error("Failed to create budget expense for reimbursement item {}: {}", item.getId(), e.getMessage());
+            throw new RuntimeException("预算扣除失败: " + e.getMessage());
+        }
+    }
+
+    private void createBudgetExpenseFromReimbursementItem(ReimbursementItem item, ReimbursementRequest request) {
+        try {
+            BudgetExpense expense = new BudgetExpense();
+            expense.setBudget(item.getBudgetItem().getBudget());
+            expense.setBudgetItem(item.getBudgetItem());
+            expense.setAmount(item.getAmount().doubleValue());
+            expense.setExpenseDate(new Date());
+            expense.setExpenseType("REIMBURSEMENT");
+            expense.setReferenceNumber("REIMB-" + request.getId());
+            expense.setReimbursementRequest(request);
+            expense.setReimbursementItem(item);
+            expense.setStatus("APPROVED");
+            expense.setDescription("报销扣除: " + item.getDescription());
+            expense.setRecordedBy(request.getApplicant());
+            expense.setRecordTime(new Date());
+            expense.setCreateTime(new Date());
+            expense.setLastUpdateTime(new Date());
+
+            budgetService.createBudgetExpense(expense);
+            logger.info("Created budget expense for reimbursement item {}, amount: {}", item.getId(), item.getAmount());
+        } catch (Exception e) {
+            logger.error("Failed to create budget expense for reimbursement item {}: {}", item.getId(), e.getMessage());
+            throw new RuntimeException("预算扣除失败: " + e.getMessage());
+        }
+    }
+
+    private User findManagerApprover(User applicant) {
+        List<User> managers = userRepository.findUsersByRole("ROLE_MANAGER");
+        if (!managers.isEmpty()) {
+            return managers.get(0);
+        }
+        
+        List<User> admins = userRepository.findUsersByRole("ROLE_ADMIN");
+        if (!admins.isEmpty()) {
+            return admins.get(0);
+        }
+        
+        logger.warn("No manager or admin found for reimbursement approval");
+        return null;
+    }
+
+    public void processApprovedReimbursement(Long reimbursementId) {
+        ReimbursementRequest request = getReimbursementById(reimbursementId);
+        processReimbursementBudgetDeduction(request);
+        request.setStatus(ReimbursementStatus.APPROVED);
+        reimbursementRequestRepository.save(request);
+        logger.info("Processed approved reimbursement {} with budget deduction", reimbursementId);
+    }
+
+    @Override
+    public boolean checkBudgetAvailability(Long reimbursementId) {
+        ReimbursementRequest request = getReimbursementById(reimbursementId);
+        if (request.getProject() == null || request.getItems() == null || request.getItems().isEmpty()) {
+            return true;
+        }
+
+        for (ReimbursementItem item : request.getItems()) {
+            if (item.getBudget() != null) {
+                if (!budgetService.checkBudgetAvailability(request.getProject().getId(), item.getAmount().doubleValue())) {
+                    return false;
+                }
+            } else if (item.getBudgetItem() != null) {
+                if (!budgetService.checkBudgetItemAvailability(item.getBudgetItem().getId(), item.getAmount().doubleValue())) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean validateReimbursementBudget(ReimbursementRequestDTO dto) {
+        if (dto.getProjectId() == null || dto.getItems() == null || dto.getItems().isEmpty()) {
+            return true;
+        }
+
+        for (ReimbursementItem item : dto.getItems()) {
+            if (item.getBudget() != null) {
+                if (!budgetService.checkBudgetAvailability(dto.getProjectId(), item.getAmount().doubleValue())) {
+                    return false;
+                }
+            } else if (item.getBudgetItem() != null) {
+                if (!budgetService.checkBudgetItemAvailability(item.getBudgetItem().getId(), item.getAmount().doubleValue())) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

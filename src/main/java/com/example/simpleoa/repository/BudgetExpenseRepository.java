@@ -56,4 +56,6 @@ public interface BudgetExpenseRepository extends JpaRepository<BudgetExpense, Lo
 
     @Query("SELECT SUM(be.amount) FROM BudgetExpense be")
     Double sumTotalAmount();
+
+    List<BudgetExpense> findByReimbursementRequestId(Long reimbursementRequestId);
 }

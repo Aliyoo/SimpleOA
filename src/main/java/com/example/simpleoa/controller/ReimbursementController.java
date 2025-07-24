@@ -25,6 +25,9 @@ public class ReimbursementController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<ReimbursementRequest>> createReimbursement(@RequestBody ReimbursementRequestDTO dto, @AuthenticationPrincipal User user) {
+        if (!reimbursementService.validateReimbursementBudget(dto)) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("预算不足，无法创建报销申请"));
+        }
         ReimbursementRequest created = reimbursementService.createReimbursement(dto, user.getId());
         return ResponseEntity.ok(ApiResponse.success("报销申请已创建", created));
     }
@@ -60,6 +63,14 @@ public class ReimbursementController {
         return ResponseEntity.ok(ApiResponse.success(requests));
     }
 
+    @PostMapping("/{id}/submit")
+    public ResponseEntity<ApiResponse<ReimbursementRequest>> submitForApproval(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User submitter) {
+        ReimbursementRequest result = reimbursementService.submitForApproval(id, submitter.getId());
+        return ResponseEntity.ok(ApiResponse.success("报销申请已提交审批", result));
+    }
+
     @PostMapping("/{id}/approval")
     public ResponseEntity<ApiResponse<ReimbursementRequest>> approveOrRejectReimbursement(
             @PathVariable Long id,
@@ -83,5 +94,17 @@ public class ReimbursementController {
     @GetMapping("/status-options")
     public ResponseEntity<ApiResponse<ReimbursementStatus[]>> getReimbursementStatusOptions() {
         return ResponseEntity.ok(ApiResponse.success("获取报销状态选项成功", ReimbursementStatus.values()));
+    }
+
+    @GetMapping("/{id}/check-budget")
+    public ResponseEntity<ApiResponse<Boolean>> checkBudgetAvailability(@PathVariable Long id) {
+        boolean available = reimbursementService.checkBudgetAvailability(id);
+        return ResponseEntity.ok(ApiResponse.success("预算检查完成", available));
+    }
+
+    @PostMapping("/validate-budget")
+    public ResponseEntity<ApiResponse<Boolean>> validateReimbursementBudget(@RequestBody ReimbursementRequestDTO dto) {
+        boolean valid = reimbursementService.validateReimbursementBudget(dto);
+        return ResponseEntity.ok(ApiResponse.success("预算验证完成", valid));
     }
 }

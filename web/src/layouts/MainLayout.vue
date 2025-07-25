@@ -318,6 +318,7 @@ const goToProfile = () => {
 <style scoped>
 .layout-container {
   height: 100vh;
+  overflow: hidden;
 }
 
 .el-aside {
@@ -387,5 +388,7 @@ const goToProfile = () => {
 .el-main {
   background-color: #f0f2f5;
   padding: 20px;
+  overflow-y: auto;
+  height: calc(100vh - 50px);
 }
 </style>

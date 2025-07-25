@@ -245,25 +245,90 @@
                 </el-table>
               </div>
 
-              <!-- 项目成员工时统计 -->
+              <!-- 人员工时统计 -->
               <div class="stats-members">
-                <h3>项目成员工时统计</h3>
+                <h3>人员工时统计</h3>
                 <el-table
-                  :data="allMemberStats"
+                  :data="memberStatsAggregated"
                   style="width: 100%"
                   border
                   :max-height="400"
+                  stripe
+                  @row-click="viewMemberDetail"
+                  row-style="cursor: pointer;"
                 >
-                  <el-table-column type="index" label="序号" width="60" />
-                  <el-table-column prop="projectName" label="项目名称" min-width="150" />
+                  <el-table-column type="index" label="序号" width="60" fixed="left" />
                   <el-table-column prop="username" label="用户名" width="120" />
-                  <el-table-column prop="realName" label="姓名" width="120" />
-                  <el-table-column prop="totalHours" label="总工时" width="100" align="center" />
-                  <el-table-column prop="recordCount" label="记录数" width="100" align="center" />
-                  <el-table-column prop="averageHours" label="平均工时/记录" width="120" align="center" />
-                  <el-table-column prop="percentage" label="项目内占比" width="120" align="center" />
+                  <el-table-column prop="realName" label="姓名" width="120" show-overflow-tooltip />
+                  <el-table-column prop="totalHours" label="总工时" width="100" align="center" sortable />
+                  <el-table-column prop="projectCount" label="项目数" width="100" align="center" sortable />
+                  <el-table-column prop="recordCount" label="记录数" width="100" align="center" sortable />
+                  <el-table-column prop="averageHours" label="平均工时/记录" width="140" align="center" sortable />
+                  <el-table-column prop="percentage" label="总占比" width="120" align="center" />
+                  <el-table-column label="操作" width="120" align="center">
+                    <template #default="scope">
+                      <el-button
+                        type="primary"
+                        size="small"
+                        @click.stop="viewMemberDetail(scope.row)"
+                      >
+                        详情
+                      </el-button>
+                    </template>
+                  </el-table-column>
                 </el-table>
               </div>
+
+              <!-- 人员详情对话框 -->
+              <el-dialog
+                v-model="memberDetailVisible"
+                title="人员工时详情"
+                width="80%"
+                destroy-on-close
+              >
+                <div v-loading="memberDetailLoading">
+                  <div v-if="currentMemberDetail.realName" class="member-detail-header">
+                    <h2>{{ currentMemberDetail.realName }} ({{ currentMemberDetail.username }})</h2>
+                    <div class="member-detail-summary">
+                      <div class="detail-item">
+                        <span class="label">总工时:</span>
+                        <span class="value">{{ currentMemberDetail.totalHours }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="label">项目数:</span>
+                        <span class="value">{{ currentMemberDetail.projectCount }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="label">记录数:</span>
+                        <span class="value">{{ currentMemberDetail.recordCount }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="label">平均工时/记录:</span>
+                        <span class="value">{{ currentMemberDetail.averageHours }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 该人员的项目工时统计 -->
+                  <div class="member-projects">
+                    <h3>项目工时分布</h3>
+                    <el-table
+                      :data="memberProjectStats"
+                      style="width: 100%"
+                      border
+                      :max-height="300"
+                      stripe
+                    >
+                      <el-table-column type="index" label="序号" width="60" fixed="left" />
+                      <el-table-column prop="projectName" label="项目名称" min-width="200" show-overflow-tooltip />
+                      <el-table-column prop="totalHours" label="工时" width="100" align="center" sortable />
+                      <el-table-column prop="recordCount" label="记录数" width="100" align="center" sortable />
+                      <el-table-column prop="averageHours" label="平均工时/记录" width="140" align="center" sortable />
+                      <el-table-column prop="percentage" label="占比" width="100" align="center" />
+                    </el-table>
+                  </div>
+                </div>
+              </el-dialog>
 
               <!-- 项目详情对话框 -->
               <el-dialog
@@ -303,14 +368,15 @@
                       style="width: 100%"
                       border
                       :max-height="300"
+                      stripe
                     >
-                      <el-table-column type="index" label="序号" width="60" />
+                      <el-table-column type="index" label="序号" width="60" fixed="left" />
                       <el-table-column prop="username" label="用户名" width="120" />
-                      <el-table-column prop="realName" label="姓名" width="120" />
-                      <el-table-column prop="totalHours" label="总工时" width="100" align="center" />
+                      <el-table-column prop="realName" label="姓名" width="120" show-overflow-tooltip />
+                      <el-table-column prop="totalHours" label="总工时" width="100" align="center" sortable />
+                      <el-table-column prop="recordCount" label="记录数" width="100" align="center" sortable />
+                      <el-table-column prop="averageHours" label="平均工时/记录" width="140" align="center" sortable />
                       <el-table-column prop="percentage" label="占比" width="100" align="center" />
-                      <el-table-column prop="recordCount" label="记录数" width="100" align="center" />
-                      <el-table-column prop="averageHours" label="平均工时/记录" width="120" align="center" />
                     </el-table>
                   </div>
                 </div>
@@ -365,6 +431,13 @@ const projectDetailLoading = ref(false)
 const currentProjectDetail = ref({})
 const memberStats = ref([])
 const allMemberStats = ref([])
+const memberStatsAggregated = ref([])
+
+// 人员详情相关
+const memberDetailVisible = ref(false)
+const memberDetailLoading = ref(false)
+const currentMemberDetail = ref({})
+const memberProjectStats = ref([])
 
 // 工作日缓存
 const workdayCache = ref(new Map())
@@ -1470,6 +1543,9 @@ const initBatchDateRange = () => {
         // 按工时降序排序
         allMemberStats.value.sort((a, b) => b.totalHours - a.totalHours)
 
+        // 聚合生成按人员统计的数据
+        aggregateMemberStats()
+
         console.log('获取到所有项目成员工时统计数据:', allMemberStats.value)
       } catch (error) {
         console.error('获取项目统计数据失败:', error)
@@ -1588,6 +1664,111 @@ const initBatchDateRange = () => {
         ElMessage.error('获取项目详情失败: ' + error.message)
       } finally {
         projectDetailLoading.value = false
+      }
+    }
+
+    // 聚合生成按人员统计的数据
+    const aggregateMemberStats = () => {
+      const memberMap = new Map()
+      const totalHours = allMemberStats.value.reduce((sum, item) => sum + item.totalHours, 0)
+
+      // 按用户ID聚合数据
+      allMemberStats.value.forEach(item => {
+        const userId = item.userId
+        if (!memberMap.has(userId)) {
+          memberMap.set(userId, {
+            userId,
+            username: item.username,
+            realName: item.realName,
+            totalHours: 0,
+            projectCount: 0,
+            recordCount: 0,
+            projects: []
+          })
+        }
+        
+        const member = memberMap.get(userId)
+        member.totalHours += item.totalHours
+        member.recordCount += item.recordCount
+        member.projectCount += 1
+        member.projects.push({
+          projectId: item.projectId,
+          projectName: item.projectName,
+          totalHours: item.totalHours,
+          recordCount: item.recordCount,
+          averageHours: item.averageHours,
+          percentage: item.percentage
+        })
+      })
+
+      // 转换为数组并计算相关统计信息
+      memberStatsAggregated.value = Array.from(memberMap.values()).map(member => {
+        const averageHours = member.recordCount > 0 
+          ? (member.totalHours / member.recordCount).toFixed(2) 
+          : '0'
+        const percentage = totalHours > 0 
+          ? ((member.totalHours / totalHours) * 100).toFixed(2) + '%' 
+          : '0%'
+        
+        return {
+          userId: member.userId,
+          username: member.username,
+          realName: member.realName,
+          totalHours: member.totalHours,
+          projectCount: member.projectCount,
+          recordCount: member.recordCount,
+          averageHours,
+          percentage,
+          projects: member.projects
+        }
+      })
+
+      // 按总工时降序排序
+      memberStatsAggregated.value.sort((a, b) => b.totalHours - a.totalHours)
+      
+      console.log('聚合后的人员统计数据:', memberStatsAggregated.value)
+    }
+
+    // 查看人员详情
+    const viewMemberDetail = async (member) => {
+      if (!member || !member.userId) return
+
+      try {
+        memberDetailLoading.value = true
+        memberDetailVisible.value = true
+
+        // 设置当前人员详情
+        currentMemberDetail.value = {
+          userId: member.userId,
+          username: member.username,
+          realName: member.realName,
+          totalHours: member.totalHours,
+          projectCount: member.projectCount,
+          recordCount: member.recordCount,
+          averageHours: member.averageHours
+        }
+
+        // 设置该人员的项目工时分布数据
+        const memberData = memberStatsAggregated.value.find(m => m.userId === member.userId)
+        if (memberData && memberData.projects) {
+          // 为每个项目重新计算占比（基于该人员的总工时）
+          memberProjectStats.value = memberData.projects.map(project => ({
+            ...project,
+            percentage: memberData.totalHours > 0 
+              ? ((project.totalHours / memberData.totalHours) * 100).toFixed(2) + '%'
+              : '0%'
+          })).sort((a, b) => b.totalHours - a.totalHours)
+        } else {
+          memberProjectStats.value = []
+        }
+
+        console.log('人员详情数据:', currentMemberDetail.value)
+        console.log('人员项目工时分布:', memberProjectStats.value)
+      } catch (error) {
+        console.error('获取人员详情失败:', error)
+        ElMessage.error('获取人员详情失败: ' + error.message)
+      } finally {
+        memberDetailLoading.value = false
       }
     }
 
@@ -1952,6 +2133,29 @@ h1 {
 .project-detail-header h2 {
   margin-bottom: 10px;
   font-size: 20px;
+  color: #333;
+}
+
+.member-detail-header {
+  margin-bottom: 20px;
+}
+
+.member-detail-header h2 {
+  margin-bottom: 10px;
+  font-size: 20px;
+  color: #333;
+}
+
+.member-detail-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.member-projects h3 {
+  margin-bottom: 15px;
+  font-size: 18px;
   color: #333;
 }
 

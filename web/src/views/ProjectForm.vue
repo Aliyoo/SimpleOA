@@ -37,13 +37,13 @@
       <el-form-item label="项目状态" prop="status">
         <el-select v-model="projectForm.status" placeholder="请选择项目状态">
           <!-- <el-option label="规划中" :value="'PLANNING'"></el-option>
-          <el-option label="进行中" :value="'IN_PROGRESS'"></el-option>
-          <el-option label="已完成" :value="'COMPLETED'"></el-option> -->
-          <el-option label="已取消" :value="'CANCELLED'"></el-option>
+          <el-option label="进行中" :value="'IN_PROGRESS'"></el-option> -->
           <el-option label="需求阶段" :value="'REQUIREMENT'"></el-option>
           <el-option label="设计阶段" :value="'DESIGN'"></el-option>
           <el-option label="开发阶段" :value="'DEVELOPMENT'"></el-option>
           <el-option label="终验阶段" :value="'ACCEPTANCE'"></el-option>
+          <el-option label="已完成" :value="'COMPLETED'"></el-option>
+          <el-option label="已取消" :value="'CANCELLED'"></el-option>
         </el-select>
       </el-form-item>
       <el-form-item label="优先级" prop="priority">
@@ -80,7 +80,7 @@ const projectForm = ref({
   endDate: '',
   managerId: null,
   memberIds: [],
-  status: 'PLANNING', // 默认状态
+  status: '', // 默认状态为空
   priority: '0', // 默认优先级
   type: '0', // 默认类型
 })
@@ -183,7 +183,7 @@ const resetForm = () => {
   projectForm.value.endDate = '';
   projectForm.value.managerId = null;
   projectForm.value.memberIds = [];
-  projectForm.value.status = 'PLANNING';
+  projectForm.value.status = '';
   projectForm.value.priority = '0';
   projectForm.value.type = '0';
   nextTick(() => {

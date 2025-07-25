@@ -369,15 +369,8 @@
           <!-- 选择列 -->
           <el-table-column type="selection" width="55" :selectable="isSelectable" />
 
-          <!-- 审批标题 -->
-          <el-table-column prop="title" label="审批标题" min-width="180">
-            <template #default="{row}">
-              {{ getApprovalTitle(row) }}
-            </template>
-          </el-table-column>
-
           <!-- 报销标题 -->
-          <el-table-column prop="title" label="报销标题" min-width="150">
+          <el-table-column prop="reimbursementRequest.title" label="报销标题" min-width="180">
             <template #default="{row}">
               <template v-if="row.reimbursementRequest">
                 {{ row.reimbursementRequest.title || '' }}
@@ -386,22 +379,32 @@
           </el-table-column>
 
           <!-- 报销金额 -->
-          <el-table-column prop="totalAmount" label="报销金额" width="120">
+          <el-table-column prop="reimbursementRequest.totalAmount" label="报销金额" width="120">
             <template #default="{row}">
               <template v-if="row.reimbursementRequest && row.reimbursementRequest.totalAmount">
                 <span class="amount-text">
-                  ¥{{ row.reimbursementRequest.totalAmount }}
+                  ¥{{ Number(row.reimbursementRequest.totalAmount).toFixed(2) }}
                 </span>
               </template>
             </template>
           </el-table-column>
 
           <!-- 申请人 -->
-          <el-table-column prop="applicant" label="申请人" width="100">
+          <el-table-column prop="reimbursementRequest.applicant" label="申请人" width="120">
             <template #default="{row}">
               <template v-if="row.reimbursementRequest && row.reimbursementRequest.applicant">
-                {{ row.reimbursementRequest.applicant.username || row.reimbursementRequest.applicant.name }}
+                {{ row.reimbursementRequest.applicant.realName || row.reimbursementRequest.applicant.username }}
               </template>
+            </template>
+          </el-table-column>
+
+          <!-- 项目 -->
+          <el-table-column prop="reimbursementRequest.project" label="所属项目" width="150">
+            <template #default="{row}">
+              <template v-if="row.reimbursementRequest && row.reimbursementRequest.project">
+                {{ row.reimbursementRequest.project.name || '无' }}
+              </template>
+              <template v-else>无</template>
             </template>
           </el-table-column>
 
@@ -883,7 +886,8 @@ const getApprovalTitle = (approval) => {
   } else if (approval.businessTripRequest) {
     return `出差审批 - ${approval.businessTripRequest.applicant?.realName || approval.businessTripRequest.applicant?.username || '未知用户'}`
   } else if (approval.reimbursementRequest) {
-    return `报销审批 - ${approval.reimbursementRequest.applicant?.realName || approval.reimbursementRequest.applicant?.username || '未知用户'}`
+    const title = approval.reimbursementRequest.title ? ` - ${approval.reimbursementRequest.title}` : ''
+    return `报销审批 - ${approval.reimbursementRequest.applicant?.realName || approval.reimbursementRequest.applicant?.username || '未知用户'}${title}`
   } else {
     return '未知审批类型'
   }

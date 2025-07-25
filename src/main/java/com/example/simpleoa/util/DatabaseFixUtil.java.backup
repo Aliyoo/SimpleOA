@@ -1,0 +1,58 @@
+package com.example.simpleoa.util;
+
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.jdbc.core.JdbcTemplate;
+
+@SpringBootApplication
+public class DatabaseFixUtil {
+
+    public static void main(String[] args) {
+        SpringApplication.run(DatabaseFixUtil.class, args);
+    }
+
+    @Bean
+    public CommandLineRunner fixLeaveTypes(JdbcTemplate jdbcTemplate) {
+        return args -> {
+            System.out.println("开始修复请假类型数据...");
+            
+            String updateSql = """
+                UPDATE leave_request 
+                SET leave_type = CASE 
+                    WHEN leave_type = 'annual' THEN 'ANNUAL_LEAVE'
+                    WHEN leave_type = 'sick' THEN 'SICK_LEAVE'
+                    WHEN leave_type = 'personal' THEN 'PERSONAL_LEAVE'
+                    WHEN leave_type = 'marriage' THEN 'MARRIAGE_LEAVE'
+                    WHEN leave_type = 'maternity' THEN 'MATERNITY_LEAVE'
+                    WHEN leave_type = 'paternity' THEN 'PATERNITY_LEAVE'
+                    WHEN leave_type = 'bereavement' THEN 'BEREAVEMENT_LEAVE'
+                    WHEN leave_type = 'other' THEN 'OTHER'
+                    ELSE leave_type
+                END
+                WHERE leave_type IN ('annual', 'sick', 'personal', 'marriage', 'maternity', 'paternity', 'bereavement', 'other')
+            """;
+            
+            int updatedRows = jdbcTemplate.update(updateSql);
+            System.out.println("更新了 " + updatedRows + " 条记录");
+            
+            // 查看更新后的数据
+            System.out.println("\n更新后的请假类型数据:");
+            jdbcTemplate.query(
+                "SELECT id, leave_type, reason FROM leave_request",
+                (rs, rowNum) -> {
+                    System.out.printf("ID: %d, 类型: %s, 原因: %s%n",
+                        rs.getLong("id"),
+                        rs.getString("leave_type"),
+                        rs.getString("reason")
+                    );
+                    return null;
+                }
+            );
+            
+            System.out.println("\n数据修复完成！");
+            System.exit(0);
+        };
+    }
+}

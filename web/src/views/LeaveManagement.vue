@@ -6,14 +6,21 @@
       <el-tab-pane label="请假申请" name="apply">
         <el-form :model="leaveForm" :rules="leaveFormRules" ref="leaveFormRef" label-width="100px" class="apply-form">
           <el-form-item label="请假类型" prop="leaveType">
-            <el-select v-model="leaveForm.leaveType" placeholder="请选择请假类型">
+            <el-select v-model="leaveForm.leaveType" placeholder="请选择请假类型" @change="onLeaveTypeChange">
               <el-option
                   v-for="type in leaveTypes"
                   :key="type.value"
-                  :label="type.label"
+                  :label="`${type.label} (剩余: ${getLeaveBalance(type.value)}天)`"
                   :value="type.value"
               />
             </el-select>
+          </el-form-item>
+
+          <!-- 显示当前选择类型的余额信息 -->
+          <el-form-item v-if="leaveForm.leaveType && currentBalance" label="余额信息">
+            <el-tag type="info">
+              {{ getCurrentLeaveTypeLabel() }}: 总共{{ currentBalance.totalDays }}天，已用{{ currentBalance.usedDays }}天，剩余{{ currentBalance.remainingDays }}天
+            </el-tag>
           </el-form-item>
 
           <el-form-item label="开始时间" prop="startDate">
@@ -70,6 +77,39 @@
           </el-table-column>
           <el-table-column prop="applyDate" label="申请时间" width="180"/>
         </el-table>
+      </el-tab-pane>
+
+      <el-tab-pane label="请假余额" name="balance">
+        <div class="balance-container">
+          <h3>{{ new Date().getFullYear() }}年请假余额</h3>
+          <el-row :gutter="20">
+            <el-col :span="6" v-for="balance in leaveBalances" :key="balance.leaveType">
+              <el-card class="balance-card">
+                <template #header>
+                  <span>{{ getLeaveTypeLabel(balance.leaveType) }}</span>
+                </template>
+                <div class="balance-info">
+                  <div class="balance-item">
+                    <span class="label">总额:</span>
+                    <span class="value">{{ balance.totalDays }}天</span>
+                  </div>
+                  <div class="balance-item">
+                    <span class="label">已用:</span>
+                    <span class="value used">{{ balance.usedDays }}天</span>
+                  </div>
+                  <div class="balance-item">
+                    <span class="label">剩余:</span>
+                    <span class="value remaining" :class="{ 'low': balance.remainingDays < 3 }">{{ balance.remainingDays }}天</span>
+                  </div>
+                  <el-progress 
+                    :percentage="Math.round((balance.usedDays / balance.totalDays) * 100)" 
+                    :status="balance.remainingDays < 3 ? 'exception' : 'success'"
+                  />
+                </div>
+              </el-card>
+            </el-col>
+          </el-row>
+        </div>
       </el-tab-pane>
 
       <el-tab-pane label="统计报表" name="statistics">
@@ -156,13 +196,14 @@ const leaveForm = reactive({
 })
 
 const leaveTypes = ref([
-  {value: 'annual', label: '年假'},
-  {value: 'sick', label: '病假'},
-  {value: 'personal', label: '事假'},
-  {value: 'marriage', label: '婚假'},
-  {value: 'maternity', label: '产假'},
-  {value: 'paternity', label: '陪产假'},
-  {value: 'other', label: '其他'}
+  {value: 'ANNUAL_LEAVE', label: '年假'},
+  {value: 'SICK_LEAVE', label: '病假'},
+  {value: 'PERSONAL_LEAVE', label: '事假'},
+  {value: 'MARRIAGE_LEAVE', label: '婚假'},
+  {value: 'MATERNITY_LEAVE', label: '产假'},
+  {value: 'PATERNITY_LEAVE', label: '陪产假'},
+  {value: 'BEREAVEMENT_LEAVE', label: '丧假'},
+  {value: 'OTHER', label: '其他'}
 ])
 
 const myApplicationsList = ref([])
@@ -170,6 +211,8 @@ const statisticsData = ref([])
 const statisticsSummary = ref({})
 const statisticsDateRange = ref([])
 const leaveFormRef = ref()
+const leaveBalances = ref([])
+const currentBalance = ref(null)
 
 // 表单验证规则
 const leaveFormRules = {
@@ -249,6 +292,10 @@ const submitLeave = async () => {
   
   try {
     await leaveFormRef.value.validate()
+    
+    // 调试：打印发送的数据
+    console.log('发送的请假申请数据:', leaveForm)
+    
     await api.post('/api/leave/apply', leaveForm)
     ElMessage.success('请假申请提交成功')
     // 重置表单
@@ -260,11 +307,10 @@ const submitLeave = async () => {
     })
     fetchMyApplicationsList()
   } catch (error) {
-    if (error.message) {
-      ElMessage.error('提交失败: ' + error.message)
-    } else {
-      console.log('表单验证失败')
-    }
+    console.error('请假申请错误:', error)
+    console.error('响应数据:', error.response?.data)
+    const errorMsg = error.response?.data?.error || error.message
+    ElMessage.error('提交失败: ' + errorMsg)
   }
 }
 
@@ -288,9 +334,42 @@ const getLeaveTypeLabel = (value) => {
   return type ? type.label : value
 }
 
+// 获取请假余额
+const fetchLeaveBalances = async () => {
+  try {
+    const response = await api.get('/api/leave/balance', {
+      params: { year: new Date().getFullYear() }
+    })
+    leaveBalances.value = response.data
+  } catch (error) {
+    console.error('获取请假余额失败:', error)
+  }
+}
+
+// 获取指定类型的余额
+const getLeaveBalance = (leaveType) => {
+  const balance = leaveBalances.value.find(b => b.leaveType === leaveType)
+  return balance ? balance.remainingDays : 0
+}
+
+// 当请假类型改变时
+const onLeaveTypeChange = () => {
+  if (leaveForm.leaveType) {
+    currentBalance.value = leaveBalances.value.find(b => b.leaveType === leaveForm.leaveType)
+  } else {
+    currentBalance.value = null
+  }
+}
+
+// 获取当前选择的请假类型标签
+const getCurrentLeaveTypeLabel = () => {
+  return getLeaveTypeLabel(leaveForm.leaveType)
+}
+
 
 onMounted(async () => {
   fetchMyApplicationsList()
+  fetchLeaveBalances()
 
   // 从全局配置获取默认日期范围
   statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange();
@@ -301,6 +380,47 @@ onMounted(async () => {
 <style scoped>
 .leave-management-container {
   padding: 20px;
+}
+
+.balance-container {
+  padding: 20px 0;
+}
+
+.balance-card {
+  margin-bottom: 20px;
+  height: 200px;
+}
+
+.balance-info {
+  padding: 10px 0;
+}
+
+.balance-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.balance-item .label {
+  color: #666;
+  font-size: 14px;
+}
+
+.balance-item .value {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.balance-item .value.used {
+  color: #e6a23c;
+}
+
+.balance-item .value.remaining {
+  color: #67c23a;
+}
+
+.balance-item .value.remaining.low {
+  color: #f56c6c;
 }
 
 .apply-form {

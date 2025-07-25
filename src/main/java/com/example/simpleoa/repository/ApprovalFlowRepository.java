@@ -33,6 +33,7 @@ public interface ApprovalFlowRepository extends JpaRepository<ApprovalFlow, Long
            "LEFT JOIN FETCH btr.applicant " +
            "LEFT JOIN FETCH af.reimbursementRequest rr " +
            "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
            "WHERE af.approver.id = :approverId")
     List<ApprovalFlow> findByApproverIdWithDetails(@Param("approverId") Long approverId);
 
@@ -40,7 +41,22 @@ public interface ApprovalFlowRepository extends JpaRepository<ApprovalFlow, Long
 
     List<ApprovalFlow> findByStatus(String status);
 
-    List<ApprovalFlow> findByApproverIdAndStatus(Long approverId, String status);
+    @Query("SELECT af FROM ApprovalFlow af " +
+           "LEFT JOIN FETCH af.approver " +
+           "LEFT JOIN FETCH af.workTimeRecord wtr " +
+           "LEFT JOIN FETCH wtr.user " +
+           "LEFT JOIN FETCH wtr.project " +
+           "LEFT JOIN FETCH af.leaveRequest lr " +
+           "LEFT JOIN FETCH lr.applicant " +
+           "LEFT JOIN FETCH af.businessTripRequest btr " +
+           "LEFT JOIN FETCH btr.applicant " +
+           "LEFT JOIN FETCH af.reimbursementRequest rr " +
+           "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
+           "WHERE af.approver.id = :approverId " +
+           "AND af.status = :status")
+    List<ApprovalFlow> findByApproverIdAndStatus(@Param("approverId") Long approverId, 
+                                                 @Param("status") String status);
 
     List<ApprovalFlow> findHistoryById(Long flowId);
 
@@ -48,25 +64,129 @@ public interface ApprovalFlowRepository extends JpaRepository<ApprovalFlow, Long
     List<ApprovalFlow> findByCreateTimeBetween(Date startDate, Date endDate);
 
     // 新增：按审批人ID和创建时间范围查询
-    List<ApprovalFlow> findByApproverIdAndCreateTimeBetween(Long approverId, Date startDate, Date endDate);
+    @Query("SELECT af FROM ApprovalFlow af " +
+           "LEFT JOIN FETCH af.approver " +
+           "LEFT JOIN FETCH af.workTimeRecord wtr " +
+           "LEFT JOIN FETCH wtr.user " +
+           "LEFT JOIN FETCH wtr.project " +
+           "LEFT JOIN FETCH af.leaveRequest lr " +
+           "LEFT JOIN FETCH lr.applicant " +
+           "LEFT JOIN FETCH af.businessTripRequest btr " +
+           "LEFT JOIN FETCH btr.applicant " +
+           "LEFT JOIN FETCH af.reimbursementRequest rr " +
+           "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
+           "WHERE af.approver.id = :approverId " +
+           "AND af.createTime BETWEEN :startDate AND :endDate")
+    List<ApprovalFlow> findByApproverIdAndCreateTimeBetween(@Param("approverId") Long approverId, 
+                                                            @Param("startDate") Date startDate, 
+                                                            @Param("endDate") Date endDate);
 
     // 新增：按审批人ID、请求类型和状态查询
-    List<ApprovalFlow> findByApproverIdAndRequestTypeAndStatus(Long approverId, String requestType, String status);
+    @Query("SELECT af FROM ApprovalFlow af " +
+           "LEFT JOIN FETCH af.approver " +
+           "LEFT JOIN FETCH af.workTimeRecord wtr " +
+           "LEFT JOIN FETCH wtr.user " +
+           "LEFT JOIN FETCH wtr.project " +
+           "LEFT JOIN FETCH af.leaveRequest lr " +
+           "LEFT JOIN FETCH lr.applicant " +
+           "LEFT JOIN FETCH af.businessTripRequest btr " +
+           "LEFT JOIN FETCH btr.applicant " +
+           "LEFT JOIN FETCH af.reimbursementRequest rr " +
+           "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
+           "WHERE af.approver.id = :approverId " +
+           "AND af.requestType = :requestType " +
+           "AND af.status = :status")
+    List<ApprovalFlow> findByApproverIdAndRequestTypeAndStatus(@Param("approverId") Long approverId, 
+                                                               @Param("requestType") String requestType, 
+                                                               @Param("status") String status);
 
     // 新增：按审批人ID和请求类型查询
-    List<ApprovalFlow> findByApproverIdAndRequestType(Long approverId, String requestType);
+    @Query("SELECT af FROM ApprovalFlow af " +
+           "LEFT JOIN FETCH af.approver " +
+           "LEFT JOIN FETCH af.workTimeRecord wtr " +
+           "LEFT JOIN FETCH wtr.user " +
+           "LEFT JOIN FETCH wtr.project " +
+           "LEFT JOIN FETCH af.leaveRequest lr " +
+           "LEFT JOIN FETCH lr.applicant " +
+           "LEFT JOIN FETCH af.businessTripRequest btr " +
+           "LEFT JOIN FETCH btr.applicant " +
+           "LEFT JOIN FETCH af.reimbursementRequest rr " +
+           "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
+           "WHERE af.approver.id = :approverId " +
+           "AND af.requestType = :requestType")
+    List<ApprovalFlow> findByApproverIdAndRequestType(@Param("approverId") Long approverId, 
+                                                      @Param("requestType") String requestType);
 
     // 新增：按审批人ID、创建时间范围和请求类型查询
+    @Query("SELECT af FROM ApprovalFlow af " +
+           "LEFT JOIN FETCH af.approver " +
+           "LEFT JOIN FETCH af.workTimeRecord wtr " +
+           "LEFT JOIN FETCH wtr.user " +
+           "LEFT JOIN FETCH wtr.project " +
+           "LEFT JOIN FETCH af.leaveRequest lr " +
+           "LEFT JOIN FETCH lr.applicant " +
+           "LEFT JOIN FETCH af.businessTripRequest btr " +
+           "LEFT JOIN FETCH btr.applicant " +
+           "LEFT JOIN FETCH af.reimbursementRequest rr " +
+           "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
+           "WHERE af.approver.id = :approverId " +
+           "AND af.createTime BETWEEN :startDate AND :endDate " +
+           "AND af.requestType = :requestType")
     List<ApprovalFlow> findByApproverIdAndCreateTimeBetweenAndRequestType(
-            Long approverId, Date startDate, Date endDate, String requestType);
+            @Param("approverId") Long approverId, 
+            @Param("startDate") Date startDate, 
+            @Param("endDate") Date endDate, 
+            @Param("requestType") String requestType);
 
     // 新增：按审批人ID、创建时间范围和状态查询
+    @Query("SELECT af FROM ApprovalFlow af " +
+           "LEFT JOIN FETCH af.approver " +
+           "LEFT JOIN FETCH af.workTimeRecord wtr " +
+           "LEFT JOIN FETCH wtr.user " +
+           "LEFT JOIN FETCH wtr.project " +
+           "LEFT JOIN FETCH af.leaveRequest lr " +
+           "LEFT JOIN FETCH lr.applicant " +
+           "LEFT JOIN FETCH af.businessTripRequest btr " +
+           "LEFT JOIN FETCH btr.applicant " +
+           "LEFT JOIN FETCH af.reimbursementRequest rr " +
+           "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
+           "WHERE af.approver.id = :approverId " +
+           "AND af.createTime BETWEEN :startDate AND :endDate " +
+           "AND af.status = :status")
     List<ApprovalFlow> findByApproverIdAndCreateTimeBetweenAndStatus(
-            Long approverId, Date startDate, Date endDate, String status);
+            @Param("approverId") Long approverId, 
+            @Param("startDate") Date startDate, 
+            @Param("endDate") Date endDate, 
+            @Param("status") String status);
 
     // 新增：按审批人ID、创建时间范围、请求类型和状态查询
+    @Query("SELECT af FROM ApprovalFlow af " +
+           "LEFT JOIN FETCH af.approver " +
+           "LEFT JOIN FETCH af.workTimeRecord wtr " +
+           "LEFT JOIN FETCH wtr.user " +
+           "LEFT JOIN FETCH wtr.project " +
+           "LEFT JOIN FETCH af.leaveRequest lr " +
+           "LEFT JOIN FETCH lr.applicant " +
+           "LEFT JOIN FETCH af.businessTripRequest btr " +
+           "LEFT JOIN FETCH btr.applicant " +
+           "LEFT JOIN FETCH af.reimbursementRequest rr " +
+           "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
+           "WHERE af.approver.id = :approverId " +
+           "AND af.createTime BETWEEN :startDate AND :endDate " +
+           "AND af.requestType = :requestType " +
+           "AND af.status = :status")
     List<ApprovalFlow> findByApproverIdAndCreateTimeBetweenAndRequestTypeAndStatus(
-            Long approverId, Date startDate, Date endDate, String requestType, String status);
+            @Param("approverId") Long approverId, 
+            @Param("startDate") Date startDate, 
+            @Param("endDate") Date endDate, 
+            @Param("requestType") String requestType, 
+            @Param("status") String status);
 
     // 新增：分页查询我的审批
     @Query("SELECT af FROM ApprovalFlow af " +
@@ -80,6 +200,7 @@ public interface ApprovalFlowRepository extends JpaRepository<ApprovalFlow, Long
            "LEFT JOIN FETCH btr.applicant " +
            "LEFT JOIN FETCH af.reimbursementRequest rr " +
            "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
            "WHERE af.approver.id = :approverId")
     Page<ApprovalFlow> findByApproverIdWithDetailsPaged(@Param("approverId") Long approverId, Pageable pageable);
 

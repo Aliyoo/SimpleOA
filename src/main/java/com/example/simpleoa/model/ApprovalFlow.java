@@ -37,4 +37,5 @@ public class ApprovalFlow {
     private String comment;
     private Date createTime;
     private Date updateTime;
+    private Date approvalTime;
 }

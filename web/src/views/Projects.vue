@@ -62,7 +62,11 @@ const formatStatus = (row, col, status) => {
     PLANNING: '规划中',
     IN_PROGRESS: '进行中',
     COMPLETED: '已完成',
-    CANCELLED: '已取消'
+    CANCELLED: '已取消',
+    REQUIREMENT: '需求阶段',
+    DEVELOPMENT: '开发阶段',
+    DESIGN: '设计阶段',
+    ACCEPTANCE: '终验阶段'
   }
   return statusMap[status] || status;
 }

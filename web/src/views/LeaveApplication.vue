@@ -4,9 +4,14 @@
     <el-form :model="leaveForm" :rules="rules" ref="leaveForm" label-width="120px">
       <el-form-item label="请假类型" prop="type">
         <el-select v-model="leaveForm.type" placeholder="请选择请假类型">
-          <el-option label="年假" value="annual"></el-option>
-          <el-option label="病假" value="sick"></el-option>
-          <el-option label="事假" value="personal"></el-option>
+          <el-option label="年假" value="ANNUAL_LEAVE"></el-option>
+          <el-option label="病假" value="SICK_LEAVE"></el-option>
+          <el-option label="事假" value="PERSONAL_LEAVE"></el-option>
+          <el-option label="婚假" value="MARRIAGE_LEAVE"></el-option>
+          <el-option label="产假" value="MATERNITY_LEAVE"></el-option>
+          <el-option label="陪产假" value="PATERNITY_LEAVE"></el-option>
+          <el-option label="丧假" value="BEREAVEMENT_LEAVE"></el-option>
+          <el-option label="其他" value="OTHER"></el-option>
         </el-select>
       </el-form-item>
       <el-form-item label="开始时间" prop="startTime">
@@ -55,7 +60,7 @@ const rules = {
 
 const submitForm = async () => {
   try {
-    await api.post('/api/leave-applications', leaveForm.value)
+    await api.post('/api/leave/apply', leaveForm.value)
     ElMessage.success('请假申请提交成功')
     resetForm()
   } catch (error) {

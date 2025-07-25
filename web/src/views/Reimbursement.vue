@@ -671,7 +671,7 @@ const canViewApproval = (row) => {
 const formatStatus = (status) => {
     const statusMap = {
         DRAFT: '草稿',
-        PENDING_MANAGER_APPROVAL: '待部门经理审批',
+        PENDING_MANAGER_APPROVAL: '待项目经理审批',
         PENDING_FINANCE_APPROVAL: '待财务审批',
         APPROVED: '已通过',
         REJECTED: '已驳回'
@@ -694,7 +694,7 @@ const getStatusTagType = (status) => {
 const initializeStatusOptions = () => {
   statusOptions.value = [
     { label: '草稿', value: 'DRAFT' },
-    { label: '待部门经理审批', value: 'PENDING_MANAGER_APPROVAL' },
+    { label: '待项目经理审批', value: 'PENDING_MANAGER_APPROVAL' },
     { label: '待财务审批', value: 'PENDING_FINANCE_APPROVAL' },
     { label: '已通过', value: 'APPROVED' },
     { label: '已驳回', value: 'REJECTED' }

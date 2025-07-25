@@ -157,11 +157,11 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         request.setStatus(ReimbursementStatus.PENDING_MANAGER_APPROVAL);
         reimbursementRequestRepository.save(request);
         
-        // 创建统一审批流程 - 部门经理审批
-        User managerApprover = findManagerApprover(request.getApplicant());
-        if (managerApprover != null) {
-            approvalFlowService.createReimbursementApproval(request, managerApprover);
-            logger.info("Created manager approval flow for reimbursement request {}", id);
+        // 创建统一审批流程 - 项目经理审批
+        User projectManagerApprover = findProjectManagerApprover(request);
+        if (projectManagerApprover != null) {
+            approvalFlowService.createReimbursementApproval(request, projectManagerApprover);
+            logger.info("Created project manager approval flow for reimbursement request {}", id);
         }
         
         logger.info("Reimbursement request {} submitted for approval by user {}", id, submitterId);
@@ -333,18 +333,25 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         }
     }
 
-    private User findManagerApprover(User applicant) {
+    private User findProjectManagerApprover(ReimbursementRequest request) {
+        // 如果报销申请关联了项目，优先找项目经理
+        if (request.getProject() != null && request.getProject().getManager() != null) {
+            return request.getProject().getManager();
+        }
+        
+        // 如果没有项目或项目没有指定经理，则找具有经理角色的用户
         List<User> managers = userRepository.findUsersByRole("ROLE_MANAGER");
         if (!managers.isEmpty()) {
             return managers.get(0);
         }
         
+        // 最后备选方案是管理员
         List<User> admins = userRepository.findUsersByRole("ROLE_ADMIN");
         if (!admins.isEmpty()) {
             return admins.get(0);
         }
         
-        logger.warn("No manager or admin found for reimbursement approval");
+        logger.warn("No project manager, manager or admin found for reimbursement approval");
         return null;
     }
 

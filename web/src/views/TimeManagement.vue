@@ -290,7 +290,7 @@
                     size="small"
                     style="width: 60px"
                     :disabled="!isWorkdayForDate(date)"
-                    @change="validateHours(scope.row.hours[date])"
+                    @change="validateUserDailyHours(date, scope.row.hours[date], scope.row.id)"
                   />
                 </template>
               </el-table-column>
@@ -534,6 +534,7 @@ const batchDates = ref([])
     const batchProjects = ref([])
     const batchLoading = ref(false)
     const workdayCache = ref(new Map()) // 工作日缓存
+    const originalWorkTimeData = ref(new Map()) // 存储原始工时数据，用于对比变更
 
 // 工时列表相关数据
 const approvalLoading = ref(false)
@@ -1404,7 +1405,7 @@ const fetchProjects = async (forceRefresh = false) => {
             const date = record.date;
             const hours = record.hours;
 
-            if (projectId && date && hours) {
+            if (projectId && date && hours !== undefined) {
               if (!submittedHoursMap[projectId]) {
                 submittedHoursMap[projectId] = {};
               }
@@ -1412,20 +1413,43 @@ const fetchProjects = async (forceRefresh = false) => {
             }
           });
 
-          // 填充已提交的工时数据，但不覆盖用户尚未提交的数据
+          // 清空原始数据映射
+          originalWorkTimeData.value.clear();
+
+          // 填充已提交的工时数据，并记录原始数据
           batchProjects.value.forEach(project => {
             const projectId = project.id;
             const submittedHours = submittedHoursMap[projectId] || {};
 
+            // 为这个项目创建原始数据映射
+            const projectOriginalData = {};
+
             batchDates.value.forEach(date => {
-              // 如果该日期有已提交的工时记录，则更新
-              if (submittedHours[date]) {
-                project.hours[date] = submittedHours[date];
-              }
+              // 记录原始工时数据（包括0值）
+              const originalHours = submittedHours[date] || 0;
+              projectOriginalData[date] = originalHours;
+              
+              // 更新界面显示的工时数据
+              project.hours[date] = originalHours;
             });
+
+            // 存储项目的原始数据
+            originalWorkTimeData.value.set(projectId, projectOriginalData);
           });
 
-          console.log('已填充工时数据到批量表格');
+          console.log('已填充工时数据到批量表格，并保存原始数据用于变更对比');
+          console.log('原始工时数据映射:', originalWorkTimeData.value);
+        } else {
+          // 如果没有已提交的工时记录，也需要记录原始数据（全为0）
+          originalWorkTimeData.value.clear();
+          batchProjects.value.forEach(project => {
+            const projectOriginalData = {};
+            batchDates.value.forEach(date => {
+              projectOriginalData[date] = 0;
+            });
+            originalWorkTimeData.value.set(project.id, projectOriginalData);
+          });
+          console.log('未找到已提交工时记录，记录全0原始数据');
         }
       } catch (error) {
         console.error('加载已提交工时失败:', error);
@@ -1438,11 +1462,21 @@ const fetchProjects = async (forceRefresh = false) => {
     // 辅助函数：构建批量项目数据
     const buildBatchProjects = (dates) => {
       console.log('构建批量项目数据，项目数量:', projectList.value.length);
+      
+      // 清空原始数据映射
+      originalWorkTimeData.value.clear();
+      
       batchProjects.value = projectList.value.map(project => {
         const hours = {}
+        const projectOriginalData = {}
+        
         dates.forEach(date => {
           hours[date] = 0
+          projectOriginalData[date] = 0  // 初始化原始数据也为0
         })
+
+        // 存储项目的原始数据
+        originalWorkTimeData.value.set(project.id, projectOriginalData);
 
         // 获取项目经理名称
         let managerName = '未知';
@@ -1485,6 +1519,7 @@ const fetchProjects = async (forceRefresh = false) => {
         }
       })
       console.log('批量项目数据构建完成，数量:', batchProjects.value.length);
+      console.log('初始化原始数据映射，项目数量:', originalWorkTimeData.value.size);
     }
 
     const formatDateLabel = (dateStr) => {
@@ -1500,6 +1535,47 @@ const fetchProjects = async (forceRefresh = false) => {
       if (value < 0) return 0
       if (value > 8) return 8
       return value
+    }
+
+    // 验证用户每天总工时不超过8小时
+    const validateUserDailyHours = (date, newHours, projectId) => {
+      console.log('验证用户每天总工时:', { date, newHours, projectId })
+      
+      // 计算用户在指定日期的总工时
+      let totalHours = 0
+      batchProjects.value.forEach(project => {
+        if (project.id === projectId) {
+          // 当前项目使用新的工时值
+          totalHours += newHours || 0
+        } else {
+          // 其他项目使用现有工时值
+          totalHours += project.hours[date] || 0
+        }
+      })
+
+      console.log(`用户在 ${date} 的总工时: ${totalHours}`)
+
+      // 如果总工时超过8小时，显示警告并调整
+      if (totalHours > 8) {
+        ElMessage.warning(`${date} 当天总工时不能超过8小时，当前总计：${totalHours}小时`)
+        
+        // 计算当前项目的最大允许工时
+        const otherProjectsHours = totalHours - (newHours || 0)
+        const maxAllowedHours = Math.max(0, 8 - otherProjectsHours)
+        
+        console.log(`其他项目工时: ${otherProjectsHours}, 当前项目最大允许: ${maxAllowedHours}`)
+        
+        // 找到并调整当前项目的工时
+        const project = batchProjects.value.find(p => p.id === projectId)
+        if (project) {
+          project.hours[date] = maxAllowedHours
+          ElMessage.info(`已调整为 ${maxAllowedHours} 小时，使当天总计不超过8小时`)
+        }
+        
+        return maxAllowedHours
+      }
+
+      return newHours
     }
 
     // 获取工作日数据
@@ -1644,14 +1720,29 @@ const fetchProjects = async (forceRefresh = false) => {
       }
 
       const records = []
+      let changedCount = 0
+      let deletedCount = 0
+      
       batchProjects.value.forEach(project => {
-        Object.entries(project.hours).forEach(([date, hours]) => {
-          if (hours > 0) {
+        const projectId = project.id;
+        const originalData = originalWorkTimeData.value.get(projectId) || {};
+        
+        Object.entries(project.hours).forEach(([date, currentHours]) => {
+          const originalHours = originalData[date] || 0;
+          
+          // 检查是否有变化（包括从有工时改为0工时的情况）
+          if (currentHours !== originalHours) {
+            changedCount++;
+            
+            if (currentHours === 0) {
+              deletedCount++;
+            }
+            
             records.push({
               project: { id: project.id },
               user: { id: currentUser.value.id },
               date,
-              hours,
+              hours: currentHours,
               workType: '开发', // 默认值，可根据需求调整
               description: '批量填写',
               approved: false
@@ -1660,17 +1751,75 @@ const fetchProjects = async (forceRefresh = false) => {
         })
       })
 
+      console.log('变更统计:', {
+        totalChanges: changedCount,
+        recordsToSubmit: records.length,
+        deletedRecords: deletedCount,
+        originalDataSize: originalWorkTimeData.value.size
+      });
+
       if (records.length === 0) {
-        ElMessage.warning('没有需要提交的工时记录')
+        ElMessage.info('没有工时变更，无需提交')
         return
       }
 
+      // 显示变更统计信息
+      const changeInfo = [];
+      if (deletedCount > 0) {
+        changeInfo.push(`${deletedCount} 条记录将被清零`);
+      }
+      if (changedCount - deletedCount > 0) {
+        changeInfo.push(`${changedCount - deletedCount} 条记录将被更新`);
+      }
+      
+      const confirmMessage = `检测到 ${changedCount} 条工时变更：${changeInfo.join('，')}。确认提交吗？`;
+      
       try {
+        // 检查是否有任何日期超过8小时
+        const dailyTotals = {}
+        records.forEach(record => {
+          if (!dailyTotals[record.date]) {
+            dailyTotals[record.date] = 0
+          }
+          dailyTotals[record.date] += record.hours
+        })
+
+        // 检查现有数据中的其他项目工时
+        batchProjects.value.forEach(project => {
+          Object.entries(project.hours).forEach(([date, hours]) => {
+            if (!records.find(r => r.date === date && r.project.id === project.id)) {
+              // 如果这个日期和项目不在要提交的记录中，说明没有变更，需要计算现有工时
+              if (!dailyTotals[date]) {
+                dailyTotals[date] = 0
+              }
+              dailyTotals[date] += hours || 0
+            }
+          })
+        })
+
+        // 检查是否有超过8小时的日期
+        const overLimitDates = Object.entries(dailyTotals).filter(([date, total]) => total > 8)
+        
+        if (overLimitDates.length > 0) {
+          const overLimitInfo = overLimitDates.map(([date, total]) => `${date}(${total}h)`).join('、')
+          ElMessage.error(`以下日期总工时超过8小时：${overLimitInfo}，请调整后再提交`)
+          return
+        }
+
+        await ElMessageBox.confirm(confirmMessage, '确认提交', {
+          confirmButtonText: '确认提交',
+          cancelButtonText: '取消',
+          type: 'info'
+        });
+
         await api.post('/api/worktime/batch', records)
-        ElMessage.success(`成功提交 ${records.length} 条工时记录`)
-        // 加载已提交的工时数据，而不是重置整个表格
-        loadSubmittedWorkTime()
+        ElMessage.success(`成功提交 ${changedCount} 条工时变更`)
+        // 加载已提交的工时数据，更新原始数据记录
+        await loadSubmittedWorkTime()
       } catch (error) {
+        if (error === 'cancel') {
+          return
+        }
         console.error('批量提交工时失败:', error)
         ElMessage.error('批量提交工时失败: ' + error.message)
       }

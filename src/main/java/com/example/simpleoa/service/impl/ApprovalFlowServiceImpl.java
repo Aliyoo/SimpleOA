@@ -2,6 +2,7 @@ package com.example.simpleoa.service.impl;
 
 import com.example.simpleoa.model.*;
 import com.example.simpleoa.repository.ApprovalFlowRepository;
+import com.example.simpleoa.repository.ReimbursementRequestRepository;
 import com.example.simpleoa.repository.UserRepository;
 import com.example.simpleoa.service.ApprovalFlowService;
 import com.example.simpleoa.service.WorkTimeService;
@@ -21,13 +22,16 @@ import java.util.List;
 @Service
 public class ApprovalFlowServiceImpl implements ApprovalFlowService {
     private final ApprovalFlowRepository approvalFlowRepository;
-
+    private final ReimbursementRequestRepository reimbursementRequestRepository;
     private final UserRepository userRepository;
     
     private ReimbursementServiceImpl reimbursementService;
 
-    public ApprovalFlowServiceImpl(ApprovalFlowRepository approvalFlowRepository, UserRepository userRepository) {
+    public ApprovalFlowServiceImpl(ApprovalFlowRepository approvalFlowRepository, 
+                                   ReimbursementRequestRepository reimbursementRequestRepository,
+                                   UserRepository userRepository) {
         this.approvalFlowRepository = approvalFlowRepository;
+        this.reimbursementRequestRepository = reimbursementRequestRepository;
         this.userRepository = userRepository;
     }
 
@@ -103,16 +107,19 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
                         }
                     }
                 } else {
-                    // 部门经理审批通过，创建财务审批流程
+                    // 项目经理审批通过，更新状态并创建财务审批流程
+                    reimbursementRequest.setStatus(ReimbursementStatus.PENDING_FINANCE_APPROVAL);
+                    reimbursementRequestRepository.save(reimbursementRequest);
                     User financeApprover = findFinanceApprover();
                     if (financeApprover != null) {
                         createReimbursementApproval(reimbursementRequest, financeApprover);
-                        System.out.println("报销申请ID " + reimbursementRequest.getId() + " 部门审批通过，已创建财务审批");
+                        System.out.println("报销申请ID " + reimbursementRequest.getId() + " 项目经理审批通过，状态已更新为待财务审批");
                     }
                 }
             } else if ("REJECTED".equals(status)) {
                 // 审批拒绝，更新报销状态
                 reimbursementRequest.setStatus(ReimbursementStatus.REJECTED);
+                reimbursementRequestRepository.save(reimbursementRequest);
                 System.out.println("报销申请ID " + reimbursementRequest.getId() + " 已被拒绝");
             }
         }

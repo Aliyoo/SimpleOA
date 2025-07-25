@@ -105,15 +105,26 @@
                         size="small"
                         style="width: 60px"
                         :disabled="!isProjectManager(project) || !isWorkdayForDate(date)"
-                        @change="validateHours(scope.row.hours[date])"
+                        @change="validateMemberDailyHours(date, scope.row.hours[date], scope.row.id, project.id)"
                       />
                     </template>
                   </el-table-column>
 
-                  <!-- 合计列 -->
-                  <el-table-column label="合计" width="80" fixed="right" align="center">
+                  <!-- 项目合计列 -->
+                  <el-table-column label="项目合计" width="80" align="center">
                     <template #default="scope">
                       {{ calculateTotalHours(scope.row.hours) }}
+                    </template>
+                  </el-table-column>
+
+                  <!-- 当日总工时列 -->
+                  <el-table-column label="跨项目合计" width="100" fixed="right" align="center">
+                    <template #default="scope">
+                      <div class="daily-total-info">
+                        <span :class="getDailyTotalClass(scope.row.id, batchDates)">
+                          最高: {{ getMaxDailyHours(scope.row.id) }}h
+                        </span>
+                      </div>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -316,7 +327,7 @@
 import { APP_CONFIG } from '../utils/config.js'
 import { ref, onMounted } from 'vue'
 import api from '../utils/axios.js'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { Download, InfoFilled } from '@element-plus/icons-vue'
 
@@ -357,6 +368,8 @@ const allMemberStats = ref([])
 
 // 工作日缓存
 const workdayCache = ref(new Map())
+// 存储原始工时数据，用于对比变更
+const originalWorkTimeData = ref(new Map())
 
 // 获取项目经理管理的项目列表
 const fetchManagedProjects = async () => {
@@ -431,12 +444,19 @@ const updateDisplayProjects = async () => {
         const response = await api.get(`/api/projects/${project.id}/members`)
         const members = response.data
 
-        // 为每个成员初始化工时数据
+        // 为每个成员初始化工时数据和原始数据记录
         const membersWithHours = members.map(member => {
           const hours = {}
+          const userKey = `${project.id}_${member.id}`
+          const userOriginalData = {}
+          
           batchDates.value.forEach(date => {
             hours[date] = 0
+            userOriginalData[date] = 0  // 初始化原始数据也为0
           })
+
+          // 存储用户的原始数据
+          originalWorkTimeData.value.set(userKey, userOriginalData)
 
           return {
             ...member,
@@ -786,7 +806,7 @@ const initBatchDateRange = () => {
                 const date = record.date
                 const hours = record.hours
 
-                if (userId && date && hours) {
+                if (userId && date && hours !== undefined) {
                   if (!submittedHoursMap[userId]) {
                     submittedHoursMap[userId] = {}
                   }
@@ -794,17 +814,39 @@ const initBatchDateRange = () => {
                 }
               })
 
-              // 填充已提交的工时数据
+              // 填充已提交的工时数据，并记录原始数据
               project.members.forEach(member => {
                 const userId = member.id
                 const submittedHours = submittedHoursMap[userId] || {}
 
+                // 创建用户原始数据映射的key
+                const userKey = `${project.id}_${userId}`
+                const userOriginalData = {}
+
                 batchDates.value.forEach(date => {
-                  // 如果该日期有已提交的工时记录，则更新
-                  if (submittedHours[date]) {
-                    member.hours[date] = submittedHours[date]
-                  }
+                  // 记录原始工时数据（包括0值）
+                  const originalHours = submittedHours[date] || 0
+                  userOriginalData[date] = originalHours
+                  
+                  // 更新界面显示的工时数据
+                  member.hours[date] = originalHours
                 })
+
+                // 存储用户的原始数据
+                originalWorkTimeData.value.set(userKey, userOriginalData)
+              })
+            } else {
+              // 如果没有已提交的工时记录，也需要记录原始数据（全为0）
+              project.members.forEach(member => {
+                const userId = member.id
+                const userKey = `${project.id}_${userId}`
+                const userOriginalData = {}
+                
+                batchDates.value.forEach(date => {
+                  userOriginalData[date] = 0
+                })
+                
+                originalWorkTimeData.value.set(userKey, userOriginalData)
               })
             }
           } catch (error) {
@@ -834,14 +876,30 @@ const initBatchDateRange = () => {
       }
 
       const records = []
+      let changedCount = 0
+      let deletedCount = 0
+      
       project.members.forEach(member => {
-        Object.entries(member.hours).forEach(([date, hours]) => {
-          if (hours > 0) {
+        const userId = member.id
+        const userKey = `${projectId}_${userId}`
+        const originalData = originalWorkTimeData.value.get(userKey) || {}
+        
+        Object.entries(member.hours).forEach(([date, currentHours]) => {
+          const originalHours = originalData[date] || 0
+          
+          // 检查是否有变化（包括从有工时改为0工时的情况）
+          if (currentHours !== originalHours) {
+            changedCount++
+            
+            if (currentHours === 0) {
+              deletedCount++
+            }
+            
             records.push({
               project: { id: projectId },
               user: { id: member.id },
               date,
-              hours,
+              hours: currentHours,
               workType: '开发', // 默认值，可根据需求调整
               description: '项目经理批量填写',
               approved: true // 项目经理填写的工时自动审批通过
@@ -850,18 +908,80 @@ const initBatchDateRange = () => {
         })
       })
 
+      console.log('项目工时变更统计:', {
+        projectId,
+        totalChanges: changedCount,
+        recordsToSubmit: records.length,
+        deletedRecords: deletedCount,
+        members: project.members.length
+      })
+
       if (records.length === 0) {
-        ElMessage.warning('没有需要提交的工时记录')
+        ElMessage.info('该项目没有工时变更，无需提交')
         return
       }
 
+      // 显示变更统计信息
+      const changeInfo = []
+      if (deletedCount > 0) {
+        changeInfo.push(`${deletedCount} 条记录将被清零`)
+      }
+      if (changedCount - deletedCount > 0) {
+        changeInfo.push(`${changedCount - deletedCount} 条记录将被更新`)
+      }
+      
+      const confirmMessage = `项目「${project.name}」检测到 ${changedCount} 条工时变更：${changeInfo.join('，')}。确认提交吗？`
+      
       try {
+        // 检查项目成员是否有任何日期超过8小时
+        const memberDailyTotals = {}
+        
+        // 计算所有成员跨项目的每日总工时
+        project.members.forEach(member => {
+          const memberId = member.id
+          batchDates.value.forEach(date => {
+            const dailyTotal = getMemberDailyHours(memberId, date)
+            if (dailyTotal > 0) {
+              if (!memberDailyTotals[memberId]) {
+                memberDailyTotals[memberId] = {}
+              }
+              memberDailyTotals[memberId][date] = dailyTotal
+            }
+          })
+        })
+
+        // 检查是否有成员在某日超过8小时
+        const overLimitMembers = []
+        Object.entries(memberDailyTotals).forEach(([memberId, dates]) => {
+          Object.entries(dates).forEach(([date, total]) => {
+            if (total > 8) {
+              const member = project.members.find(m => m.id === parseInt(memberId))
+              const memberName = member?.realName || member?.username || '未知成员'
+              overLimitMembers.push(`${memberName}在${date}(${total}h)`)
+            }
+          })
+        })
+        
+        if (overLimitMembers.length > 0) {
+          ElMessage.error(`以下成员跨项目总工时超过8小时：${overLimitMembers.join('、')}，请调整后再提交`)
+          return
+        }
+
+        await ElMessageBox.confirm(confirmMessage, '确认提交', {
+          confirmButtonText: '确认提交',
+          cancelButtonText: '取消',
+          type: 'info'
+        })
+
         batchLoading.value = true
         await api.post('/api/worktime/batch', records)
-        ElMessage.success(`成功提交 ${records.length} 条工时记录`)
-        // 加载已提交的工时数据
-        loadSubmittedWorkTime()
+        ElMessage.success(`项目「${project.name}」成功提交 ${changedCount} 条工时变更`)
+        // 加载已提交的工时数据，更新原始数据记录
+        await loadSubmittedWorkTime()
       } catch (error) {
+        if (error === 'cancel') {
+          return
+        }
         console.error('批量提交工时失败:', error)
         ElMessage.error('批量提交工时失败: ' + error.message)
       } finally {
@@ -898,10 +1018,96 @@ const initBatchDateRange = () => {
       return Object.values(hoursObj).reduce((sum, val) => sum + (val || 0), 0)
     }
 
+    // 计算成员跨项目每天的总工时
+    const getMemberDailyHours = (memberId, date) => {
+      let totalHours = 0
+      displayProjects.value.forEach(project => {
+        const member = project.members.find(m => m.id === memberId)
+        if (member) {
+          totalHours += member.hours[date] || 0
+        }
+      })
+      return totalHours
+    }
+
+    // 获取成员跨项目的最高单日工时
+    const getMaxDailyHours = (memberId) => {
+      let maxHours = 0
+      batchDates.value.forEach(date => {
+        const dailyHours = getMemberDailyHours(memberId, date)
+        if (dailyHours > maxHours) {
+          maxHours = dailyHours
+        }
+      })
+      return maxHours
+    }
+
+    // 获取每日总工时的样式类
+    const getDailyTotalClass = (memberId) => {
+      const maxHours = getMaxDailyHours(memberId)
+      if (maxHours > 8) {
+        return 'daily-total-over'
+      } else if (maxHours === 8) {
+        return 'daily-total-full'
+      } else if (maxHours >= 6) {
+        return 'daily-total-high'
+      }
+      return 'daily-total-normal'
+    }
+
     const validateHours = (value) => {
       if (value < 0) return 0
       if (value > 8) return 8
       return value
+    }
+
+    // 验证成员每天总工时不超过8小时（跨项目）
+    const validateMemberDailyHours = (date, newHours, memberId, currentProjectId) => {
+      console.log('验证成员每天总工时:', { date, newHours, memberId, currentProjectId })
+      
+      // 计算该成员在指定日期跨所有项目的总工时
+      let totalHours = 0
+      
+      displayProjects.value.forEach(project => {
+        const member = project.members.find(m => m.id === memberId)
+        if (member) {
+          if (project.id === currentProjectId) {
+            // 当前项目使用新的工时值
+            totalHours += newHours || 0
+          } else {
+            // 其他项目使用现有工时值
+            totalHours += member.hours[date] || 0
+          }
+        }
+      })
+
+      console.log(`成员 ${memberId} 在 ${date} 的跨项目总工时: ${totalHours}`)
+
+      // 如果总工时超过8小时，显示警告并调整
+      if (totalHours > 8) {
+        // 找到成员的姓名用于显示
+        const currentProject = displayProjects.value.find(p => p.id === currentProjectId)
+        const member = currentProject?.members.find(m => m.id === memberId)
+        const memberName = member?.realName || member?.username || '该成员'
+        
+        ElMessage.warning(`${memberName} 在 ${date} 当天跨项目总工时不能超过8小时，当前总计：${totalHours}小时`)
+        
+        // 计算该成员在其他项目的工时总和
+        const otherProjectsHours = totalHours - (newHours || 0)
+        const maxAllowedHours = Math.max(0, 8 - otherProjectsHours)
+        
+        console.log(`其他项目工时: ${otherProjectsHours}, 当前项目最大允许: ${maxAllowedHours}`)
+        
+        // 调整当前项目的工时
+        if (member) {
+          member.hours[date] = maxAllowedHours
+          ElMessage.info(`已调整 ${memberName} 在当前项目的工时为 ${maxAllowedHours} 小时，使当天总计不超过8小时`)
+        }
+        
+        return maxAllowedHours
+      }
+
+      return newHours
     }
 
     const getCellClass = ({ columnIndex }) => {
@@ -1775,5 +1981,42 @@ h1 {
   margin-bottom: 15px;
   font-size: 18px;
   color: #333;
+}
+
+/* 每日工时合计样式 */
+.daily-total-info {
+  font-size: 12px;
+}
+
+.daily-total-normal {
+  color: #67c23a;
+}
+
+.daily-total-high {
+  color: #e6a23c;
+}
+
+.daily-total-full {
+  color: #409eff;
+  font-weight: bold;
+}
+
+.daily-total-over {
+  color: #f56c6c;
+  font-weight: bold;
+}
+
+.non-workday-cell {
+  background-color: #fff2f0;
+}
+
+.non-workday-cell .el-input-number {
+  background-color: #fff2f0;
+}
+
+.non-workday-cell .el-input-number.is-disabled {
+  background-color: #f5f5f5;
+  color: #c0c4cc;
+  cursor: not-allowed;
 }
 </style>

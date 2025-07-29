@@ -1,5 +1,6 @@
 import axios from 'axios'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import router from '../router/index'
 
 // 创建 axios 实例
 // 在开发环境中使用相对路径，生产环境中使用环境变量或默认值
@@ -21,6 +22,9 @@ const getBaseURL = () => {
 
 // 从环境变量获取超时时间（毫秒）
 const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '5000', 10)
+
+// 防止重复显示登录失效对话框的状态
+let isShowingAuthDialog = false
 
 // 创建axios实例
 const api = axios.create({
@@ -82,11 +86,26 @@ api.interceptors.response.use(
     }
 
     if (status === 401 || status === 403) {
-      console.error('认证错误 (401/403)，但不立即清除认证状态，可能是临时问题:', error.response)
-      // 不要立即登出，可能是临时问题
-      // const userStore = require('../stores/user').useUserStore()
-      // userStore.logout()
-      // window.location.href = '/login'
+      console.error('认证错误 (401/403)，询问用户是否重新登录:', error.response)
+      if (!isShowingAuthDialog) {
+        isShowingAuthDialog = true
+        ElMessageBox.confirm(
+          '登录失效，请重新登录。点击"取消"以继续停留在当前页面。',
+          '登录失效',
+          {
+            confirmButtonText: '重新登录',
+            cancelButtonText: '取消',
+            type: 'warning',
+            distinguishCancelAndClose: true
+          }
+        ).then(() => {
+          router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } })
+        }).catch(() => {
+          console.log('用户选择留在当前页面')
+        }).finally(() => {
+          isShowingAuthDialog = false
+        })
+      }
     }
     return Promise.reject(error)
   }

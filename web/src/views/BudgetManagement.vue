@@ -53,11 +53,13 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作">
+          <el-table-column label="操作" width="200" align="center">
             <template #default="scope">
-              <el-button size="small" @click="handleViewBudget(scope.row)">查看</el-button>
-              <el-button size="small" type="primary" @click="handleEditBudget(scope.row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="handleDeleteBudget(scope.row)">删除</el-button>
+              <div class="operation-buttons">
+                <el-button size="small" @click="handleViewBudget(scope.row)">查看</el-button>
+                <el-button size="small" type="primary" @click="handleEditBudget(scope.row)">编辑</el-button>
+                <el-button size="small" type="danger" @click="handleDeleteBudget(scope.row)">删除</el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -256,11 +258,7 @@
     <el-dialog
       v-model="resolveAlertDialogVisible"
       title="解决预警"
-      @closed="
-        selectedAlert = null
-        resolveAlertForm.resolution = ''
-        resolveAlertFormRef?.clearValidate()
-      "
+      @closed="handleResolveAlertDialogClosed"
     >
       <el-form ref="resolveAlertFormRef" :model="resolveAlertForm" label-width="100px">
         <el-form-item label="预警消息">
@@ -493,6 +491,12 @@ const handleResolveAlert = (alert) => {
   resolveAlertDialogVisible.value = true
 }
 
+const handleResolveAlertDialogClosed = () => {
+  selectedAlert.value = null
+  resolveAlertForm.resolution = ''
+  resolveAlertFormRef.value?.clearValidate()
+}
+
 const submitResolveAlertForm = async () => {
   if (!resolveAlertFormRef.value) return
   await resolveAlertFormRef.value.validate(async (valid) => {
@@ -630,5 +634,18 @@ onMounted(() => {
 
 .alerts-container {
   margin-top: 20px;
+}
+
+.operation-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.operation-buttons .el-button {
+  margin: 0;
+  min-width: 48px;
 }
 </style>

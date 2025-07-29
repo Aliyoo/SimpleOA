@@ -536,6 +536,128 @@ public class BudgetServiceImpl implements BudgetService {
 
         return stats;
     }
+    
+    @Override
+    @Transactional
+    public synchronized boolean decreaseBudget(Long budgetId, Double amount, String referenceNumber) throws Exception {
+        // 检查幂等性 - 如果该引用号已存在，说明已经扣减过了
+        if (isBudgetExpenseExists(referenceNumber)) {
+            // 幂等操作，返回成功
+            return true;
+        }
+        
+        Budget budget = budgetRepository.findById(budgetId)
+                .orElseThrow(() -> new EntityNotFoundException("Budget not found"));
+        
+        // 检查预算余额是否充足
+        if (budget.getRemainingAmount() < amount) {
+            throw new IllegalStateException("预算余额不足，无法扣减");
+        }
+        
+        // 使用悲观锁防止并发问题
+        Budget lockedBudget = budgetRepository.findByIdForUpdate(budgetId)
+                .orElseThrow(() -> new EntityNotFoundException("Budget not found for update"));
+        
+        // 再次检查余额（双重检查）
+        if (lockedBudget.getRemainingAmount() < amount) {
+            throw new IllegalStateException("预算余额不足，无法扣减");
+        }
+        
+        // 更新预算使用金额和剩余金额
+        lockedBudget.setUsedAmount(lockedBudget.getUsedAmount() + amount);
+        lockedBudget.setRemainingAmount(lockedBudget.getRemainingAmount() - amount);
+        lockedBudget.setLastUpdateTime(new Date());
+        budgetRepository.save(lockedBudget);
+        
+        // 检查是否需要创建预算预警
+        double usageRate = lockedBudget.getUsedAmount() / lockedBudget.getTotalAmount();
+        if (usageRate >= 0.8 && usageRate < 1.0) {
+            createBudgetUsageAlert(lockedBudget, "高", String.format("预算使用率达到%.1f%%", usageRate * 100));
+        } else if (usageRate >= 1.0) {
+            createBudgetUsageAlert(lockedBudget, "紧急", "预算已超支");
+        }
+        
+        return true;
+    }
+    
+    @Override
+    @Transactional
+    public synchronized boolean decreaseBudgetItem(Long budgetItemId, Double amount, String referenceNumber) throws Exception {
+        // 检查幂等性
+        if (isBudgetExpenseExists(referenceNumber)) {
+            return true;
+        }
+        
+        BudgetItem budgetItem = budgetItemRepository.findById(budgetItemId)
+                .orElseThrow(() -> new EntityNotFoundException("Budget item not found"));
+        
+        // 检查预算项余额是否充足
+        if (budgetItem.getRemainingAmount() < amount) {
+            throw new IllegalStateException("预算项余额不足，无法扣减");
+        }
+        
+        // 使用悲观锁防止并发问题
+        BudgetItem lockedBudgetItem = budgetItemRepository.findByIdForUpdate(budgetItemId)
+                .orElseThrow(() -> new EntityNotFoundException("Budget item not found for update"));
+        
+        // 再次检查余额
+        if (lockedBudgetItem.getRemainingAmount() < amount) {
+            throw new IllegalStateException("预算项余额不足，无法扣减");
+        }
+        
+        // 更新预算项使用金额和剩余金额
+        lockedBudgetItem.setUsedAmount(lockedBudgetItem.getUsedAmount() + amount);
+        lockedBudgetItem.setRemainingAmount(lockedBudgetItem.getRemainingAmount() - amount);
+        lockedBudgetItem.setLastUpdateTime(new Date());
+        budgetItemRepository.save(lockedBudgetItem);
+        
+        // 同时需要更新对应的总预算
+        if (lockedBudgetItem.getBudget() != null) {
+            decreaseBudget(lockedBudgetItem.getBudget().getId(), amount, referenceNumber + "-BUDGET");
+        }
+        
+        // 检查是否需要创建预算预警
+        double usageRate = lockedBudgetItem.getUsedAmount() / lockedBudgetItem.getAmount();
+        if (usageRate >= 0.8 && usageRate < 1.0) {
+            createBudgetItemUsageAlert(lockedBudgetItem, "高", String.format("预算项使用率达到%.1f%%", usageRate * 100));
+        } else if (usageRate >= 1.0) {
+            createBudgetItemUsageAlert(lockedBudgetItem, "紧急", "预算项已超支");
+        }
+        
+        return true;
+    }
+    
+    @Override
+    public boolean isBudgetExpenseExists(String referenceNumber) {
+        return budgetExpenseRepository.existsByReferenceNumber(referenceNumber);
+    }
+    
+    private void createBudgetUsageAlert(Budget budget, String alertLevel, String alertContent) {
+        BudgetAlert alert = new BudgetAlert();
+        alert.setBudget(budget);
+        alert.setAlertType("预算使用");
+        alert.setAlertLevel(alertLevel);
+        alert.setMessage(alertContent);
+        alert.setAlertDate(new Date());
+        alert.setStatus("未解决");
+        alert.setCreateTime(new Date());
+        alert.setLastUpdateTime(new Date());
+        budgetAlertRepository.save(alert);
+    }
+    
+    private void createBudgetItemUsageAlert(BudgetItem budgetItem, String alertLevel, String alertContent) {
+        BudgetAlert alert = new BudgetAlert();
+        alert.setBudget(budgetItem.getBudget());
+        alert.setBudgetItem(budgetItem);
+        alert.setAlertType("预算项使用");
+        alert.setAlertLevel(alertLevel);
+        alert.setMessage(alertContent);
+        alert.setAlertDate(new Date());
+        alert.setStatus("未解决");
+        alert.setCreateTime(new Date());
+        alert.setLastUpdateTime(new Date());
+        budgetAlertRepository.save(alert);
+    }
 
     @Override
     @Transactional

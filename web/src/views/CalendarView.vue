@@ -7,7 +7,7 @@
             <el-col>
               <h3>日历管理</h3>
             </el-col>
-            <el-col class="button-group" style="text-align: right;">
+            <el-col class="button-group" style="text-align: right">
               <el-button type="primary" @click="showAddDialog">
                 <el-icon><Plus /></el-icon>
                 添加事件
@@ -16,30 +16,18 @@
           </el-row>
         </div>
       </template>
-      
-      <FullCalendar 
-        :options="calendarOptions" 
-        ref="fullCalendar"
-      />
+
+      <FullCalendar ref="fullCalendar" :options="calendarOptions" />
     </el-card>
 
     <!-- 添加/编辑事件对话框 -->
-    <el-dialog 
-      v-model="dialogVisible" 
-      :title="isEdit ? '编辑事件' : '添加事件'"
-      width="500px"
-    >
-      <el-form :model="form" :rules="rules" ref="formRef" label-width="80px">
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑事件' : '添加事件'" width="500px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="80px">
         <el-form-item label="标题" prop="name">
           <el-input v-model="form.name" placeholder="请输入事件标题" />
         </el-form-item>
         <el-form-item label="日期" prop="date">
-          <el-date-picker 
-            v-model="form.date" 
-            type="date" 
-            placeholder="选择日期"
-            style="width: 100%"
-          />
+          <el-date-picker v-model="form.date" type="date" placeholder="选择日期" style="width: 100%" />
         </el-form-item>
         <el-form-item label="类型" prop="type">
           <el-select v-model="form.type" placeholder="请选择事件类型" style="width: 100%">
@@ -52,7 +40,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmit" :loading="loading">
+        <el-button type="primary" :loading="loading" @click="handleSubmit">
           {{ isEdit ? '更新' : '创建' }}
         </el-button>
       </template>
@@ -110,18 +98,15 @@ const calendarOptions = reactive({
 
 // 获取事件数据
 function fetchEvents(fetchInfo, successCallback, failureCallback) {
-  const promises = [
-    axios.get('/api/holidays'),
-    axios.get('/api/paydays')
-  ]
-  
+  const promises = [axios.get('/api/holidays'), axios.get('/api/paydays')]
+
   Promise.all(promises)
-    .then(responses => {
+    .then((responses) => {
       const [holidaysResponse, paydaysResponse] = responses
       const events = []
-      
+
       // 添加节假日事件
-      holidaysResponse.data.forEach(holiday => {
+      holidaysResponse.data.forEach((holiday) => {
         events.push({
           id: `holiday-${holiday.id}`,
           title: holiday.name,
@@ -135,9 +120,9 @@ function fetchEvents(fetchInfo, successCallback, failureCallback) {
           }
         })
       })
-      
+
       // 添加发薪日事件
-      paydaysResponse.data.forEach(payday => {
+      paydaysResponse.data.forEach((payday) => {
         events.push({
           id: `payday-${payday.id}`,
           title: payday.description || '发薪日',
@@ -151,10 +136,10 @@ function fetchEvents(fetchInfo, successCallback, failureCallback) {
           }
         })
       })
-      
+
       successCallback(events)
     })
-    .catch(error => {
+    .catch((error) => {
       console.error('获取日历事件失败:', error)
       ElMessage.error('获取日历事件失败')
       failureCallback(error)
@@ -165,7 +150,7 @@ function fetchEvents(fetchInfo, successCallback, failureCallback) {
 function handleEventClick(info) {
   const event = info.event
   const props = event.extendedProps
-  
+
   ElMessageBox.confirm(
     `事件: ${event.title}\n类型: ${getTypeLabel(props.type)}\n日期: ${event.startStr}\n\n是否要删除此事件？`,
     '事件详情',
@@ -175,11 +160,13 @@ function handleEventClick(info) {
       type: 'warning',
       distinguishCancelAndClose: true
     }
-  ).then(() => {
-    deleteEvent(props.originalType, props.originalId)
-  }).catch(() => {
-    // 用户取消操作
-  })
+  )
+    .then(() => {
+      deleteEvent(props.originalType, props.originalId)
+    })
+    .catch(() => {
+      // 用户取消操作
+    })
 }
 
 // 处理日期点击
@@ -209,29 +196,30 @@ function resetForm() {
 // 提交表单
 function handleSubmit() {
   if (!formRef.value) return
-  
-  formRef.value.validate(valid => {
+
+  formRef.value.validate((valid) => {
     if (valid) {
       loading.value = true
-      
-      const apiCall = form.type === 'PAYDAY' 
-        ? axios.post('/api/paydays', {
-            date: form.date,
-            description: form.name
-          })
-        : axios.post('/api/holidays', {
-            name: form.name,
-            date: form.date,
-            type: form.type
-          })
-      
+
+      const apiCall =
+        form.type === 'PAYDAY'
+          ? axios.post('/api/paydays', {
+              date: form.date,
+              description: form.name
+            })
+          : axios.post('/api/holidays', {
+              name: form.name,
+              date: form.date,
+              type: form.type
+            })
+
       apiCall
         .then(() => {
           ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
           dialogVisible.value = false
           refreshCalendar()
         })
-        .catch(error => {
+        .catch((error) => {
           console.error('提交失败:', error)
           ElMessage.error('操作失败')
         })
@@ -244,16 +232,14 @@ function handleSubmit() {
 
 // 删除事件
 function deleteEvent(type, id) {
-  const apiCall = type === 'payday' 
-    ? axios.delete(`/api/paydays/${id}`)
-    : axios.delete(`/api/holidays/${id}`)
-  
+  const apiCall = type === 'payday' ? axios.delete(`/api/paydays/${id}`) : axios.delete(`/api/holidays/${id}`)
+
   apiCall
     .then(() => {
       ElMessage.success('删除成功')
       refreshCalendar()
     })
-    .catch(error => {
+    .catch((error) => {
       console.error('删除失败:', error)
       ElMessage.error('删除失败')
     })
@@ -269,11 +255,11 @@ function refreshCalendar() {
 // 获取类型标签
 function getTypeLabel(type) {
   const typeMap = {
-    'HOLIDAY': '节假日',
-    'WORKDAY': '工作日',
-    'ADJUSTED': '调休',
-    'PAYDAY': '发薪日',
-    'OTHER': '其他'
+    HOLIDAY: '节假日',
+    WORKDAY: '工作日',
+    ADJUSTED: '调休',
+    PAYDAY: '发薪日',
+    OTHER: '其他'
   }
   return typeMap[type] || type
 }
@@ -328,4 +314,3 @@ onMounted(() => {
   background-color: #f5f7fa;
 }
 </style>
-

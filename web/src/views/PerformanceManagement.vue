@@ -1,7 +1,7 @@
 <template>
   <div class="performance-container">
     <h1>绩效管理</h1>
-    
+
     <el-tabs v-model="activeTab">
       <el-tab-pane label="绩效考核标准" name="criteria">
         <div class="operation-bar">
@@ -13,14 +13,12 @@
             clearable
           />
         </div>
-        
+
         <el-table :data="filteredCriteria" style="width: 100%; margin-top: 20px">
           <el-table-column prop="name" label="标准名称" width="180" />
           <el-table-column prop="description" label="描述" />
           <el-table-column prop="weight" label="权重" width="100">
-            <template #default="scope">
-              {{ scope.row.weight }}%
-            </template>
+            <template #default="scope"> {{ scope.row.weight }}% </template>
           </el-table-column>
           <el-table-column prop="category" label="分类" width="120">
             <template #default="scope">
@@ -42,7 +40,7 @@
           </el-table-column>
         </el-table>
       </el-tab-pane>
-      
+
       <el-tab-pane label="绩效评估" name="evaluation">
         <div class="operation-bar">
           <el-button type="primary" @click="handleCreateEvaluation">新建评估</el-button>
@@ -53,7 +51,7 @@
             clearable
           />
         </div>
-        
+
         <el-table :data="filteredEvaluations" style="width: 100%; margin-top: 20px">
           <el-table-column prop="employeeName" label="员工姓名" width="120" />
           <el-table-column prop="projectName" label="项目名称" width="180" />
@@ -82,28 +80,24 @@
           <el-table-column label="操作">
             <template #default="scope">
               <el-button size="small" @click="handleViewEvaluation(scope.row)">查看</el-button>
-              <el-button 
-                size="small" 
-                type="primary" 
-                @click="handleEditEvaluation(scope.row)"
+              <el-button
+                size="small"
+                type="primary"
                 :disabled="scope.row.status === 'APPROVED'"
-              >编辑</el-button>
+                @click="handleEditEvaluation(scope.row)"
+                >编辑</el-button
+              >
             </template>
           </el-table-column>
         </el-table>
       </el-tab-pane>
-      
+
       <el-tab-pane label="绩效奖金" name="bonus">
         <div class="operation-bar">
           <el-button type="primary" @click="handleCreateBonus">新建奖金</el-button>
-          <el-input
-            v-model="bonusSearch"
-            placeholder="搜索奖金"
-            style="width: 300px; margin-left: 10px"
-            clearable
-          />
+          <el-input v-model="bonusSearch" placeholder="搜索奖金" style="width: 300px; margin-left: 10px" clearable />
         </div>
-        
+
         <el-table :data="filteredBonuses" style="width: 100%; margin-top: 20px">
           <el-table-column prop="employeeName" label="员工姓名" width="120" />
           <el-table-column prop="projectName" label="项目名称" width="180" />
@@ -130,17 +124,18 @@
           <el-table-column label="操作">
             <template #default="scope">
               <el-button size="small" @click="handleViewBonus(scope.row)">查看</el-button>
-              <el-button 
-                size="small" 
-                type="primary" 
-                @click="handleApproveBonus(scope.row)"
+              <el-button
+                size="small"
+                type="primary"
                 :disabled="scope.row.status !== 'PENDING'"
-              >审批</el-button>
+                @click="handleApproveBonus(scope.row)"
+                >审批</el-button
+              >
             </template>
           </el-table-column>
         </el-table>
       </el-tab-pane>
-      
+
       <el-tab-pane label="绩效统计" name="statistics">
         <div class="statistics-container">
           <el-row :gutter="20">
@@ -185,7 +180,7 @@
               </el-card>
             </el-col>
           </el-row>
-          
+
           <div class="charts-container">
             <div class="chart-wrapper">
               <h3>绩效分布</h3>
@@ -204,17 +199,17 @@
 
     <!-- Dialogs for Criteria, Evaluation, Bonus would go here -->
     <!-- Example: Criteria Dialog -->
-    <el-dialog 
-      :title="criteriaForm.id ? '编辑考核标准' : '新建考核标准'" 
+    <el-dialog
       v-model="criteriaDialogVisible"
+      :title="criteriaForm.id ? '编辑考核标准' : '新建考核标准'"
       @closed="resetCriteriaForm"
     >
-      <el-form :model="criteriaForm" :rules="criteriaRules" ref="criteriaFormRef" label-width="100px">
+      <el-form ref="criteriaFormRef" :model="criteriaForm" :rules="criteriaRules" label-width="100px">
         <el-form-item label="标准名称" prop="name">
           <el-input v-model="criteriaForm.name" />
         </el-form-item>
         <el-form-item label="描述" prop="description">
-          <el-input type="textarea" v-model="criteriaForm.description" />
+          <el-input v-model="criteriaForm.description" type="textarea" />
         </el-form-item>
         <el-form-item label="权重(%)" prop="weight">
           <el-input-number v-model="criteriaForm.weight" :min="0" :max="100" />
@@ -223,12 +218,12 @@
           <el-input v-model="criteriaForm.category" />
         </el-form-item>
         <el-form-item label="状态" prop="isActive">
-           <el-switch v-model="criteriaForm.isActive" :active-value="true" :inactive-value="false" />
+          <el-switch v-model="criteriaForm.isActive" :active-value="true" :inactive-value="false" />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="criteriaDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitCriteriaForm" :loading="submittingCriteria">确定</el-button>
+        <el-button type="primary" :loading="submittingCriteria" @click="submitCriteriaForm">确定</el-button>
       </template>
     </el-dialog>
 
@@ -237,7 +232,6 @@
 
     <!-- Placeholder for Bonus Dialog -->
     <!-- <el-dialog title="绩效奖金详情/审批" v-model="bonusDialogVisible"> ... </el-dialog> -->
-
   </div>
 </template>
 
@@ -256,10 +250,15 @@ const criteriaSearch = ref('')
 const criteriaDialogVisible = ref(false)
 const submittingCriteria = ref(false)
 const criteriaFormRef = ref(null)
-const initialCriteriaFormState = () => ({ 
-    id: null, name: '', description: '', weight: 50, category: '', isActive: true 
-});
-const criteriaForm = reactive(initialCriteriaFormState()); // Using reactive is fine
+const initialCriteriaFormState = () => ({
+  id: null,
+  name: '',
+  description: '',
+  weight: 50,
+  category: '',
+  isActive: true
+})
+const criteriaForm = reactive(initialCriteriaFormState()) // Using reactive is fine
 
 // Evaluation
 const evaluations = ref([])
@@ -277,169 +276,195 @@ const bonusSearch = ref('')
 
 // Statistics (Placeholder values)
 const averageScore = computed(() => {
-    if (evaluations.value.length === 0) return 0;
-    const total = evaluations.value.reduce((sum, item) => sum + (item.overallScore || 0), 0);
-    return total / evaluations.value.length;
-});
+  if (evaluations.value.length === 0) return 0
+  const total = evaluations.value.reduce((sum, item) => sum + (item.overallScore || 0), 0)
+  return total / evaluations.value.length
+})
 const totalBonusAmount = computed(() => {
-    return bonuses.value.reduce((sum, item) => sum + (item.amount || 0), 0);
-});
+  return bonuses.value.reduce((sum, item) => sum + (item.amount || 0), 0)
+})
 
 // --- Computed Properties for Filtering ---
 
 const filteredCriteria = computed(() => {
-  if (!criteriaSearch.value) return criteria.value;
-  const searchLower = criteriaSearch.value.toLowerCase();
-  return criteria.value.filter(item => 
-    item.name?.toLowerCase().includes(searchLower) ||
-    item.description?.toLowerCase().includes(searchLower) ||
-    item.category?.toLowerCase().includes(searchLower)
-  );
-});
+  if (!criteriaSearch.value) return criteria.value
+  const searchLower = criteriaSearch.value.toLowerCase()
+  return criteria.value.filter(
+    (item) =>
+      item.name?.toLowerCase().includes(searchLower) ||
+      item.description?.toLowerCase().includes(searchLower) ||
+      item.category?.toLowerCase().includes(searchLower)
+  )
+})
 
 const filteredEvaluations = computed(() => {
-  if (!evaluationSearch.value) return evaluations.value;
-   const searchLower = evaluationSearch.value.toLowerCase();
-  return evaluations.value.filter(item => 
-    item.employeeName?.toLowerCase().includes(searchLower) ||
-    item.projectName?.toLowerCase().includes(searchLower) ||
-    item.evaluationPeriod?.toLowerCase().includes(searchLower) ||
-    item.evaluatorName?.toLowerCase().includes(searchLower)
-  );
-});
+  if (!evaluationSearch.value) return evaluations.value
+  const searchLower = evaluationSearch.value.toLowerCase()
+  return evaluations.value.filter(
+    (item) =>
+      item.employeeName?.toLowerCase().includes(searchLower) ||
+      item.projectName?.toLowerCase().includes(searchLower) ||
+      item.evaluationPeriod?.toLowerCase().includes(searchLower) ||
+      item.evaluatorName?.toLowerCase().includes(searchLower)
+  )
+})
 
 const filteredBonuses = computed(() => {
-  if (!bonusSearch.value) return bonuses.value;
-   const searchLower = bonusSearch.value.toLowerCase();
-  return bonuses.value.filter(item => 
-    item.employeeName?.toLowerCase().includes(searchLower) ||
-    item.projectName?.toLowerCase().includes(searchLower) ||
-    item.bonusPeriod?.toLowerCase().includes(searchLower) ||
-    item.bonusType?.toLowerCase().includes(searchLower)
-  );
-});
+  if (!bonusSearch.value) return bonuses.value
+  const searchLower = bonusSearch.value.toLowerCase()
+  return bonuses.value.filter(
+    (item) =>
+      item.employeeName?.toLowerCase().includes(searchLower) ||
+      item.projectName?.toLowerCase().includes(searchLower) ||
+      item.bonusPeriod?.toLowerCase().includes(searchLower) ||
+      item.bonusType?.toLowerCase().includes(searchLower)
+  )
+})
 
 // --- Validation Rules ---
 
 const criteriaRules = {
   name: [{ required: true, message: '请输入标准名称', trigger: 'blur' }],
   weight: [{ required: true, type: 'number', message: '请输入权重', trigger: 'blur' }],
-  category: [{ required: true, message: '请输入分类', trigger: 'blur' }],
-};
+  category: [{ required: true, message: '请输入分类', trigger: 'blur' }]
+}
 
 // --- Methods ---
 
 // Data Fetching
 const fetchCriteria = async () => {
   try {
-    const response = await api.get('/api/performance/criteria'); // Adjust API endpoint
-    criteria.value = response.data;
+    const response = await api.get('/api/performance/criteria') // Adjust API endpoint
+    criteria.value = response.data
   } catch (error) {
-    ElMessage.error('获取考核标准失败: ' + error.message);
+    ElMessage.error('获取考核标准失败: ' + error.message)
   }
-};
+}
 
 const fetchEvaluations = async () => {
   try {
-    const response = await api.get('/api/performance/evaluations'); // Adjust API endpoint
-    evaluations.value = response.data;
+    const response = await api.get('/api/performance/evaluations') // Adjust API endpoint
+    evaluations.value = response.data
   } catch (error) {
-    ElMessage.error('获取绩效评估失败: ' + error.message);
+    ElMessage.error('获取绩效评估失败: ' + error.message)
   }
-};
+}
 
 const fetchBonuses = async () => {
   try {
-    const response = await api.get('/api/performance/bonuses'); // Adjust API endpoint
-    bonuses.value = response.data;
+    const response = await api.get('/api/performance/bonuses') // Adjust API endpoint
+    bonuses.value = response.data
   } catch (error) {
-    ElMessage.error('获取绩效奖金失败: ' + error.message);
+    ElMessage.error('获取绩效奖金失败: ' + error.message)
   }
-};
+}
 
 // Criteria Dialog Methods
 const resetCriteriaForm = () => {
-    Object.assign(criteriaForm, initialCriteriaFormState());
-    criteriaFormRef.value?.clearValidate();
-};
+  Object.assign(criteriaForm, initialCriteriaFormState())
+  criteriaFormRef.value?.clearValidate()
+}
 
 const handleCreateCriteria = () => {
-    resetCriteriaForm();
-    criteriaDialogVisible.value = true;
-};
+  resetCriteriaForm()
+  criteriaDialogVisible.value = true
+}
 
 const handleEditCriteria = (item) => {
-    Object.assign(criteriaForm, item);
-    criteriaDialogVisible.value = true;
-    // nextTick(() => criteriaFormRef.value?.clearValidate()); // Clear validation on edit open
-};
+  Object.assign(criteriaForm, item)
+  criteriaDialogVisible.value = true
+  // nextTick(() => criteriaFormRef.value?.clearValidate()); // Clear validation on edit open
+}
 
 const submitCriteriaForm = async () => {
-    if (!criteriaFormRef.value) return;
-    await criteriaFormRef.value.validate(async (valid) => {
-        if (valid) {
-            submittingCriteria.value = true;
-            try {
-                const payload = { ...criteriaForm };
-                if (payload.id) {
-                    await api.put(`/api/performance/criteria/${payload.id}`, payload);
-                    ElMessage.success('更新成功');
-                } else {
-                    await api.post('/api/performance/criteria', payload);
-                    ElMessage.success('创建成功');
-                }
-                criteriaDialogVisible.value = false;
-                fetchCriteria();
-            } catch (error) {
-                ElMessage.error('操作失败: ' + error.message);
-            } finally {
-                submittingCriteria.value = false;
-            }
+  if (!criteriaFormRef.value) return
+  await criteriaFormRef.value.validate(async (valid) => {
+    if (valid) {
+      submittingCriteria.value = true
+      try {
+        const payload = { ...criteriaForm }
+        if (payload.id) {
+          await api.put(`/api/performance/criteria/${payload.id}`, payload)
+          ElMessage.success('更新成功')
+        } else {
+          await api.post('/api/performance/criteria', payload)
+          ElMessage.success('创建成功')
         }
-    });
-};
+        criteriaDialogVisible.value = false
+        fetchCriteria()
+      } catch (error) {
+        ElMessage.error('操作失败: ' + error.message)
+      } finally {
+        submittingCriteria.value = false
+      }
+    }
+  })
+}
 
 const handleDeleteCriteria = async (item) => {
-    try {
-        await ElMessageBox.confirm(`确定删除标准 "${item.name}"?`, '提示', { type: 'warning' });
-        await api.delete(`/api/performance/criteria/${item.id}`);
-        ElMessage.success('删除成功');
-        fetchCriteria();
-    } catch (error) {
-        if (error !== 'cancel') {
-            ElMessage.error('删除失败: ' + error.message);
-        }
+  try {
+    await ElMessageBox.confirm(`确定删除标准 "${item.name}"?`, '提示', { type: 'warning' })
+    await api.delete(`/api/performance/criteria/${item.id}`)
+    ElMessage.success('删除成功')
+    fetchCriteria()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败: ' + error.message)
     }
-};
+  }
+}
 
 // Evaluation Methods (Placeholders - Implement Dialogs and API calls)
-const handleCreateEvaluation = () => { ElMessage.info('新建评估功能待实现'); };
-const handleViewEvaluation = (item) => { ElMessage.info('查看评估功能待实现'); };
-const handleEditEvaluation = (item) => { ElMessage.info('编辑评估功能待实现'); };
+const handleCreateEvaluation = () => {
+  ElMessage.info('新建评估功能待实现')
+}
+const handleViewEvaluation = (item) => {
+  ElMessage.info('查看评估功能待实现')
+}
+const handleEditEvaluation = (item) => {
+  ElMessage.info('编辑评估功能待实现')
+}
 
 // Bonus Methods (Placeholders - Implement Dialogs and API calls)
-const handleCreateBonus = () => { ElMessage.info('新建奖金功能待实现'); };
-const handleViewBonus = (item) => { ElMessage.info('查看奖金功能待实现'); };
-const handleApproveBonus = (item) => { ElMessage.info('审批奖金功能待实现'); };
+const handleCreateBonus = () => {
+  ElMessage.info('新建奖金功能待实现')
+}
+const handleViewBonus = (item) => {
+  ElMessage.info('查看奖金功能待实现')
+}
+const handleApproveBonus = (item) => {
+  ElMessage.info('审批奖金功能待实现')
+}
 
 // Helper functions for display
-const getScoreClass = (score) => { /* ... return class based on score ... */ return ''; };
-const getRatingTagType = (rating) => { /* ... return tag type based on rating ... */ return 'info'; };
-const getEvaluationStatusType = (status) => { /* ... return tag type based on status ... */ return 'info'; };
-const getEvaluationStatusText = (status) => { /* ... return text based on status ... */ return status; };
-const getBonusStatusType = (status) => { /* ... return tag type based on status ... */ return 'info'; };
-const getBonusStatusText = (status) => { /* ... return text based on status ... */ return status; };
-const formatCurrency = (amount) => { 
-    return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(amount || 0); 
-};
+const getScoreClass = (score) => {
+  /* ... return class based on score ... */ return ''
+}
+const getRatingTagType = (rating) => {
+  /* ... return tag type based on rating ... */ return 'info'
+}
+const getEvaluationStatusType = (status) => {
+  /* ... return tag type based on status ... */ return 'info'
+}
+const getEvaluationStatusText = (status) => {
+  /* ... return text based on status ... */ return status
+}
+const getBonusStatusType = (status) => {
+  /* ... return tag type based on status ... */ return 'info'
+}
+const getBonusStatusText = (status) => {
+  /* ... return text based on status ... */ return status
+}
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(amount || 0)
+}
 
 // --- Lifecycle Hook ---
 onMounted(() => {
-    fetchCriteria();
-    fetchEvaluations();
-    fetchBonuses();
-});
-
+  fetchCriteria()
+  fetchEvaluations()
+  fetchBonuses()
+})
 </script>
 
 <style scoped>

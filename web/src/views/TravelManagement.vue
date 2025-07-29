@@ -4,7 +4,7 @@
     
     <el-tabs v-model="activeTab">
       <el-tab-pane label="出差申请" name="apply">
-        <el-form :model="travelForm" :rules="formRules" ref="travelFormRef" label-width="100px" class="apply-form">
+        <el-form ref="travelFormRef" :model="travelForm" :rules="formRules" label-width="100px" class="apply-form">
           <el-form-item label="出差地点" prop="destination">
             <el-input v-model="travelForm.destination" placeholder="请输入出差地点" />
           </el-form-item>
@@ -100,7 +100,7 @@
             value-format="YYYY-MM"
             @change="fetchStatisticsData"
           />
-          <el-button type="primary" @click="fetchStatisticsData" style="margin-left: 10px">查询</el-button>
+          <el-button type="primary" style="margin-left: 10px" @click="fetchStatisticsData">查询</el-button>
           
           <!-- 汇总信息卡片 -->
           <div class="summary-cards">
@@ -143,7 +143,7 @@
           </el-table>
           
           <div class="chart-container">
-            <el-empty description="暂无数据" v-if="!statisticsData.length" />
+            <el-empty v-if="!statisticsData.length" description="暂无数据" />
             <div v-else>
               <div id="travelStatisticsChart" style="width: 100%; height: 400px"></div>
             </div>

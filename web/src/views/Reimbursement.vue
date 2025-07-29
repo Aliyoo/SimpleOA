@@ -3,7 +3,7 @@
     <div class="page-header">
       <h1>报销管理</h1>
     </div>
-    
+
     <el-tabs v-model="activeTab">
       <el-tab-pane label="报销申请" name="apply">
         <div class="tab-content">
@@ -13,7 +13,7 @@
               <h3>基本信息</h3>
             </div>
             <div class="form-content">
-              <el-form :model="reimbursementForm" :rules="formRules" ref="reimbursementFormRef" label-width="120px">
+              <el-form ref="reimbursementFormRef" :model="reimbursementForm" :rules="formRules" label-width="120px">
                 <el-row :gutter="20">
                   <el-col :span="12">
                     <el-form-item label="报销标题" prop="title">
@@ -22,7 +22,12 @@
                   </el-col>
                   <el-col :span="12">
                     <el-form-item label="关联项目" prop="projectId">
-                      <el-select v-model="reimbursementForm.projectId" placeholder="请选择关联项目" clearable style="width: 100%;">
+                      <el-select
+                        v-model="reimbursementForm.projectId"
+                        placeholder="请选择关联项目"
+                        clearable
+                        style="width: 100%"
+                      >
                         <el-option
                           v-for="project in projectList"
                           :key="project.id"
@@ -36,19 +41,19 @@
               </el-form>
             </div>
           </div>
-          
+
           <!-- 费用明细区域 -->
           <div class="form-section">
             <div class="section-header">
               <h3>费用明细</h3>
             </div>
             <div class="form-content">
-              <el-table :data="reimbursementForm.items" size="small" style="margin-bottom: 20px;">
+              <el-table :data="reimbursementForm.items" size="small" style="margin-bottom: 20px">
                 <el-table-column label="费用日期" width="150" align="left">
                   <template #default="{ row, $index }">
-                    <el-date-picker 
-                      v-model="row.expenseDate" 
-                      type="date" 
+                    <el-date-picker
+                      v-model="row.expenseDate"
+                      type="date"
                       value-format="YYYY-MM-DD"
                       placeholder="选择费用日期"
                       size="small"
@@ -75,7 +80,14 @@
                 </el-table-column>
                 <el-table-column label="预算来源" width="180" align="left">
                   <template #default="{ row, $index }">
-                    <el-select v-model="row.budgetId" placeholder="选择预算" size="small" style="width: 100%" clearable @change="onBudgetChange(row, $index)">
+                    <el-select
+                      v-model="row.budgetId"
+                      placeholder="选择预算"
+                      size="small"
+                      style="width: 100%"
+                      clearable
+                      @change="onBudgetChange(row, $index)"
+                    >
                       <el-option
                         v-for="budget in availableBudgets"
                         :key="budget.id"
@@ -87,7 +99,14 @@
                 </el-table-column>
                 <el-table-column label="预算明细" width="180" align="left">
                   <template #default="{ row, $index }">
-                    <el-select v-model="row.budgetItemId" placeholder="选择预算明细" size="small" style="width: 100%" clearable :disabled="!row.budgetId">
+                    <el-select
+                      v-model="row.budgetItemId"
+                      placeholder="选择预算明细"
+                      size="small"
+                      style="width: 100%"
+                      clearable
+                      :disabled="!row.budgetId"
+                    >
                       <el-option
                         v-for="item in getBudgetItems(row.budgetId)"
                         :key="item.id"
@@ -99,7 +118,14 @@
                 </el-table-column>
                 <el-table-column label="金额" width="120" align="left">
                   <template #default="{ row, $index }">
-                    <el-input-number v-model="row.amount" :precision="2" :min="0" size="small" style="width: 100%" @change="validateBudgetAmount(row)" />
+                    <el-input-number
+                      v-model="row.amount"
+                      :precision="2"
+                      :min="0"
+                      size="small"
+                      style="width: 100%"
+                      @change="validateBudgetAmount(row)"
+                    />
                   </template>
                 </el-table-column>
                 <el-table-column label="操作" width="80" align="left">
@@ -109,10 +135,10 @@
                 </el-table-column>
               </el-table>
               <div class="table-actions">
-                <el-button @click="addItem" type="primary" plain>添加明细</el-button>
+                <el-button type="primary" plain @click="addItem">添加明细</el-button>
               </div>
-              
-              <el-form :model="reimbursementForm" label-width="120px" style="margin-top: 20px;">
+
+              <el-form :model="reimbursementForm" label-width="120px" style="margin-top: 20px">
                 <el-row :gutter="20">
                   <el-col :span="12">
                     <el-form-item label="总金额">
@@ -123,7 +149,7 @@
               </el-form>
             </div>
           </div>
-          
+
           <!-- 凭证上传区域 -->
           <div class="form-section">
             <div class="section-header">
@@ -132,26 +158,27 @@
             <div class="form-content">
               <el-upload
                 v-model:file-list="fileList"
-                action="/api/files/upload" 
+                action="/api/files/upload"
                 multiple
                 :on-success="handleUploadSuccess"
-                list-type="picture-card">
+                list-type="picture-card"
+              >
                 <el-icon><Plus /></el-icon>
               </el-upload>
             </div>
           </div>
-          
+
           <!-- 操作按钮区域 -->
           <div class="form-section">
             <div class="form-actions">
-              <el-button @click="saveDraftReimbursement" size="large">保存草稿</el-button>
-              <el-button type="primary" @click="submitReimbursement" size="large">提交审批</el-button>
-              <el-button @click="resetForm" size="large">重置表单</el-button>
+              <el-button size="large" @click="saveDraftReimbursement">保存草稿</el-button>
+              <el-button type="primary" size="large" @click="submitReimbursement">提交审批</el-button>
+              <el-button size="large" @click="resetForm">重置表单</el-button>
             </div>
           </div>
         </div>
       </el-tab-pane>
-      
+
       <el-tab-pane label="报销列表" name="list">
         <div class="tab-content">
           <!-- 查询操作区域 -->
@@ -159,7 +186,13 @@
             <div class="filter-container">
               <el-row :gutter="16" align="middle">
                 <el-col :span="4">
-                  <el-select v-model="listFilters.status" placeholder="选择状态" clearable @change="fetchReimbursementList" style="width: 100%">
+                  <el-select
+                    v-model="listFilters.status"
+                    placeholder="选择状态"
+                    clearable
+                    style="width: 100%"
+                    @change="fetchReimbursementList"
+                  >
                     <el-option label="全部状态" :value="null" />
                     <el-option
                       v-for="status in statusOptions"
@@ -178,9 +211,9 @@
                     end-placeholder="结束日期"
                     format="YYYY-MM-DD"
                     value-format="YYYY-MM-DD"
-                    @change="onDateRangeChange"
                     clearable
                     style="width: 100%"
+                    @change="onDateRangeChange"
                   />
                 </el-col>
                 <el-col :span="6">
@@ -205,12 +238,12 @@
               </el-row>
             </div>
           </div>
-          
+
           <div class="table-section">
             <div class="section-header">
               <h3>报销记录</h3>
             </div>
-            <el-table :data="reimbursementList" style="width: 100%" v-loading="listLoading">
+            <el-table v-loading="listLoading" :data="reimbursementList" style="width: 100%">
               <el-table-column prop="title" label="报销标题" width="200" show-overflow-tooltip align="left" />
               <el-table-column label="关联项目" width="150" show-overflow-tooltip align="left">
                 <template #default="scope">
@@ -219,53 +252,54 @@
               </el-table-column>
               <el-table-column prop="totalAmount" label="总金额" width="120" align="left">
                 <template #default="scope">
-                  ¥{{ scope.row.totalAmount }}
+                  {{ formatMoney(scope.row.totalAmount) }}
                 </template>
               </el-table-column>
               <el-table-column prop="status" label="状态" width="150" align="left">
                 <template #default="scope">
-                  <el-tag :type="getStatusTagType(scope.row.status)">
-                    {{ formatStatus(scope.row.status) }}
+                  <el-tag :type="getReimbursementStatusTagType(scope.row.status)">
+                    {{ formatReimbursementStatus(scope.row.status) }}
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="createTime" label="申请时间" width="180" align="left" />
+              <el-table-column prop="createTime" label="申请时间" width="180" align="left">
+                <template #default="scope">
+                  {{ formatDate(scope.row.createTime, 'datetime') }}
+                </template>
+              </el-table-column>
               <el-table-column label="操作" width="320" align="left" fixed="right">
                 <template #default="scope">
-                  <el-button 
-                    size="small" 
-                    type="primary" 
-                    @click="editReimbursement(scope.row)"
+                  <el-button size="small" @click="openDetail(scope.row)">查看详情</el-button>
+                  <el-button
+                    size="small"
+                    type="primary"
                     :disabled="scope.row.status !== 'DRAFT'"
+                    @click="editReimbursement(scope.row)"
                   >
                     编辑
                   </el-button>
-                  <el-button 
+                  <el-button
                     v-if="scope.row.status === 'DRAFT'"
-                    size="small" 
-                    type="success" 
+                    size="small"
+                    type="success"
                     @click="submitReimbursementForApproval(scope.row)"
                   >
                     提交审批
                   </el-button>
-                  <el-button 
-                    size="small" 
-                    type="danger" 
-                    @click="deleteReimbursement(scope.row)"
+                  <el-button
+                    size="small"
+                    type="danger"
                     :disabled="scope.row.status !== 'DRAFT'"
+                    @click="deleteReimbursement(scope.row)"
                   >
                     删除
                   </el-button>
-                  <el-tooltip 
-                    v-if="canViewApproval(scope.row)" 
-                    content="查看审批状态请前往审批管理模块" 
+                  <el-tooltip
+                    v-if="canViewApproval(scope.row)"
+                    content="查看审批状态请前往审批管理模块"
                     placement="top"
                   >
-                    <el-button 
-                      size="small" 
-                      type="info" 
-                      @click="goToApprovalManagement(scope.row)"
-                    >
+                    <el-button size="small" type="info" @click="goToApprovalManagement(scope.row)">
                       查看审批
                     </el-button>
                   </el-tooltip>
@@ -275,64 +309,64 @@
           </div>
         </div>
       </el-tab-pane>
-      
+
       <el-tab-pane label="统计报表" name="statistics">
         <div class="tab-content">
           <div class="statistics-section">
             <div class="section-header">
               <h3>统计查询</h3>
             </div>
-          <el-date-picker
-            v-model="statisticsDateRange"
-            type="monthrange"
-            range-separator="至"
-            start-placeholder="开始月份"
-            end-placeholder="结束月份"
-            format="YYYY-MM"
-            value-format="YYYY-MM"
-            @change="fetchStatisticsData"
-          />
-            <el-button type="primary" @click="fetchStatisticsData" style="margin-left: 10px">查询</el-button>
+            <el-date-picker
+              v-model="statisticsDateRange"
+              type="monthrange"
+              range-separator="至"
+              start-placeholder="开始月份"
+              end-placeholder="结束月份"
+              format="YYYY-MM"
+              value-format="YYYY-MM"
+              @change="fetchStatisticsData"
+            />
+            <el-button type="primary" style="margin-left: 10px" @click="fetchStatisticsData">查询</el-button>
           </div>
-          
+
           <div class="summary-section">
             <div class="section-header">
               <h3>数据汇总</h3>
             </div>
             <div class="summary-cards">
-            <el-card class="summary-card">
-              <div class="card-content">
-                <div class="card-title">报销总额</div>
-                <div class="card-value">¥{{ statisticsSummary.totalAmount || 0 }}</div>
-              </div>
-            </el-card>
-            <el-card class="summary-card">
-              <div class="card-content">
-                <div class="card-title">报销次数</div>
-                <div class="card-value">{{ statisticsSummary.totalCount || 0 }}</div>
-              </div>
-            </el-card>
-            <el-card class="summary-card">
-              <div class="card-content">
-                <div class="card-title">通过率</div>
-                <div class="card-value">{{ statisticsSummary.approvalRate || '0%' }}</div>
-              </div>
-            </el-card>
-            <el-card class="summary-card">
-              <div class="card-content">
-                <div class="card-title">最常类别</div>
-                <div class="card-value">{{ statisticsSummary.mostUsedCategory || '-' }}</div>
-              </div>
-            </el-card>
-            <el-card class="summary-card">
-              <div class="card-content">
-                <div class="card-title">平均金额</div>
-                <div class="card-value">¥{{ statisticsSummary.avgAmount || 0 }}</div>
-              </div>
-            </el-card>
+              <el-card class="summary-card">
+                <div class="card-content">
+                  <div class="card-title">报销总额</div>
+                  <div class="card-value">{{ formatMoney(statisticsSummary.totalAmount || 0) }}</div>
+                </div>
+              </el-card>
+              <el-card class="summary-card">
+                <div class="card-content">
+                  <div class="card-title">报销次数</div>
+                  <div class="card-value">{{ statisticsSummary.totalCount || 0 }}</div>
+                </div>
+              </el-card>
+              <el-card class="summary-card">
+                <div class="card-content">
+                  <div class="card-title">通过率</div>
+                  <div class="card-value">{{ statisticsSummary.approvalRate || '0%' }}</div>
+                </div>
+              </el-card>
+              <el-card class="summary-card">
+                <div class="card-content">
+                  <div class="card-title">最常类别</div>
+                  <div class="card-value">{{ statisticsSummary.mostUsedCategory || '-' }}</div>
+                </div>
+              </el-card>
+              <el-card class="summary-card">
+                <div class="card-content">
+                  <div class="card-title">平均金额</div>
+                  <div class="card-value">{{ formatMoney(statisticsSummary.avgAmount || 0) }}</div>
+                </div>
+              </el-card>
             </div>
           </div>
-          
+
           <div class="table-section">
             <div class="section-header">
               <h3>明细统计</h3>
@@ -344,13 +378,13 @@
               <el-table-column prop="avgAmount" label="平均金额" />
             </el-table>
           </div>
-          
+
           <div class="chart-section">
             <div class="section-header">
               <h3>图表分析</h3>
             </div>
             <div class="chart-container">
-              <el-empty description="暂无数据" v-if="!statisticsData.length" />
+              <el-empty v-if="!statisticsData.length" description="暂无数据" />
               <div v-else>
                 <div id="reimbursementStatisticsChart" style="width: 100%; height: 400px"></div>
               </div>
@@ -368,13 +402,8 @@
         </el-form-item>
 
         <el-form-item label="关联项目" prop="projectId">
-          <el-select v-model="formData.projectId" placeholder="请选择关联项目" clearable style="width: 100%;">
-            <el-option
-              v-for="project in projectList"
-              :key="project.id"
-              :label="project.name"
-              :value="project.id"
-            />
+          <el-select v-model="formData.projectId" placeholder="请选择关联项目" clearable style="width: 100%">
+            <el-option v-for="project in projectList" :key="project.id" :label="project.name" :value="project.id" />
           </el-select>
         </el-form-item>
 
@@ -406,18 +435,18 @@
             </template>
           </el-table-column>
         </el-table>
-        <el-button @click="addItemForDialog" style="margin-top: 10px;">添加明细</el-button>
+        <el-button style="margin-top: 10px" @click="addItemForDialog">添加明细</el-button>
 
         <el-divider>凭证上传</el-divider>
         <el-upload
           v-model:file-list="fileList"
-          action="/api/files/upload" 
+          action="/api/files/upload"
           multiple
           :on-success="handleUploadSuccess"
-          list-type="picture-card">
+          list-type="picture-card"
+        >
           <el-icon><Plus /></el-icon>
         </el-upload>
-
       </el-form>
       <template #footer>
         <el-button @click="formDialogVisible = false">取消</el-button>
@@ -425,12 +454,18 @@
       </template>
     </el-dialog>
 
-
+    <!-- 详情对话框 -->
+    <ReimbursementDetail
+      v-if="detailDialogVisible"
+      :visible="detailDialogVisible"
+      :reimbursement="currentReimbursement"
+      @close="closeDetail"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive, watch } from 'vue'
+import { ref, onMounted, computed, reactive, watch, defineAsyncComponent } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import api from '../utils/axios.js'
@@ -438,10 +473,49 @@ import { Plus, Search } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import * as echarts from 'echarts'
 import { APP_CONFIG } from '../utils/config.js'
+import { formatMoney, formatDate, formatReimbursementStatus, getReimbursementStatusTagType } from '../utils/format.js'
 
 const userStore = useUserStore()
 const router = useRouter()
 const currentUser = computed(() => userStore.user)
+
+// 详情对话框相关状态
+const detailDialogVisible = ref(false)
+const currentReimbursement = ref(null)
+
+// 懒加载组件
+const ReimbursementDetail = defineAsyncComponent(() => import('./ReimbursementDetail.vue'))
+
+// 打开详情
+const openDetail = async (row) => {
+  try {
+    console.log('openDetail called with row:', row)
+    detailDialogVisible.value = true
+    
+    // 如果传入的是完整的报销对象（包含items），直接使用
+    if (row.items && Array.isArray(row.items)) {
+      console.log('Using row data directly (has items):', row.items.length)
+      currentReimbursement.value = row
+    } else {
+      console.log('Fetching data from API for ID:', row.id)
+      // 否则通过ID获取完整的报销详情
+      const response = await api.get(`/api/oa/reimbursement/${row.id}`)
+      console.log('API response:', response.data)
+      currentReimbursement.value = response.data.data || response.data
+    }
+    console.log('Final currentReimbursement:', currentReimbursement.value)
+  } catch (error) {
+    console.error('获取报销详情失败:', error)
+    ElMessage.error('获取报销详情失败')
+    detailDialogVisible.value = false
+  }
+}
+
+// 关闭详情
+const closeDetail = () => {
+  detailDialogVisible.value = false
+  currentReimbursement.value = null
+}
 
 // Tab控制
 const activeTab = ref('apply')
@@ -500,24 +574,23 @@ const initialFormData = () => ({
 })
 const formData = ref(initialFormData())
 
-
 // Fetch data - 使用统一的API调用
 const fetchProjects = async () => {
   if (!currentUser.value || !currentUser.value.id) {
-    console.log('用户信息不存在，跳过项目列表加载');
-    projectList.value = []; // 设置为空数组
-    return;
+    console.log('用户信息不存在，跳过项目列表加载')
+    projectList.value = [] // 设置为空数组
+    return
   }
   try {
-    const response = await api.get(`/api/projects/user/${currentUser.value.id}`);
+    const response = await api.get(`/api/projects/user/${currentUser.value.id}`)
     // API 返回格式: { code: 200, message: "操作成功", data: [...] }
-    projectList.value = response.data.data || response.data || [];
+    projectList.value = response.data.data || response.data || []
   } catch (error) {
-    console.error('获取项目列表失败:', error);
+    console.error('获取项目列表失败:', error)
     // 不显示错误消息，因为项目列表不是必需的
-    projectList.value = []; // Ensure it's an empty array on error
+    projectList.value = [] // Ensure it's an empty array on error
   }
-};
+}
 
 // 获取可用预算
 const fetchAvailableBudgets = async (projectId) => {
@@ -526,11 +599,11 @@ const fetchAvailableBudgets = async (projectId) => {
     budgetItems.value = []
     return
   }
-  
+
   try {
     const response = await api.get(`/api/budgets/project/${projectId}/available-budgets`)
     availableBudgets.value = response.data.data || response.data || []
-    
+
     // 获取预算明细
     const itemsResponse = await api.get(`/api/budgets/project/${projectId}/budget-items`)
     budgetItems.value = itemsResponse.data.data || itemsResponse.data || []
@@ -542,153 +615,138 @@ const fetchAvailableBudgets = async (projectId) => {
 }
 
 // 监听项目变化
-watch(() => reimbursementForm.projectId, (newProjectId) => {
-  if (newProjectId) {
-    fetchAvailableBudgets(newProjectId)
-  } else {
-    availableBudgets.value = []
-    budgetItems.value = []
-    // 清空所有明细项的预算选择
-    reimbursementForm.items.forEach(item => {
-      item.budgetId = null
-      item.budgetItemId = null
-    })
+watch(
+  () => reimbursementForm.projectId,
+  (newProjectId) => {
+    if (newProjectId) {
+      fetchAvailableBudgets(newProjectId)
+    } else {
+      availableBudgets.value = []
+      budgetItems.value = []
+      // 清空所有明细项的预算选择
+      reimbursementForm.items.forEach((item) => {
+        item.budgetId = null
+        item.budgetItemId = null
+      })
+    }
   }
-})
+)
 
 onMounted(async () => {
   // 首先尝试获取用户信息，但不阻塞其他功能
   if (!userStore.user) {
     try {
-      await userStore.fetchUser();
-      console.log('用户信息获取成功:', userStore.user);
+      await userStore.fetchUser()
+      console.log('用户信息获取成功:', userStore.user)
     } catch (error) {
-      console.error('获取用户信息失败:', error);
+      console.error('获取用户信息失败:', error)
       // 不显示错误消息，因为路由守卫已经处理了认证
     }
   }
-  
+
   // 初始化状态选项
-  initializeStatusOptions();
-  
+  initializeStatusOptions()
+
   // 继续加载其他数据
-  fetchReimbursementList();
-  fetchProjects();
-  
+  fetchReimbursementList()
+  fetchProjects()
+
   // 从全局配置获取默认月份范围
   if (APP_CONFIG && APP_CONFIG.DEFAULT_DATE_RANGE) {
-    statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getMonthRange();
+    statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getMonthRange()
   }
   fetchStatisticsData()
-});
+})
 
 // Form Dialog Logic
 const openFormDialog = (row) => {
-  isEdit.value = !!row;
+  isEdit.value = !!row
   if (row) {
-    formData.value = JSON.parse(JSON.stringify(row));
+    formData.value = JSON.parse(JSON.stringify(row))
     // Ensure projectId is set, default to null if not present in row
-    formData.value.projectId = row.projectId || null;
-    fileList.value = (formData.value.attachments || []).map(path => {
+    formData.value.projectId = row.projectId || null
+    fileList.value = (formData.value.attachments || []).map((path) => {
       // Assuming path is a string URL, if it's an object, adjust accordingly
-      const name = typeof path === 'string' ? path.substring(path.lastIndexOf('/') + 1) : 'attachment';
-      return { name: name, url: path };
-    });
+      const name = typeof path === 'string' ? path.substring(path.lastIndexOf('/') + 1) : 'attachment'
+      return { name: name, url: path }
+    })
   } else {
-    formData.value = initialFormData();
-    fileList.value = [];
+    formData.value = initialFormData()
+    fileList.value = []
   }
-  formDialogVisible.value = true;
-};
+  formDialogVisible.value = true
+}
 
 // 原有的弹窗相关函数（保留用于弹窗）
 const addItemForDialog = () => {
-  formData.value.items.push({ expenseDate: '', itemCategory: '', description: '', amount: 0 });
-};
+  formData.value.items.push({ expenseDate: '', itemCategory: '', description: '', amount: 0 })
+}
 
 const removeItemForDialog = (index) => {
-  formData.value.items.splice(index, 1);
-};
+  formData.value.items.splice(index, 1)
+}
 
 const handleUploadSuccessForDialog = (response, file) => {
-    formData.value.attachments.push(response.data?.url || response.url);
-    fileList.value.push({ name: file.name, url: response.data?.url || response.url });
-};
+  formData.value.attachments.push(response.data?.url || response.url)
+  fileList.value.push({ name: file.name, url: response.data?.url || response.url })
+}
 
 const handleSubmit = async () => {
   try {
     if (isEdit.value) {
-      await api.put(`/api/oa/reimbursement/${formData.value.id}`, formData.value);
-      ElMessage.success('更新成功');
+      await api.put(`/api/oa/reimbursement/${formData.value.id}`, formData.value)
+      ElMessage.success('更新成功')
     } else {
-      await api.post('/api/oa/reimbursement', formData.value);
-      ElMessage.success('创建成功');
+      await api.post('/api/oa/reimbursement', formData.value)
+      ElMessage.success('创建成功')
     }
-    formDialogVisible.value = false;
-    fetchReimbursementList();
+    formDialogVisible.value = false
+    fetchReimbursementList()
   } catch (error) {
-    console.error('操作失败:', error);
-    ElMessage.error('操作失败: ' + (error.response?.data?.message || error.message));
+    console.error('操作失败:', error)
+    ElMessage.error('操作失败: ' + (error.response?.data?.message || error.message))
   }
-};
+}
 
 const handleDelete = (id) => {
-    ElMessageBox.confirm('确定要删除吗?', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-    }).then(async () => {
-        try {
-            await api.delete(`/api/oa/reimbursement/${id}`);
-            ElMessage.success('删除成功');
-            fetchReimbursementList();
-        } catch (error) {
-            console.error('删除失败:', error);
-            ElMessage.error('删除失败: ' + (error.response?.data?.message || error.message));
-        }
-    });
-};
+  ElMessageBox.confirm('确定要删除吗?', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await api.delete(`/api/oa/reimbursement/${id}`)
+      ElMessage.success('删除成功')
+      fetchReimbursementList()
+    } catch (error) {
+      console.error('删除失败:', error)
+      ElMessage.error('删除失败: ' + (error.response?.data?.message || error.message))
+    }
+  })
+}
 
 // Navigation to Approval Management
 const goToApprovalManagement = (row) => {
-    router.push({
-        path: '/approvals', 
-        query: { 
-            type: 'REIMBURSEMENT',
-            requestId: row.id 
-        }
-    });
-};
+  router.push({
+    path: '/approvals',
+    query: {
+      type: 'REIMBURSEMENT',
+      requestId: row.id
+    }
+  })
+}
 
 // Helpers
 const canViewApproval = (row) => {
-    return row.status === 'PENDING_MANAGER_APPROVAL' || 
-           row.status === 'PENDING_FINANCE_APPROVAL' || 
-           row.status === 'APPROVED' || 
-           row.status === 'REJECTED';
-};
+  return (
+    row.status === 'PENDING_MANAGER_APPROVAL' ||
+    row.status === 'PENDING_FINANCE_APPROVAL' ||
+    row.status === 'APPROVED' ||
+    row.status === 'REJECTED'
+  )
+}
 
-const formatStatus = (status) => {
-    const statusMap = {
-        DRAFT: '草稿',
-        PENDING_MANAGER_APPROVAL: '待项目经理审批',
-        PENDING_FINANCE_APPROVAL: '待财务审批',
-        APPROVED: '已通过',
-        REJECTED: '已驳回'
-    };
-    return statusMap[status] || status;
-};
-
-const getStatusTagType = (status) => {
-    const tagMap = {
-        DRAFT: 'info',
-        PENDING_MANAGER_APPROVAL: 'warning',
-        PENDING_FINANCE_APPROVAL: 'warning',
-        APPROVED: 'success',
-        REJECTED: 'danger'
-    };
-    return tagMap[status] || 'primary';
-};
+// 状态和格式化函数现在从统一的格式化工具导入
 
 // 初始化状态选项
 const initializeStatusOptions = () => {
@@ -712,7 +770,7 @@ const fetchReimbursementList = async () => {
   listLoading.value = true
   try {
     const params = {}
-    
+
     // 添加筛选参数
     if (listFilters.status) {
       params.status = listFilters.status
@@ -724,7 +782,7 @@ const fetchReimbursementList = async () => {
     if (listFilters.keyword && listFilters.keyword.trim()) {
       params.keyword = listFilters.keyword.trim()
     }
-    
+
     const response = await api.get('/api/oa/reimbursement', { params })
     // API 返回格式: { code: 200, message: "操作成功", data: Page<ReimbursementRequest> }
     // Page 格式: { content: [...], totalElements: 10, ... }
@@ -753,7 +811,7 @@ const fetchStatisticsData = async () => {
     console.log('日期范围未设置，跳过统计数据获取')
     return
   }
-  
+
   try {
     // 添加详细的调试信息
     console.log('=== 开始调试日期格式问题 ===')
@@ -761,14 +819,14 @@ const fetchStatisticsData = async () => {
     console.log('statisticsDateRange.value 类型:', typeof statisticsDateRange.value)
     console.log('第一个元素:', statisticsDateRange.value[0], '类型:', typeof statisticsDateRange.value[0])
     console.log('第二个元素:', statisticsDateRange.value[1], '类型:', typeof statisticsDateRange.value[1])
-    
+
     // 将月份范围转换为日期范围
     let startMonth = statisticsDateRange.value[0] // 可能是 Date 对象或字符串
-    let endMonth = statisticsDateRange.value[1]   // 可能是 Date 对象或字符串
-    
+    let endMonth = statisticsDateRange.value[1] // 可能是 Date 对象或字符串
+
     console.log('原始 startMonth:', startMonth, 'instanceof Date:', startMonth instanceof Date)
     console.log('原始 endMonth:', endMonth, 'instanceof Date:', endMonth instanceof Date)
-    
+
     // 确保转换为 YYYY-MM 格式的字符串
     if (startMonth instanceof Date) {
       startMonth = startMonth.getFullYear() + '-' + String(startMonth.getMonth() + 1).padStart(2, '0')
@@ -776,23 +834,23 @@ const fetchStatisticsData = async () => {
     if (endMonth instanceof Date) {
       endMonth = endMonth.getFullYear() + '-' + String(endMonth.getMonth() + 1).padStart(2, '0')
     }
-    
+
     console.log('转换后 startMonth:', startMonth)
     console.log('转换后 endMonth:', endMonth)
-    
+
     // 开始日期: 月份的第一天
     const startDate = `${startMonth}-01`
-    
+
     // 结束日期: 月份的最后一天
     const [endYear, endMonthNum] = endMonth.split('-')
     const endDate = new Date(parseInt(endYear), parseInt(endMonthNum), 0).getDate()
     const endDateString = `${endMonth}-${String(endDate).padStart(2, '0')}`
-    
+
     console.log('最终 startDate:', startDate)
     console.log('最终 endDateString:', endDateString)
     console.log('准备发送的参数:', { startDate, endDate: endDateString })
     console.log('=== 调试信息结束 ===')
-    
+
     const response = await api.get('/api/oa/reimbursement/statistics', {
       params: {
         startDate: startDate,
@@ -817,7 +875,7 @@ const fetchStatisticsData = async () => {
 const renderChart = () => {
   const chartDom = document.getElementById('reimbursementStatisticsChart')
   if (!chartDom) return
-  
+
   const myChart = echarts.init(chartDom)
   const option = {
     tooltip: {
@@ -832,7 +890,7 @@ const renderChart = () => {
         name: '报销费用分布',
         type: 'pie',
         radius: '50%',
-        data: statisticsData.value.map(item => ({
+        data: statisticsData.value.map((item) => ({
           value: item.totalAmount,
           name: item.category
         })),
@@ -846,7 +904,7 @@ const renderChart = () => {
       }
     ]
   }
-  
+
   myChart.setOption(option)
 }
 
@@ -854,16 +912,16 @@ const renderChart = () => {
 const saveDraftReimbursement = async () => {
   // 表单验证
   if (!reimbursementFormRef.value) return
-  
+
   try {
     await reimbursementFormRef.value.validate()
-    
+
     // 检查是否有费用明细
     if (!reimbursementForm.items.length) {
       ElMessage.error('请至少添加一项费用明细')
       return
     }
-    
+
     // 准备提交数据
     const submitData = {
       title: reimbursementForm.title,
@@ -871,7 +929,7 @@ const saveDraftReimbursement = async () => {
       items: reimbursementForm.items,
       attachments: reimbursementForm.attachments
     }
-    
+
     let response
     if (reimbursementForm.id) {
       // 更新草稿
@@ -883,7 +941,7 @@ const saveDraftReimbursement = async () => {
       ElMessage.success('报销草稿创建成功')
       reimbursementForm.id = response.data.data.id
     }
-    
+
     // 刷新列表
     fetchReimbursementList()
   } catch (error) {
@@ -905,24 +963,24 @@ const submitReimbursement = async () => {
         return // 如果保存草稿失败，不继续提交
       }
     }
-    
+
     // 预算验证
     const budgetValid = await validateReimbursementBudget()
     if (!budgetValid) {
       ElMessage.error('预算不足，无法提交审批')
       return
     }
-    
+
     // 提交审批
     await api.post(`/api/oa/reimbursement/${reimbursementForm.id}/submit`)
     ElMessage.success('报销申请已提交审批')
-    
+
     // 重置表单
     resetForm()
-    
+
     // 刷新列表
     fetchReimbursementList()
-    
+
     // 切换到列表页面
     activeTab.value = 'list'
   } catch (error) {
@@ -939,10 +997,10 @@ const resetForm = () => {
     items: [],
     attachments: []
   })
-  
+
   // 重置文件列表
   fileList.value = []
-  
+
   // 重置表单验证
   if (reimbursementFormRef.value) {
     reimbursementFormRef.value.resetFields()
@@ -976,13 +1034,13 @@ const editReimbursement = (row) => {
     items: JSON.parse(JSON.stringify(row.items || [])),
     attachments: row.attachments || []
   })
-  
+
   // 设置文件列表
-  fileList.value = (row.attachments || []).map(path => {
+  fileList.value = (row.attachments || []).map((path) => {
     const name = typeof path === 'string' ? path.substring(path.lastIndexOf('/') + 1) : 'attachment'
     return { name: name, url: path }
   })
-  
+
   // 切换到申请页面
   activeTab.value = 'apply'
 }
@@ -995,7 +1053,7 @@ const deleteReimbursement = async (row) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    
+
     await api.delete(`/api/oa/reimbursement/${row.id}`)
     ElMessage.success('删除成功')
     fetchReimbursementList()
@@ -1044,7 +1102,7 @@ const handleUploadSuccess = (response, file) => {
 // 预算相关方法
 const getBudgetItems = (budgetId) => {
   if (!budgetId) return []
-  return budgetItems.value.filter(item => item.budget && item.budget.id === budgetId)
+  return budgetItems.value.filter((item) => item.budget && item.budget.id === budgetId)
 }
 
 const onBudgetChange = (row, index) => {
@@ -1056,16 +1114,16 @@ const onBudgetChange = (row, index) => {
 
 const validateBudgetAmount = async (row) => {
   if (!row.amount || row.amount <= 0) return
-  
+
   if (row.budgetId) {
-    const budget = availableBudgets.value.find(b => b.id === row.budgetId)
+    const budget = availableBudgets.value.find((b) => b.id === row.budgetId)
     if (budget && row.amount > budget.remainingAmount) {
       ElMessage.warning(`金额超过预算余额 ¥${budget.remainingAmount}`)
     }
   }
-  
+
   if (row.budgetItemId) {
-    const budgetItem = budgetItems.value.find(item => item.id === row.budgetItemId)
+    const budgetItem = budgetItems.value.find((item) => item.id === row.budgetItemId)
     if (budgetItem && row.amount > budgetItem.remainingAmount) {
       ElMessage.warning(`金额超过预算明细余额 ¥${budgetItem.remainingAmount}`)
     }
@@ -1077,7 +1135,7 @@ const validateReimbursementBudget = async () => {
   if (!reimbursementForm.projectId || !reimbursementForm.items.length) {
     return true
   }
-  
+
   try {
     const response = await api.post('/api/oa/reimbursement/validate-budget', reimbursementForm)
     return response.data.data
@@ -1095,7 +1153,7 @@ const submitReimbursementForApproval = async (row) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    
+
     await api.post(`/api/oa/reimbursement/${row.id}/submit`)
     ElMessage.success('报销申请已提交审批')
     fetchReimbursementList()
@@ -1105,7 +1163,6 @@ const submitReimbursementForApproval = async (row) => {
     }
   }
 }
-
 </script>
 
 <style scoped>
@@ -1124,7 +1181,6 @@ const submitReimbursementForApproval = async (row) => {
   color: #303133;
   font-weight: 600;
 }
-
 
 .tab-content {
   padding: 20px;
@@ -1281,16 +1337,16 @@ const submitReimbursementForApproval = async (row) => {
   .tab-content {
     padding: 16px;
   }
-  
+
   .summary-cards {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
-  
+
   .form-actions {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .form-actions .el-button {
     margin-bottom: 8px;
   }

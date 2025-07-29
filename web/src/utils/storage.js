@@ -56,5 +56,5 @@ export function removeItem(key) {
  */
 export function clearUserData() {
   const userKeys = ['user', 'token', 'permissions', 'menus']
-  userKeys.forEach(key => removeItem(key))
+  userKeys.forEach((key) => removeItem(key))
 }

@@ -1,29 +1,19 @@
 <template>
   <div class="expense-container">
     <h1>预算支出管理</h1>
-    
+
     <div class="operation-bar">
       <el-button type="primary" @click="handleCreateExpense">新建支出</el-button>
-      <el-select 
-        v-model="selectedBudget" 
-        placeholder="选择预算" 
+      <el-select
+        v-model="selectedBudget"
+        placeholder="选择预算"
         style="width: 300px; margin-left: 10px"
+        clearable
         @change="handleBudgetChange"
-        clearable
       >
-        <el-option
-          v-for="budget in budgets"
-          :key="budget.id"
-          :label="budget.name"
-          :value="budget.id"
-        />
+        <el-option v-for="budget in budgets" :key="budget.id" :label="budget.name" :value="budget.id" />
       </el-select>
-      <el-input
-        v-model="expenseSearch"
-        placeholder="搜索支出记录"
-        style="width: 300px; margin-left: 10px"
-        clearable
-      />
+      <el-input v-model="expenseSearch" placeholder="搜索支出记录" style="width: 300px; margin-left: 10px" clearable />
       <el-date-picker
         v-model="dateRange"
         type="daterange"
@@ -94,50 +84,35 @@
     />
 
     <!-- 支出表单对话框 -->
-    <el-dialog 
-      :title="expenseForm.id ? '编辑支出' : '新建支出'" 
+    <el-dialog
       v-model="expenseDialogVisible"
+      :title="expenseForm.id ? '编辑支出' : '新建支出'"
       width="800px"
       @closed="resetExpenseForm"
     >
-      <el-form 
-        :model="expenseForm" 
-        :rules="expenseRules" 
-        ref="expenseFormRef" 
-        label-width="120px"
-      >
+      <el-form ref="expenseFormRef" :model="expenseForm" :rules="expenseRules" label-width="120px">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="所属预算" prop="budgetId">
-              <el-select 
-                v-model="expenseForm.budgetId" 
-                placeholder="选择预算" 
+              <el-select
+                v-model="expenseForm.budgetId"
+                placeholder="选择预算"
                 style="width: 100%"
                 @change="handleExpenseBudgetChange"
               >
-                <el-option
-                  v-for="budget in budgets"
-                  :key="budget.id"
-                  :label="budget.name"
-                  :value="budget.id"
-                />
+                <el-option v-for="budget in budgets" :key="budget.id" :label="budget.name" :value="budget.id" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="预算项目" prop="budgetItemId">
-              <el-select 
-                v-model="expenseForm.budgetItemId" 
-                placeholder="选择预算项目（可选）" 
+              <el-select
+                v-model="expenseForm.budgetItemId"
+                placeholder="选择预算项目（可选）"
                 style="width: 100%"
                 clearable
               >
-                <el-option
-                  v-for="item in budgetItems"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id"
-                />
+                <el-option v-for="item in budgetItems" :key="item.id" :label="item.name" :value="item.id" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -204,32 +179,20 @@
           <el-col :span="12">
             <el-form-item label="记录人" prop="recordedBy">
               <el-select v-model="expenseForm.recordedBy" placeholder="选择记录人" style="width: 100%">
-                <el-option
-                  v-for="user in users"
-                  :key="user.id"
-                  :label="user.realName"
-                  :value="user.id"
-                />
+                <el-option v-for="user in users" :key="user.id" :label="user.realName" :value="user.id" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-form-item label="支出描述" prop="description">
-          <el-input
-            v-model="expenseForm.description"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入支出描述"
-          />
+          <el-input v-model="expenseForm.description" type="textarea" :rows="4" placeholder="请输入支出描述" />
         </el-form-item>
       </el-form>
 
       <template #footer>
         <el-button @click="expenseDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitExpenseForm" :loading="submittingExpense">
-          确定
-        </el-button>
+        <el-button type="primary" :loading="submittingExpense" @click="submitExpenseForm"> 确定 </el-button>
       </template>
     </el-dialog>
   </div>
@@ -291,23 +254,24 @@ const filteredExpenses = computed(() => {
 
   // 根据预算筛选
   if (selectedBudget.value) {
-    filtered = filtered.filter(expense => expense.budget?.id === selectedBudget.value)
+    filtered = filtered.filter((expense) => expense.budget?.id === selectedBudget.value)
   }
 
   // 根据搜索词筛选
   if (expenseSearch.value) {
     const searchLower = expenseSearch.value.toLowerCase()
-    filtered = filtered.filter(expense => 
-      expense.expenseType?.toLowerCase().includes(searchLower) ||
-      expense.description?.toLowerCase().includes(searchLower) ||
-      expense.referenceNumber?.toLowerCase().includes(searchLower)
+    filtered = filtered.filter(
+      (expense) =>
+        expense.expenseType?.toLowerCase().includes(searchLower) ||
+        expense.description?.toLowerCase().includes(searchLower) ||
+        expense.referenceNumber?.toLowerCase().includes(searchLower)
     )
   }
 
   // 根据日期范围筛选
   if (dateRange.value && dateRange.value.length === 2) {
     const [startDate, endDate] = dateRange.value
-    filtered = filtered.filter(expense => {
+    filtered = filtered.filter((expense) => {
       if (!expense.expenseDate) return false
       const expenseDate = new Date(expense.expenseDate)
       return expenseDate >= startDate && expenseDate <= endDate
@@ -342,7 +306,7 @@ const fetchBudgetItems = async (budgetId) => {
     budgetItems.value = []
     return
   }
-  
+
   try {
     const response = await api.get(`/api/budgets/${budgetId}/items`)
     budgetItems.value = response.data
@@ -372,7 +336,7 @@ const fetchProjects = async () => {
 const handleBudgetChange = (budgetId) => {
   if (budgetId) {
     fetchBudgetItems(budgetId)
-    const selected = budgets.value.find(budget => budget.id === budgetId)
+    const selected = budgets.value.find((budget) => budget.id === budgetId)
     if (selected && selected.project) {
       projects.value = [selected.project]
     }
@@ -408,12 +372,12 @@ const handleEditExpense = (expense) => {
     recordedBy: expense.recordedBy?.id,
     expenseDate: expense.expenseDate ? new Date(expense.expenseDate).toISOString().slice(0, 10) : ''
   })
-  
+
   // 加载该预算的预算项目
   if (expense.budget?.id) {
     fetchBudgetItems(expense.budget.id)
   }
-  
+
   expenseDialogVisible.value = true
 }
 
@@ -423,15 +387,11 @@ const handleViewExpense = (expense) => {
 
 const handleDeleteExpense = async (expense) => {
   try {
-    await ElMessageBox.confirm(
-      `确定删除这条支出记录吗？金额：${formatCurrency(expense.amount)}`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+    await ElMessageBox.confirm(`确定删除这条支出记录吗？金额：${formatCurrency(expense.amount)}`, '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
 
     await api.delete(`/api/budgets/expenses/${expense.id}`)
     ElMessage.success('删除成功')
@@ -444,7 +404,7 @@ const handleDeleteExpense = async (expense) => {
 
 const submitExpenseForm = async () => {
   if (!expenseFormRef.value) return
-  
+
   await expenseFormRef.value.validate(async (valid) => {
     if (valid) {
       submittingExpense.value = true
@@ -472,7 +432,7 @@ const submitExpenseForm = async () => {
 
         expenseDialogVisible.value = false
         fetchExpenses()
-        } catch (error) {
+      } catch (error) {
         ElMessage.error('操作失败: ' + error.message)
       } finally {
         submittingExpense.value = false
@@ -499,17 +459,17 @@ const formatDate = (date) => {
 }
 
 const formatCurrency = (value) => {
-  return new Intl.NumberFormat('zh-CN', { 
-    style: 'currency', 
-    currency: 'CNY' 
+  return new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency: 'CNY'
   }).format(value || 0)
 }
 
 const getExpenseStatusType = (status) => {
   const statusMap = {
-    '正常': 'success',
-    '待审核': 'warning',
-    '已驳回': 'danger'
+    正常: 'success',
+    待审核: 'warning',
+    已驳回: 'danger'
   }
   return statusMap[status] || 'success'
 }

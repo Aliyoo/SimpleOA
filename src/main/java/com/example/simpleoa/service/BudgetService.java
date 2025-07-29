@@ -82,6 +82,11 @@ public interface BudgetService {
     List<BudgetExpense> getBudgetExpensesByReimbursement(Long reimbursementId);
     List<Budget> getAvailableBudgetsForProject(Long projectId);
     
+    // 预算扣减方法（支持幂等性）
+    boolean decreaseBudget(Long budgetId, Double amount, String referenceNumber) throws Exception;
+    boolean decreaseBudgetItem(Long budgetItemId, Double amount, String referenceNumber) throws Exception;
+    boolean isBudgetExpenseExists(String referenceNumber);
+    
     // 预算统计分析
     Map<String, Object> getBudgetStatsByProject(Long projectId);
     Map<String, Object> getBudgetStatsByDateRange(Date startDate, Date endDate);

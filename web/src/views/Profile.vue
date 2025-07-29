@@ -1,46 +1,52 @@
 <template>
   <div class="profile-container">
     <h1>个人中心</h1>
-    
+
     <el-tabs v-model="activeTab">
       <el-tab-pane label="个人信息" name="info">
         <el-form :model="userInfo" label-width="100px" class="info-form">
           <el-form-item label="用户名">
             <el-input v-model="userInfo.username" disabled />
           </el-form-item>
-          
+
           <el-form-item label="姓名">
-            <el-input v-model="userInfo.name" />     
+            <el-input v-model="userInfo.name" />
           </el-form-item>
-          
+
           <el-form-item label="邮箱">
             <el-input v-model="userInfo.email" />
           </el-form-item>
-          
+
           <el-form-item label="手机号">
             <el-input v-model="userInfo.phone" />
           </el-form-item>
-          
+
           <el-form-item>
             <el-button type="primary" @click="updateProfile">保存修改</el-button>
           </el-form-item>
         </el-form>
       </el-tab-pane>
-      
+
       <el-tab-pane label="修改密码" name="password">
-        <el-form :model="passwordForm" label-width="100px" class="password-form" :rules="passwordRules" ref="passwordFormRef">
+        <el-form
+          ref="passwordFormRef"
+          :model="passwordForm"
+          label-width="100px"
+          class="password-form"
+          :rules="passwordRules"
+        >
           <el-form-item label="原密码" prop="oldPassword">
             <el-input v-model="passwordForm.oldPassword" type="password" show-password />
           </el-form-item>
-          
+
           <el-form-item label="新密码" prop="newPassword">
             <el-input v-model="passwordForm.newPassword" type="password" show-password />
           </el-form-item>
-          
+
           <el-form-item label="确认密码" prop="confirmPassword">
             <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
           </el-form-item>
-          
+
           <el-form-item>
             <el-button type="primary" @click="changePassword">修改密码</el-button>
           </el-form-item>
@@ -74,9 +80,7 @@ const passwordForm = reactive({
 })
 
 const passwordRules = {
-  oldPassword: [
-    { required: true, message: '请输入原密码', trigger: 'blur' }
-  ],
+  oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
     { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
@@ -115,7 +119,7 @@ const updateProfile = async () => {
       email: userInfo.email,
       phone: userInfo.phone
     })
-    
+
     if (response.data.status === 'success') {
       // 更新用户store中的信息
       if (response.data.user) {
@@ -139,7 +143,7 @@ const changePassword = async () => {
     ElMessage.error('表单引用未找到，请刷新页面重试')
     return
   }
-  
+
   try {
     const valid = await passwordFormRef.value.validate()
     if (valid) {
@@ -147,7 +151,7 @@ const changePassword = async () => {
         oldPassword: passwordForm.oldPassword,
         newPassword: passwordForm.newPassword
       })
-      
+
       if (response.data.status === 'success') {
         ElMessage.success('密码修改成功')
         // 重置表单数据
@@ -182,7 +186,8 @@ onMounted(() => {
   padding: 20px;
 }
 
-.info-form, .password-form {
+.info-form,
+.password-form {
   max-width: 600px;
   margin-top: 20px;
 }

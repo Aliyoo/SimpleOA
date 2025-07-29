@@ -4,14 +4,14 @@
 
     <el-tabs v-model="activeTab">
       <el-tab-pane label="请假申请" name="apply">
-        <el-form :model="leaveForm" :rules="leaveFormRules" ref="leaveFormRef" label-width="100px" class="apply-form">
+        <el-form ref="leaveFormRef" :model="leaveForm" :rules="leaveFormRules" label-width="100px" class="apply-form">
           <el-form-item label="请假类型" prop="leaveType">
             <el-select v-model="leaveForm.leaveType" placeholder="请选择请假类型" @change="onLeaveTypeChange">
               <el-option
-                  v-for="type in leaveTypes"
-                  :key="type.value"
-                  :label="`${type.label} (剩余: ${getLeaveBalance(type.value)}天)`"
-                  :value="type.value"
+                v-for="type in leaveTypes"
+                :key="type.value"
+                :label="`${type.label} (剩余: ${getLeaveBalance(type.value)}天)`"
+                :value="type.value"
               />
             </el-select>
           </el-form-item>
@@ -19,37 +19,34 @@
           <!-- 显示当前选择类型的余额信息 -->
           <el-form-item v-if="leaveForm.leaveType && currentBalance" label="余额信息">
             <el-tag type="info">
-              {{ getCurrentLeaveTypeLabel() }}: 总共{{ currentBalance.totalDays }}天，已用{{ currentBalance.usedDays }}天，剩余{{ currentBalance.remainingDays }}天
+              {{ getCurrentLeaveTypeLabel() }}: 总共{{ currentBalance.totalDays }}天，已用{{
+                currentBalance.usedDays
+              }}天，剩余{{ currentBalance.remainingDays }}天
             </el-tag>
           </el-form-item>
 
           <el-form-item label="开始时间" prop="startDate">
             <el-date-picker
-                v-model="leaveForm.startDate"
-                type="datetime"
-                placeholder="选择开始时间"
-                format="YYYY-MM-DD HH:mm"
-                value-format="YYYY-MM-DD HH:mm"
+              v-model="leaveForm.startDate"
+              type="datetime"
+              placeholder="选择开始时间"
+              format="YYYY-MM-DD HH:mm"
+              value-format="YYYY-MM-DD HH:mm"
             />
           </el-form-item>
 
           <el-form-item label="结束时间" prop="endDate">
             <el-date-picker
-                v-model="leaveForm.endDate"
-                type="datetime"
-                placeholder="选择结束时间"
-                format="YYYY-MM-DD HH:mm"
-                value-format="YYYY-MM-DD HH:mm"
+              v-model="leaveForm.endDate"
+              type="datetime"
+              placeholder="选择结束时间"
+              format="YYYY-MM-DD HH:mm"
+              value-format="YYYY-MM-DD HH:mm"
             />
           </el-form-item>
 
           <el-form-item label="请假原因" prop="reason">
-            <el-input
-                v-model="leaveForm.reason"
-                type="textarea"
-                :rows="4"
-                placeholder="请输入请假原因"
-            />
+            <el-input v-model="leaveForm.reason" type="textarea" :rows="4" placeholder="请输入请假原因" />
           </el-form-item>
 
           <el-form-item>
@@ -65,9 +62,9 @@
               {{ getLeaveTypeLabel(scope.row.leaveType) }}
             </template>
           </el-table-column>
-          <el-table-column prop="startDate" label="开始时间" width="180"/>
-          <el-table-column prop="endDate" label="结束时间" width="180"/>
-          <el-table-column prop="reason" label="原因"/>
+          <el-table-column prop="startDate" label="开始时间" width="180" />
+          <el-table-column prop="endDate" label="结束时间" width="180" />
+          <el-table-column prop="reason" label="原因" />
           <el-table-column prop="status" label="状态" width="120">
             <template #default="scope">
               <el-tag :type="getStatusTagType(scope.row.status)">
@@ -75,7 +72,7 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="applyDate" label="申请时间" width="180"/>
+          <el-table-column prop="applyDate" label="申请时间" width="180" />
         </el-table>
       </el-tab-pane>
 
@@ -83,7 +80,7 @@
         <div class="balance-container">
           <h3>{{ new Date().getFullYear() }}年请假余额</h3>
           <el-row :gutter="20">
-            <el-col :span="6" v-for="balance in leaveBalances" :key="balance.leaveType">
+            <el-col v-for="balance in leaveBalances" :key="balance.leaveType" :span="6">
               <el-card class="balance-card">
                 <template #header>
                   <span>{{ getLeaveTypeLabel(balance.leaveType) }}</span>
@@ -99,10 +96,12 @@
                   </div>
                   <div class="balance-item">
                     <span class="label">剩余:</span>
-                    <span class="value remaining" :class="{ 'low': balance.remainingDays < 3 }">{{ balance.remainingDays }}天</span>
+                    <span class="value remaining" :class="{ low: balance.remainingDays < 3 }"
+                      >{{ balance.remainingDays }}天</span
+                    >
                   </div>
-                  <el-progress 
-                    :percentage="Math.round((balance.usedDays / balance.totalDays) * 100)" 
+                  <el-progress
+                    :percentage="Math.round((balance.usedDays / balance.totalDays) * 100)"
                     :status="balance.remainingDays < 3 ? 'exception' : 'success'"
                   />
                 </div>
@@ -116,16 +115,16 @@
         <div class="statistics-container">
           <div class="filter-container">
             <el-date-picker
-                v-model="statisticsDateRange"
-                type="monthrange"
-                range-separator="至"
-                start-placeholder="开始月份"
-                end-placeholder="结束月份"
-                format="YYYY-MM"
-                value-format="YYYY-MM"
-                @change="fetchStatisticsData"
+              v-model="statisticsDateRange"
+              type="monthrange"
+              range-separator="至"
+              start-placeholder="开始月份"
+              end-placeholder="结束月份"
+              format="YYYY-MM"
+              value-format="YYYY-MM"
+              @change="fetchStatisticsData"
             />
-            <el-button type="primary" @click="fetchStatisticsData" style="margin-left: 10px">查询</el-button>
+            <el-button type="primary" style="margin-left: 10px" @click="fetchStatisticsData">查询</el-button>
           </div>
 
           <!-- 汇总信息卡片 -->
@@ -162,13 +161,13 @@
                 {{ getLeaveTypeLabel(scope.row.type) }}
               </template>
             </el-table-column>
-            <el-table-column prop="totalDays" label="总天数"/>
-            <el-table-column prop="totalCount" label="请假次数"/>
-            <el-table-column prop="percentage" label="占比"/>
+            <el-table-column prop="totalDays" label="总天数" />
+            <el-table-column prop="totalCount" label="请假次数" />
+            <el-table-column prop="percentage" label="占比" />
           </el-table>
 
           <div class="chart-container">
-            <el-empty description="暂无数据" v-if="!statisticsData.length"/>
+            <el-empty v-if="!statisticsData.length" description="暂无数据" />
             <div v-else>
               <div id="leaveStatisticsChart" style="width: 100%; height: 400px"></div>
             </div>
@@ -180,11 +179,11 @@
 </template>
 
 <script setup>
-import {ref, reactive, onMounted} from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import api from '../utils/axios.js'
-import {ElMessage} from 'element-plus'
+import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import {APP_CONFIG} from '../utils/config.js'
+import { APP_CONFIG } from '../utils/config.js'
 
 const activeTab = ref('apply')
 
@@ -196,14 +195,14 @@ const leaveForm = reactive({
 })
 
 const leaveTypes = ref([
-  {value: 'ANNUAL_LEAVE', label: '年假'},
-  {value: 'SICK_LEAVE', label: '病假'},
-  {value: 'PERSONAL_LEAVE', label: '事假'},
-  {value: 'MARRIAGE_LEAVE', label: '婚假'},
-  {value: 'MATERNITY_LEAVE', label: '产假'},
-  {value: 'PATERNITY_LEAVE', label: '陪产假'},
-  {value: 'BEREAVEMENT_LEAVE', label: '丧假'},
-  {value: 'OTHER', label: '其他'}
+  { value: 'ANNUAL_LEAVE', label: '年假' },
+  { value: 'SICK_LEAVE', label: '病假' },
+  { value: 'PERSONAL_LEAVE', label: '事假' },
+  { value: 'MARRIAGE_LEAVE', label: '婚假' },
+  { value: 'MATERNITY_LEAVE', label: '产假' },
+  { value: 'PATERNITY_LEAVE', label: '陪产假' },
+  { value: 'BEREAVEMENT_LEAVE', label: '丧假' },
+  { value: 'OTHER', label: '其他' }
 ])
 
 const myApplicationsList = ref([])
@@ -269,7 +268,7 @@ const renderChart = () => {
         name: '请假分布',
         type: 'pie',
         radius: '50%',
-        data: statisticsData.value.map(item => ({
+        data: statisticsData.value.map((item) => ({
           value: item.totalDays,
           name: getLeaveTypeLabel(item.type)
         })),
@@ -289,13 +288,13 @@ const renderChart = () => {
 
 const submitLeave = async () => {
   if (!leaveFormRef.value) return
-  
+
   try {
     await leaveFormRef.value.validate()
-    
+
     // 调试：打印发送的数据
     console.log('发送的请假申请数据:', leaveForm)
-    
+
     await api.post('/api/leave/apply', leaveForm)
     ElMessage.success('请假申请提交成功')
     // 重置表单
@@ -314,7 +313,6 @@ const submitLeave = async () => {
   }
 }
 
-
 const getStatusTagType = (status) => {
   switch (status) {
     case '已通过':
@@ -330,7 +328,7 @@ const getStatusTagType = (status) => {
 
 // 将英文请假类型转换为中文显示
 const getLeaveTypeLabel = (value) => {
-  const type = leaveTypes.value.find(item => item.value === value)
+  const type = leaveTypes.value.find((item) => item.value === value)
   return type ? type.label : value
 }
 
@@ -348,14 +346,14 @@ const fetchLeaveBalances = async () => {
 
 // 获取指定类型的余额
 const getLeaveBalance = (leaveType) => {
-  const balance = leaveBalances.value.find(b => b.leaveType === leaveType)
+  const balance = leaveBalances.value.find((b) => b.leaveType === leaveType)
   return balance ? balance.remainingDays : 0
 }
 
 // 当请假类型改变时
 const onLeaveTypeChange = () => {
   if (leaveForm.leaveType) {
-    currentBalance.value = leaveBalances.value.find(b => b.leaveType === leaveForm.leaveType)
+    currentBalance.value = leaveBalances.value.find((b) => b.leaveType === leaveForm.leaveType)
   } else {
     currentBalance.value = null
   }
@@ -366,13 +364,12 @@ const getCurrentLeaveTypeLabel = () => {
   return getLeaveTypeLabel(leaveForm.leaveType)
 }
 
-
 onMounted(async () => {
   fetchMyApplicationsList()
   fetchLeaveBalances()
 
   // 从全局配置获取默认日期范围
-  statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange();
+  statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange()
   fetchStatisticsData()
 })
 </script>

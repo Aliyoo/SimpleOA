@@ -1,11 +1,11 @@
 <template>
   <div class="notification-container">
     <h1>系统通知</h1>
-    
+
     <div class="header">
       <el-button type="primary" @click="showDialog('create')">发送通知</el-button>
     </div>
-    
+
     <el-table :data="notificationList" border style="width: 100%">
       <el-table-column prop="title" label="标题" width="180" />
       <el-table-column prop="content" label="内容" />
@@ -19,12 +19,14 @@
       </el-table-column>
       <el-table-column label="操作" width="180">
         <template #default="scope">
-          <el-button size="small" @click="markAsRead(scope.row.id)" v-if="scope.row.status === 'unread'">标记已读</el-button>
+          <el-button v-if="scope.row.status === 'unread'" size="small" @click="markAsRead(scope.row.id)"
+            >标记已读</el-button
+          >
           <el-button size="small" type="danger" @click="deleteNotification(scope.row.id)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
-    
+
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="50%">
       <el-form :model="notificationForm" label-width="80px">
         <el-form-item label="标题">
@@ -35,11 +37,7 @@
         </el-form-item>
         <el-form-item label="接收人">
           <el-select v-model="notificationForm.receiverIds" multiple placeholder="请选择接收人">
-            <el-option 
-              v-for="user in userList" 
-              :key="user.id" 
-              :label="user.realName" 
-              :value="user.id" />
+            <el-option v-for="user in userList" :key="user.id" :label="user.realName" :value="user.id" />
           </el-select>
         </el-form-item>
       </el-form>

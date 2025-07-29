@@ -27,7 +27,7 @@ export const permission = {
     const checkPermission = () => {
       if (Array.isArray(value)) {
         // 如果是数组，只要有一个权限就可以
-        return value.some(permission => hasPermission(permission))
+        return value.some((permission) => hasPermission(permission))
       } else {
         // 如果是字符串，必须有这个权限
         return hasPermission(value)

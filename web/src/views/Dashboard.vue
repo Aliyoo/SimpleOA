@@ -78,7 +78,11 @@
         </el-col>
 
         <el-col :span="6">
-          <el-card shadow="hover" class="stat-card budget-stat" v-if="userStore.isAdmin || userStore.hasPermission('budget:view')">
+          <el-card
+            v-if="userStore.isAdmin || userStore.hasPermission('budget:view')"
+            shadow="hover"
+            class="stat-card budget-stat"
+          >
             <div class="stat-icon">
               <el-icon><Money /></el-icon>
             </div>
@@ -89,7 +93,7 @@
             </div>
           </el-card>
           <!-- 普通用户显示任务统计 -->
-          <el-card shadow="hover" class="stat-card task-stat" v-else>
+          <el-card v-else shadow="hover" class="stat-card task-stat">
             <div class="stat-icon">
               <el-icon><DocumentChecked /></el-icon>
             </div>
@@ -167,7 +171,7 @@
                 </el-button-group>
               </div>
             </template>
-            <div id="worktimeChart" style="width: 100%; height: 300px;"></div>
+            <div id="worktimeChart" style="width: 100%; height: 300px"></div>
           </el-card>
         </el-col>
 
@@ -179,7 +183,7 @@
                 <el-button size="small" @click="refreshProjectStats">刷新</el-button>
               </div>
             </template>
-            <div id="projectChart" style="width: 100%; height: 300px;"></div>
+            <div id="projectChart" style="width: 100%; height: 300px"></div>
           </el-card>
         </el-col>
       </el-row>
@@ -198,11 +202,11 @@
                 </router-link>
               </div>
             </template>
-            <div id="approvalChart" style="width: 100%; height: 250px;"></div>
+            <div id="approvalChart" style="width: 100%; height: 250px"></div>
           </el-card>
         </el-col>
 
-        <el-col :span="12" v-if="userStore.isAdmin || userStore.hasPermission('budget:view')">
+        <el-col v-if="userStore.isAdmin || userStore.hasPermission('budget:view')" :span="12">
           <el-card shadow="hover">
             <template #header>
               <div class="card-header">
@@ -223,7 +227,9 @@
               </div>
               <div class="financial-item">
                 <span class="financial-label">剩余预算</span>
-                <span class="financial-value remaining">{{ formatCurrency(stats.totalBudget - stats.totalExpenses) }}</span>
+                <span class="financial-value remaining">{{
+                  formatCurrency(stats.totalBudget - stats.totalExpenses)
+                }}</span>
               </div>
               <div class="financial-item">
                 <span class="financial-label">本月报销</span>
@@ -242,14 +248,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useUserStore } from '../stores/user'
 import api from '../utils/axios.js'
 import * as echarts from 'echarts'
-import { 
-  User, 
-  FolderOpened, 
-  DocumentChecked, 
-  Money, 
-  Clock, 
-  Calendar 
-} from '@element-plus/icons-vue'
+import { User, FolderOpened, DocumentChecked, Money, Clock, Calendar } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const currentUser = ref(userStore.userInfo || {})
@@ -284,7 +283,7 @@ const fetchStats = async () => {
   try {
     const response = await api.get('/api/dashboard/stats')
     stats.value = response.data
-    
+
     // 初始化图表
     await nextTick()
     initCharts()
@@ -380,7 +379,7 @@ const initCharts = () => {
 const updateWorktimeChart = () => {
   const chartElement = document.getElementById('worktimeChart')
   if (!chartElement) return
-  
+
   const chart = echarts.init(chartElement)
   chart.setOption({
     title: {
@@ -403,7 +402,7 @@ const updateWorktimeChart = () => {
     },
     xAxis: {
       type: 'category',
-      data: worktimeTrends.value.map(item => item.date),
+      data: worktimeTrends.value.map((item) => item.date),
       axisLine: {
         lineStyle: {
           color: '#E4E7ED'
@@ -422,7 +421,7 @@ const updateWorktimeChart = () => {
       {
         name: '工时',
         type: 'line',
-        data: worktimeTrends.value.map(item => item.hours),
+        data: worktimeTrends.value.map((item) => item.hours),
         smooth: true,
         lineStyle: {
           color: '#409EFF'
@@ -449,7 +448,7 @@ const updateWorktimeChart = () => {
 const updateProjectChart = () => {
   const chartElement = document.getElementById('projectChart')
   if (!chartElement) return
-  
+
   const chart = echarts.init(chartElement)
   chart.setOption({
     title: {
@@ -487,7 +486,7 @@ const updateProjectChart = () => {
 const updateApprovalChart = () => {
   const chartElement = document.getElementById('approvalChart')
   if (!chartElement) return
-  
+
   const chart = echarts.init(chartElement)
   chart.setOption({
     title: {
@@ -558,23 +557,23 @@ const getMonthlyTarget = () => {
 const generateMockWorktimeTrends = (days) => {
   const trends = []
   const today = new Date()
-  
+
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(today)
     date.setDate(date.getDate() - i)
-    
+
     // 周末工时较少
     const isWeekend = date.getDay() === 0 || date.getDay() === 6
     const baseHours = isWeekend ? 0 : 8
     const randomVariation = (Math.random() - 0.5) * 2
     const hours = Math.max(0, baseHours + randomVariation)
-    
+
     trends.push({
       date: `${date.getMonth() + 1}/${date.getDate()}`,
       hours: parseFloat(hours.toFixed(1))
     })
   }
-  
+
   return trends
 }
 
@@ -707,7 +706,7 @@ onMounted(() => {
 
 .stat-trend {
   font-size: 12px;
-  color: #67C23A;
+  color: #67c23a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -730,16 +729,17 @@ onMounted(() => {
 .worktime-value {
   font-size: 32px;
   font-weight: bold;
-  color: #409EFF;
+  color: #409eff;
   margin-bottom: 10px;
 }
 
 .worktime-status {
   font-size: 14px;
-  color: #67C23A;
+  color: #67c23a;
 }
 
-.worktime-average, .worktime-target {
+.worktime-average,
+.worktime-target {
   font-size: 12px;
   color: #909399;
 }
@@ -770,7 +770,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #EBEEF5;
+  border-bottom: 1px solid #ebeef5;
 }
 
 .financial-item:last-child {
@@ -789,11 +789,11 @@ onMounted(() => {
 }
 
 .financial-value.expense {
-  color: #F56C6C;
+  color: #f56c6c;
 }
 
 .financial-value.remaining {
-  color: #67C23A;
+  color: #67c23a;
 }
 
 /* 快速操作区域 */
@@ -841,20 +841,20 @@ onMounted(() => {
     align-items: flex-start;
     gap: 10px;
   }
-  
+
   .welcome-info {
     align-items: flex-start;
   }
-  
+
   .stat-card {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .stat-content {
     text-align: center;
   }
-  
+
   .action-buttons {
     flex-wrap: wrap;
     gap: 10px;

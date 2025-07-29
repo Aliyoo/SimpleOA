@@ -35,29 +35,29 @@ const api = axios.create({
 
 // 请求拦截器
 api.interceptors.request.use(
-  config => {
+  (config) => {
     // 由于使用 HttpOnly Cookie，token 由浏览器自动发送，无需手动设置
     // config.headers.Authorization = `Bearer ${token}`
     return config
   },
-  error => {
+  (error) => {
     return Promise.reject(error)
   }
 )
 
 // 响应拦截器
 api.interceptors.response.use(
-  response => {
+  (response) => {
     // 检查响应状态码
     if (response.status >= 200 && response.status < 300) {
       return response
     }
     return Promise.reject(new Error(`HTTP ${response.status}: ${response.statusText}`))
   },
-  error => {
+  (error) => {
     const status = error.response?.status
     let message = '服务器错误'
-    
+
     // 尝试解析错误信息
     if (error.response?.data) {
       // 如果响应数据是字符串，尝试解析为JSON
@@ -73,14 +73,14 @@ api.interceptors.response.use(
         message = error.response.data.message
       }
     }
-    
+
     console.error(`请求失败，状态码: ${status}, 错误信息: ${message}`, error.response)
-    
+
     // 只有在非组件调用时才显示错误消息
     if (!error.config?.skipGlobalErrorHandler) {
       ElMessage.error(message)
     }
-    
+
     if (status === 401 || status === 403) {
       console.error('认证错误 (401/403)，但不立即清除认证状态，可能是临时问题:', error.response)
       // 不要立即登出，可能是临时问题

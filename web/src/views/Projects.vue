@@ -5,7 +5,7 @@
       <el-button v-if="$route.path === '/projects'" type="primary" @click="handleCreate">新建项目</el-button>
     </div>
     
-    <router-view v-if="$route.path !== '/projects'" @projectCreated="fetchProjects" />
+    <router-view v-if="$route.path !== '/projects'" @project-created="fetchProjects" />
     
     <div v-else>
       <!-- 查询区域 -->

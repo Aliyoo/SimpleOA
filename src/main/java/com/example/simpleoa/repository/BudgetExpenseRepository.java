@@ -58,4 +58,6 @@ public interface BudgetExpenseRepository extends JpaRepository<BudgetExpense, Lo
     Double sumTotalAmount();
 
     List<BudgetExpense> findByReimbursementRequestId(Long reimbursementRequestId);
+    
+    boolean existsByReferenceNumber(String referenceNumber);
 }

@@ -141,19 +141,15 @@
             <!-- 如果没有子菜单，直接显示菜单项 -->
             <el-menu-item
               v-if="!menu.children || menu.children.length === 0"
-              :index="menu.path"
               :key="`menu-${menu.id}`"
+              :index="menu.path"
             >
               <el-icon><component :is="getIconComponent(menu.icon)" /></el-icon>
               <span>{{ menu.name }}</span>
             </el-menu-item>
 
             <!-- 如果有子菜单，显示子菜单 -->
-            <el-sub-menu
-              v-else
-              :index="menu.path || String(menu.id)"
-              :key="`submenu-${menu.id}`"
-            >
+            <el-sub-menu v-else :key="`submenu-${menu.id}`" :index="menu.path || String(menu.id)">
               <template #title>
                 <el-icon><component :is="getIconComponent(menu.icon)" /></el-icon>
                 <span>{{ menu.name }}</span>
@@ -189,12 +185,15 @@
     <el-container>
       <el-header>
         <div class="header-container">
-          <div class="header-left">
-          </div>
+          <div class="header-left"></div>
           <div class="header-right">
             <el-dropdown>
               <span class="user-dropdown">
-                <el-avatar size="small" :src="userStore.user?.avatar || defaultAvatar" style="margin-right: 8px;"></el-avatar>
+                <el-avatar
+                  size="small"
+                  :src="userStore.user?.avatar || defaultAvatar"
+                  style="margin-right: 8px"
+                ></el-avatar>
                 {{ userStore.user?.realName || userStore.user?.name || userStore.user?.username || '用户' }}
                 <el-icon class="el-icon--right"><arrow-down /></el-icon>
               </span>
@@ -219,7 +218,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
-import defaultAvatar from '@/assets/default-avatar.png';
+import defaultAvatar from '@/assets/default-avatar.png'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { ArrowDown } from '@element-plus/icons-vue'
 
@@ -264,15 +263,15 @@ const getIconComponent = (iconName) => {
 
   // 根据路径或名称映射图标
   const iconMap = {
-    'dashboard': ElementPlusIconsVue.Odometer,
+    dashboard: ElementPlusIconsVue.Odometer,
     'time-management': ElementPlusIconsVue.Clock,
     'project-manager-time': ElementPlusIconsVue.Clock,
     'leave-management': ElementPlusIconsVue.Calendar,
     'travel-management': ElementPlusIconsVue.Position,
-    'reimbursement': ElementPlusIconsVue.Wallet,
-    'approvals': ElementPlusIconsVue.Document,
-    'projects': ElementPlusIconsVue.Tickets,
-    'tasks': ElementPlusIconsVue.List,
+    reimbursement: ElementPlusIconsVue.Wallet,
+    approvals: ElementPlusIconsVue.Document,
+    projects: ElementPlusIconsVue.Tickets,
+    tasks: ElementPlusIconsVue.List,
     'outsourcing-management': ElementPlusIconsVue.Connection,
     'payment-management': ElementPlusIconsVue.Money,
     'budget-management': ElementPlusIconsVue.Coin,
@@ -282,14 +281,14 @@ const getIconComponent = (iconName) => {
     'role-management': ElementPlusIconsVue.Lock,
     'permission-management': ElementPlusIconsVue.Key,
     'log-management': ElementPlusIconsVue.DocumentCopy,
-    'notification': ElementPlusIconsVue.Bell,
-    'announcement': ElementPlusIconsVue.Notification,
+    notification: ElementPlusIconsVue.Bell,
+    announcement: ElementPlusIconsVue.Notification,
     'system-config': ElementPlusIconsVue.Tools,
-    'calendar': ElementPlusIconsVue.Calendar,
-    'profile': ElementPlusIconsVue.User,
-    'oa': ElementPlusIconsVue.OfficeBuilding,
-    'pm': ElementPlusIconsVue.Folder,
-    'sys': ElementPlusIconsVue.Setting
+    calendar: ElementPlusIconsVue.Calendar,
+    profile: ElementPlusIconsVue.User,
+    oa: ElementPlusIconsVue.OfficeBuilding,
+    pm: ElementPlusIconsVue.Folder,
+    sys: ElementPlusIconsVue.Setting
   }
 
   return iconMap[iconName] || ElementPlusIconsVue.Document
@@ -298,7 +297,7 @@ const getIconComponent = (iconName) => {
 // 获取可见的子菜单
 const getVisibleChildren = (children) => {
   if (!children || !Array.isArray(children)) return []
-  return children.filter(child => !child.isHidden)
+  return children.filter((child) => !child.isHidden)
 }
 
 const handleLogout = async () => {
@@ -306,7 +305,7 @@ const handleLogout = async () => {
     await userStore.logout()
     router.push('/login')
   } catch (error) {
-    console.error("Logout failed:", error)
+    console.error('Logout failed:', error)
   }
 }
 

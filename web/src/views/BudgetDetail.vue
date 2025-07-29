@@ -129,9 +129,7 @@
         <template #header>
           <div class="card-header">
             <span>预算项目</span>
-            <el-button type="primary" size="small" @click="handleAddItem">
-              添加项目
-            </el-button>
+            <el-button type="primary" size="small" @click="handleAddItem"> 添加项目 </el-button>
           </div>
         </template>
 
@@ -185,9 +183,7 @@
         <template #header>
           <div class="card-header">
             <span>支出记录</span>
-            <el-button type="primary" size="small" @click="handleAddExpense">
-              添加支出
-            </el-button>
+            <el-button type="primary" size="small" @click="handleAddExpense"> 添加支出 </el-button>
           </div>
         </template>
 
@@ -298,12 +294,7 @@ const loadBudgetDetail = async () => {
   loading.value = true
   try {
     // 并行加载所有相关数据
-    const [
-      budgetResponse,
-      itemsResponse,
-      expensesResponse,
-      alertsResponse
-    ] = await Promise.all([
+    const [budgetResponse, itemsResponse, expensesResponse, alertsResponse] = await Promise.all([
       axios.get(`/api/budgets/${budgetId.value}`),
       axios.get(`/api/budgets/${budgetId.value}/items`),
       axios.get(`/api/budgets/${budgetId.value}/expenses`),
@@ -332,22 +323,18 @@ const handleEdit = () => {
 
 const handleDelete = async () => {
   try {
-    await ElMessageBox.confirm(
-      `确定要删除预算 "${budget.value.name}" 吗？删除后无法恢复！`,
-      '确认删除',
-      {
-        confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+    await ElMessageBox.confirm(`确定要删除预算 "${budget.value.name}" 吗？删除后无法恢复！`, '确认删除', {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
 
     await axios.delete(`/api/budgets/${budgetId.value}`)
     ElMessage.success('预算删除成功')
     router.push('/budget-management')
   } catch (error) {
     if (error === 'cancel') return
-    
+
     ElMessage.error('删除预算失败')
     console.error('Error deleting budget:', error)
   }
@@ -370,24 +357,20 @@ const handleEditItem = (item) => {
 
 const handleDeleteItem = async (item) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要删除预算项目 "${item.name}" 吗？`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+    await ElMessageBox.confirm(`确定要删除预算项目 "${item.name}" 吗？`, '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
 
     await axios.delete(`/api/budgets/items/${item.id}`)
     ElMessage.success('删除成功')
-    
+
     // 重新加载数据
     await loadBudgetDetail()
   } catch (error) {
     if (error === 'cancel') return
-    
+
     ElMessage.error('删除失败')
     console.error('Error deleting budget item:', error)
   }
@@ -410,24 +393,20 @@ const handleEditExpense = (expense) => {
 
 const handleDeleteExpense = async (expense) => {
   try {
-    await ElMessageBox.confirm(
-      '确定要删除这条支出记录吗？',
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+    await ElMessageBox.confirm('确定要删除这条支出记录吗？', '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
 
     await axios.delete(`/api/budgets/expenses/${expense.id}`)
     ElMessage.success('删除成功')
-    
+
     // 重新加载数据
     await loadBudgetDetail()
   } catch (error) {
     if (error === 'cancel') return
-    
+
     ElMessage.error('删除失败')
     console.error('Error deleting budget expense:', error)
   }
@@ -435,20 +414,16 @@ const handleDeleteExpense = async (expense) => {
 
 const handleResolveAlert = async (alert) => {
   try {
-    await ElMessageBox.prompt(
-      '请输入解决方案',
-      '标记预警为已解决',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        inputValidator: (value) => {
-          if (!value) {
-            return '请输入解决方案'
-          }
-          return true
+    await ElMessageBox.prompt('请输入解决方案', '标记预警为已解决', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputValidator: (value) => {
+        if (!value) {
+          return '请输入解决方案'
         }
+        return true
       }
-    )
+    })
 
     // TODO: 获取当前用户ID
     const currentUserId = 1 // 临时硬编码，实际应从用户状态获取
@@ -459,14 +434,14 @@ const handleResolveAlert = async (alert) => {
         resolvedById: currentUserId
       }
     })
-    
+
     ElMessage.success('预警已标记为解决')
-    
+
     // 重新加载数据
     await loadBudgetDetail()
   } catch (error) {
     if (error === 'cancel') return
-    
+
     ElMessage.error('操作失败')
     console.error('Error resolving alert:', error)
   }
@@ -501,10 +476,10 @@ const calculateItemUsagePercentage = (item) => {
 
 const getBudgetStatusType = (status) => {
   const statusMap = {
-    '活跃': 'success',
-    '暂停': 'warning',
-    '已完成': 'info',
-    '已取消': 'danger'
+    活跃: 'success',
+    暂停: 'warning',
+    已完成: 'info',
+    已取消: 'danger'
   }
   return statusMap[status] || 'default'
 }
@@ -529,36 +504,36 @@ const getItemProgressStatus = (item) => {
 
 const getItemStatusType = (status) => {
   const statusMap = {
-    '活跃': 'success',
-    '暂停': 'warning',
-    '已完成': 'info'
+    活跃: 'success',
+    暂停: 'warning',
+    已完成: 'info'
   }
   return statusMap[status] || 'default'
 }
 
 const getExpenseStatusType = (status) => {
   const statusMap = {
-    '正常': 'success',
-    '待审核': 'warning',
-    '已驳回': 'danger'
+    正常: 'success',
+    待审核: 'warning',
+    已驳回: 'danger'
   }
   return statusMap[status] || 'success'
 }
 
 const getAlertLevelType = (level) => {
   const levelMap = {
-    '低': 'info',
-    '中': 'warning',
-    '高': 'danger'
+    低: 'info',
+    中: 'warning',
+    高: 'danger'
   }
   return levelMap[level] || 'default'
 }
 
 const getAlertStatusType = (status) => {
   const statusMap = {
-    '未处理': 'warning',
-    '处理中': 'primary',
-    '已解决': 'success'
+    未处理: 'warning',
+    处理中: 'primary',
+    已解决: 'success'
   }
   return statusMap[status] || 'warning'
 }

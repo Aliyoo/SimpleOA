@@ -1,9 +1,8 @@
 package com.example.simpleoa.service.impl;
 
 import com.example.simpleoa.model.*;
-import com.example.simpleoa.repository.ProjectRepository;
-import com.example.simpleoa.repository.ReimbursementRequestRepository;
-import com.example.simpleoa.repository.UserRepository;
+import com.example.simpleoa.dto.ReimbursementItemDTO;
+import com.example.simpleoa.repository.*;
 import com.example.simpleoa.service.ReimbursementService;
 import com.example.simpleoa.service.BudgetService;
 import com.example.simpleoa.service.ApprovalFlowService;
@@ -28,17 +27,23 @@ public class ReimbursementServiceImpl implements ReimbursementService {
     private final ReimbursementRequestRepository reimbursementRequestRepository;
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
+    private final BudgetRepository budgetRepository;
+    private final BudgetItemRepository budgetItemRepository;
     private final BudgetService budgetService;
     private final ApprovalFlowService approvalFlowService;
 
     public ReimbursementServiceImpl(ReimbursementRequestRepository reimbursementRequestRepository,
                                     UserRepository userRepository,
                                     ProjectRepository projectRepository,
+                                    BudgetRepository budgetRepository,
+                                    BudgetItemRepository budgetItemRepository,
                                     BudgetService budgetService,
                                     ApprovalFlowService approvalFlowService) {
         this.reimbursementRequestRepository = reimbursementRequestRepository;
         this.userRepository = userRepository;
         this.projectRepository = projectRepository;
+        this.budgetRepository = budgetRepository;
+        this.budgetItemRepository = budgetItemRepository;
         this.budgetService = budgetService;
         this.approvalFlowService = approvalFlowService;
     }
@@ -62,8 +67,8 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         }
 
         if (dto.getItems() != null) {
-            dto.getItems().forEach(item -> item.setReimbursementRequest(request));
-            request.setItems(dto.getItems());
+            List<ReimbursementItem> items = convertDtoItemsToEntities(dto.getItems(), request);
+            request.setItems(items);
             request.calculateTotalAmount();
         }
 
@@ -97,10 +102,8 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         if (dto.getItems() != null) {
             // Manage items carefully to avoid issues with detached entities if items are complex
             request.getItems().clear(); // Simple approach: clear and add all. Consider more sophisticated merging if needed.
-            dto.getItems().forEach(itemDTO -> {
-                itemDTO.setReimbursementRequest(request); // Ensure association
-                request.getItems().add(itemDTO);
-            });
+            List<ReimbursementItem> items = convertDtoItemsToEntities(dto.getItems(), request);
+            request.getItems().addAll(items);
             request.calculateTotalAmount();
         } else {
             request.getItems().clear();
@@ -264,6 +267,7 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         return result;
     }
 
+    @Transactional
     private void processReimbursementBudgetDeduction(ReimbursementRequest request) {
         if (request.getProject() == null || request.getItems() == null || request.getItems().isEmpty()) {
             logger.info("Reimbursement request {} has no project or items, skipping budget deduction", request.getId());
@@ -271,17 +275,34 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         }
 
         for (ReimbursementItem item : request.getItems()) {
-            if (item.getBudget() != null) {
-                createBudgetExpenseFromReimbursement(item, request);
-            } else if (item.getBudgetItem() != null) {
-                createBudgetExpenseFromReimbursementItem(item, request);
-            } else {
-                logger.warn("Reimbursement item {} has no budget or budget item association", item.getId());
+            try {
+                String referenceNumber = "REIMB-" + request.getId() + "-ITEM-" + item.getId();
+                
+                // 幂等性检查 - 如果已经处理过该项，跳过
+                if (budgetService.isBudgetExpenseExists(referenceNumber)) {
+                    logger.info("Budget expense for reimbursement item {} already exists, skipping", item.getId());
+                    continue;
+                }
+                
+                if (item.getBudget() != null) {
+                    // 使用新的decrease方法扣减预算
+                    budgetService.decreaseBudget(item.getBudget().getId(), item.getAmount().doubleValue(), referenceNumber);
+                    createBudgetExpenseFromReimbursement(item, request, referenceNumber);
+                } else if (item.getBudgetItem() != null) {
+                    // 使用新的decrease方法扣减预算项
+                    budgetService.decreaseBudgetItem(item.getBudgetItem().getId(), item.getAmount().doubleValue(), referenceNumber);
+                    createBudgetExpenseFromReimbursementItem(item, request, referenceNumber);
+                } else {
+                    logger.warn("Reimbursement item {} has no budget or budget item association", item.getId());
+                }
+            } catch (Exception e) {
+                logger.error("Failed to process budget deduction for reimbursement item {}: {}", item.getId(), e.getMessage());
+                throw new RuntimeException("预算扣减失败: " + e.getMessage(), e);
             }
         }
     }
 
-    private void createBudgetExpenseFromReimbursement(ReimbursementItem item, ReimbursementRequest request) {
+    private void createBudgetExpenseFromReimbursement(ReimbursementItem item, ReimbursementRequest request, String referenceNumber) {
         try {
             BudgetExpense expense = new BudgetExpense();
             expense.setBudget(item.getBudget());
@@ -289,7 +310,7 @@ public class ReimbursementServiceImpl implements ReimbursementService {
             expense.setAmount(item.getAmount().doubleValue());
             expense.setExpenseDate(new Date());
             expense.setExpenseType("REIMBURSEMENT");
-            expense.setReferenceNumber("REIMB-" + request.getId());
+            expense.setReferenceNumber(referenceNumber);
             expense.setReimbursementRequest(request);
             expense.setReimbursementItem(item);
             expense.setStatus("APPROVED");
@@ -307,7 +328,7 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         }
     }
 
-    private void createBudgetExpenseFromReimbursementItem(ReimbursementItem item, ReimbursementRequest request) {
+    private void createBudgetExpenseFromReimbursementItem(ReimbursementItem item, ReimbursementRequest request, String referenceNumber) {
         try {
             BudgetExpense expense = new BudgetExpense();
             expense.setBudget(item.getBudgetItem().getBudget());
@@ -315,7 +336,7 @@ public class ReimbursementServiceImpl implements ReimbursementService {
             expense.setAmount(item.getAmount().doubleValue());
             expense.setExpenseDate(new Date());
             expense.setExpenseType("REIMBURSEMENT");
-            expense.setReferenceNumber("REIMB-" + request.getId());
+            expense.setReferenceNumber(referenceNumber);
             expense.setReimbursementRequest(request);
             expense.setReimbursementItem(item);
             expense.setStatus("APPROVED");
@@ -355,12 +376,27 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         return null;
     }
 
+    @Transactional
     public void processApprovedReimbursement(Long reimbursementId) {
         ReimbursementRequest request = getReimbursementById(reimbursementId);
-        processReimbursementBudgetDeduction(request);
-        request.setStatus(ReimbursementStatus.APPROVED);
-        reimbursementRequestRepository.save(request);
-        logger.info("Processed approved reimbursement {} with budget deduction", reimbursementId);
+        try {
+            // 先检查状态，确保是待财务审批
+            if (request.getStatus() != ReimbursementStatus.PENDING_FINANCE_APPROVAL) {
+                logger.warn("报销申请 {} 状态不正确，当前状态: {}", reimbursementId, request.getStatus());
+            }
+            
+            // 处理预算扣减
+            processReimbursementBudgetDeduction(request);
+            
+            // 更新报销状态为已审批
+            request.setStatus(ReimbursementStatus.APPROVED);
+            reimbursementRequestRepository.save(request);
+            
+            logger.info("Processed approved reimbursement {} with budget deduction", reimbursementId);
+        } catch (Exception e) {
+            logger.error("Failed to process approved reimbursement {}: {}", reimbursementId, e.getMessage());
+            throw new RuntimeException("处理报销审批通过失败: " + e.getMessage(), e);
+        }
     }
 
     @Override
@@ -390,17 +426,50 @@ public class ReimbursementServiceImpl implements ReimbursementService {
             return true;
         }
 
-        for (ReimbursementItem item : dto.getItems()) {
-            if (item.getBudget() != null) {
-                if (!budgetService.checkBudgetAvailability(dto.getProjectId(), item.getAmount().doubleValue())) {
+        for (ReimbursementItemDTO item : dto.getItems()) {
+            if (item.getBudgetId() != null) {
+                Budget budget = budgetRepository.findById(item.getBudgetId()).orElse(null);
+                if (budget == null || !budgetService.checkBudgetAvailability(dto.getProjectId(), item.getAmount().doubleValue())) {
                     return false;
                 }
-            } else if (item.getBudgetItem() != null) {
-                if (!budgetService.checkBudgetItemAvailability(item.getBudgetItem().getId(), item.getAmount().doubleValue())) {
+            } else if (item.getBudgetItemId() != null) {
+                if (!budgetService.checkBudgetItemAvailability(item.getBudgetItemId(), item.getAmount().doubleValue())) {
                     return false;
                 }
             }
         }
         return true;
+    }
+    
+    private List<ReimbursementItem> convertDtoItemsToEntities(List<ReimbursementItemDTO> dtoItems, ReimbursementRequest request) {
+        List<ReimbursementItem> items = new ArrayList<>();
+        
+        for (ReimbursementItemDTO dto : dtoItems) {
+            ReimbursementItem item = new ReimbursementItem();
+            item.setId(dto.getId());
+            item.setExpenseDate(dto.getExpenseDate());
+            item.setItemCategory(dto.getItemCategory());
+            item.setDescription(dto.getDescription());
+            item.setAmount(dto.getAmount());
+            item.setReimbursementRequest(request);
+            
+            // 转换预算关联
+            if (dto.getBudgetId() != null) {
+                Budget budget = budgetRepository.findById(dto.getBudgetId())
+                    .orElseThrow(() -> new RuntimeException("预算不存在: " + dto.getBudgetId()));
+                item.setBudget(budget);
+            }
+            
+            // 转换预算明细关联
+            if (dto.getBudgetItemId() != null) {
+                BudgetItem budgetItem = budgetItemRepository.findById(dto.getBudgetItemId())
+                    .orElseThrow(() -> new RuntimeException("预算明细不存在: " + dto.getBudgetItemId()));
+                item.setBudgetItem(budgetItem);
+            }
+            
+            items.add(item);
+        }
+        
+        return items;
     }
 }

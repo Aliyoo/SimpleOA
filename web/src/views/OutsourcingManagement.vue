@@ -1,57 +1,52 @@
 <template>
   <div class="outsourcing-management-container">
     <h1>外包管理</h1>
-    
+
     <el-tabs v-model="activeTab">
       <el-tab-pane label="外包申请" name="apply">
         <el-form :model="outsourcingForm" label-width="100px" class="apply-form">
           <el-form-item label="项目名称" prop="projectName">
             <el-input v-model="outsourcingForm.projectName" placeholder="请输入项目名称" />
           </el-form-item>
-          
+
           <el-form-item label="外包公司" prop="company">
             <el-input v-model="outsourcingForm.company" placeholder="请输入外包公司名称" />
           </el-form-item>
-          
+
           <el-form-item label="开始时间" prop="startTime">
-            <el-date-picker 
-              v-model="outsourcingForm.startTime" 
-              type="date" 
+            <el-date-picker
+              v-model="outsourcingForm.startTime"
+              type="date"
               placeholder="选择开始时间"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
             />
           </el-form-item>
-          
+
           <el-form-item label="结束时间" prop="endTime">
-            <el-date-picker 
-              v-model="outsourcingForm.endTime" 
-              type="date" 
+            <el-date-picker
+              v-model="outsourcingForm.endTime"
+              type="date"
               placeholder="选择结束时间"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
             />
           </el-form-item>
-          
+
           <el-form-item label="预算金额" prop="budget">
             <el-input-number v-model="outsourcingForm.budget" :min="0" :precision="2" />
           </el-form-item>
-          
+
           <el-form-item label="项目描述" prop="description">
-            <el-input 
-              v-model="outsourcingForm.description" 
-              type="textarea" 
-              :rows="4" 
-              placeholder="请输入项目描述"
-            />
+            <el-input v-model="outsourcingForm.description" type="textarea" :rows="4" placeholder="请输入项目描述" />
           </el-form-item>
-          
+
           <el-form-item>
             <el-button type="primary" @click="submitOutsourcing">提交申请</el-button>
           </el-form-item>
         </el-form>
       </el-tab-pane>
-      
+
       <el-tab-pane label="外包列表" name="approval">
         <el-table :data="approvalList" style="width: 100%">
           <el-table-column prop="projectName" label="项目名称" width="180" />
@@ -67,21 +62,21 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" v-if="isApprover">
+          <el-table-column v-if="isApprover" label="操作" width="180">
             <template #default="scope">
-              <el-button 
-                size="small" 
-                type="success" 
-                @click="approveOutsourcing(scope.row)"
+              <el-button
                 v-if="scope.row.status === '待审批'"
+                size="small"
+                type="success"
+                @click="approveOutsourcing(scope.row)"
               >
                 通过
               </el-button>
-              <el-button 
-                size="small" 
-                type="danger" 
-                @click="rejectOutsourcing(scope.row)"
+              <el-button
                 v-if="scope.row.status === '待审批'"
+                size="small"
+                type="danger"
+                @click="rejectOutsourcing(scope.row)"
               >
                 拒绝
               </el-button>
@@ -89,7 +84,7 @@
           </el-table-column>
         </el-table>
       </el-tab-pane>
-      
+
       <el-tab-pane label="统计报表" name="statistics">
         <div class="statistics-container">
           <el-date-picker
@@ -102,15 +97,15 @@
             value-format="YYYY-MM"
             @change="fetchStatisticsData"
           />
-          
+
           <el-table :data="statisticsData" style="width: 100%; margin-top: 20px">
             <el-table-column prop="company" label="外包公司" />
             <el-table-column prop="totalBudget" label="总预算" />
             <el-table-column prop="projectCount" label="项目数量" />
           </el-table>
-          
+
           <div class="chart-container">
-            <el-empty description="暂无数据" v-if="!statisticsData.length" />
+            <el-empty v-if="!statisticsData.length" description="暂无数据" />
             <div v-else>
               <div id="outsourcingStatisticsChart" style="width: 100%; height: 400px"></div>
             </div>
@@ -156,7 +151,7 @@ const fetchStatisticsData = async () => {
   if (!statisticsDateRange.value || statisticsDateRange.value.length !== 2) {
     return
   }
-  
+
   try {
     const response = await api.get('/api/outsourcing/statistics', {
       params: {
@@ -174,7 +169,7 @@ const fetchStatisticsData = async () => {
 const renderChart = () => {
   const chartDom = document.getElementById('outsourcingStatisticsChart')
   if (!chartDom) return
-  
+
   const myChart = echarts.init(chartDom)
   const option = {
     tooltip: {
@@ -189,7 +184,7 @@ const renderChart = () => {
         name: '外包预算分布',
         type: 'pie',
         radius: '50%',
-        data: statisticsData.value.map(item => ({
+        data: statisticsData.value.map((item) => ({
           value: item.totalBudget,
           name: item.company
         })),
@@ -203,7 +198,7 @@ const renderChart = () => {
       }
     ]
   }
-  
+
   myChart.setOption(option)
 }
 
@@ -240,10 +235,14 @@ const rejectOutsourcing = async (row) => {
 
 const getStatusTagType = (status) => {
   switch (status) {
-    case '已通过': return 'success'
-    case '已拒绝': return 'danger'
-    case '待审批': return 'warning'
-    default: return 'info'
+    case '已通过':
+      return 'success'
+    case '已拒绝':
+      return 'danger'
+    case '待审批':
+      return 'warning'
+    default:
+      return 'info'
   }
 }
 
@@ -259,7 +258,7 @@ const checkApproverRole = async () => {
 onMounted(() => {
   fetchApprovalList()
   checkApproverRole()
-  
+
   // 设置默认统计日期范围为当前月
   const now = new Date()
   const year = now.getFullYear()

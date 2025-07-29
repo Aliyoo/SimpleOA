@@ -1,11 +1,11 @@
 <template>
   <div class="login-container">
-    <el-form 
-      ref="loginFormRef" 
-      :model="loginForm" 
-      :rules="loginRules" 
-      class="login-form" 
-      auto-complete="on" 
+    <el-form
+      ref="loginFormRef"
+      :model="loginForm"
+      :rules="loginRules"
+      class="login-form"
+      auto-complete="on"
       label-position="left"
     >
       <h3 class="title">SimpleOA 登录</h3>
@@ -33,12 +33,7 @@
         ></el-input>
       </el-form-item>
       <el-form-item>
-        <el-button
-          :loading="loading"
-          type="primary"
-          class="login-button"
-          @click="handleLogin"
-        >
+        <el-button :loading="loading" type="primary" class="login-button" @click="handleLogin">
           {{ loading ? '登录中...' : '登录' }}
         </el-button>
       </el-form-item>
@@ -61,12 +56,8 @@ const loginForm = ref({
 })
 
 const loginRules = {
-  username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' }
-  ],
-  password: [
-    { required: true, message: '请输入密码', trigger: 'blur' }
-  ]
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 
 const loading = ref(false)
@@ -75,7 +66,7 @@ const usernameInput = ref()
 
 const handleLogin = () => {
   if (loading.value) return
-  
+
   loginFormRef.value?.validate(async (valid) => {
     if (valid) {
       loading.value = true

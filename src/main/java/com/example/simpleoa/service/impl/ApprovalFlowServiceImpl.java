@@ -62,9 +62,18 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
     public ApprovalFlow updateApprovalFlowStatus(Long flowId, String status, String comment) {
         ApprovalFlow flow = approvalFlowRepository.findById(flowId)
                 .orElseThrow(() -> new IllegalArgumentException("Approval flow not found"));
+        
+        // 检查审批流程是否已经处理过
+        if (!"PENDING".equals(flow.getStatus())) {
+            throw new IllegalStateException("审批流程已经处理过，当前状态: " + flow.getStatus());
+        }
+        
         flow.setStatus(status);
         flow.setComment(comment);
         flow.setUpdateTime(new Date());
+        if ("APPROVED".equals(status) || "REJECTED".equals(status)) {
+            flow.setApprovalTime(new Date());
+        }
 
         // 如果是工时审批，同步更新工时记录的状态
         if ("WORKTIME".equals(flow.getRequestType()) && flow.getWorkTimeRecord() != null) {
@@ -104,16 +113,35 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
                             System.out.println("报销申请ID " + reimbursementRequest.getId() + " 财务审批通过，预算已扣除");
                         } catch (Exception e) {
                             System.err.println("处理报销预算扣除失败: " + e.getMessage());
+                            throw new RuntimeException("预算扣除失败，审批回滚", e);
                         }
                     }
                 } else {
                     // 项目经理审批通过，更新状态并创建财务审批流程
                     reimbursementRequest.setStatus(ReimbursementStatus.PENDING_FINANCE_APPROVAL);
                     reimbursementRequestRepository.save(reimbursementRequest);
-                    User financeApprover = findFinanceApprover();
-                    if (financeApprover != null) {
-                        createReimbursementApproval(reimbursementRequest, financeApprover);
-                        System.out.println("报销申请ID " + reimbursementRequest.getId() + " 项目经理审批通过，状态已更新为待财务审批");
+                    
+                    // 检查是否已存在财务审批流程，防止重复创建
+                    List<ApprovalFlow> existingFinanceApprovals = approvalFlowRepository
+                        .findByReimbursementRequestIdAndRequestTypeAndStatus(
+                            reimbursementRequest.getId(), "REIMBURSEMENT", "PENDING");
+                    
+                    boolean hasFinanceApproval = existingFinanceApprovals.stream()
+                        .anyMatch(af -> af.getApprover() != null && 
+                            af.getApprover().getRoles().stream()
+                                .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()) || "ROLE_ADMIN".equals(role.getName())));
+                    
+                    if (!hasFinanceApproval) {
+                        User financeApprover = findFinanceApprover();
+                        if (financeApprover != null) {
+                            createReimbursementApproval(reimbursementRequest, financeApprover);
+                            System.out.println("报销申请ID " + reimbursementRequest.getId() + " 项目经理审批通过，已创建财务审批流程");
+                        } else {
+                            System.err.println("未找到财务审批人，无法创建财务审批流程");
+                            throw new RuntimeException("未找到财务审批人");
+                        }
+                    } else {
+                        System.out.println("报销申请ID " + reimbursementRequest.getId() + " 财务审批流程已存在，跳过创建");
                     }
                 }
             } else if ("REJECTED".equals(status)) {

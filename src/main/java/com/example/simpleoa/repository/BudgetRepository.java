@@ -3,10 +3,13 @@ package com.example.simpleoa.repository;
 import com.example.simpleoa.model.Budget;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BudgetRepository extends JpaRepository<Budget, Long> {
@@ -14,7 +17,7 @@ public interface BudgetRepository extends JpaRepository<Budget, Long> {
     List<Budget> findByStatus(String status);
     List<Budget> findByStartDateBetweenOrEndDateBetween(Date startDate1, Date endDate1, Date startDate2, Date endDate2);
     
-    @Query("SELECT b FROM Budget b WHERE b.project.id = ?1 AND b.startDate <= ?2 AND b.endDate >= ?2")
+    @Query("SELECT b FROM Budget b WHERE b.project.id = ?1 AND b.status = '活跃' AND b.startDate <= ?2 AND b.endDate >= ?2")
     List<Budget> findActiveBudgetsByProjectAndDate(Long projectId, Date date);
     
     @Query("SELECT SUM(b.totalAmount) FROM Budget b WHERE b.project.id = ?1")
@@ -22,6 +25,11 @@ public interface BudgetRepository extends JpaRepository<Budget, Long> {
     
     @Query("SELECT SUM(b.usedAmount) FROM Budget b WHERE b.project.id = ?1")
     Double getTotalUsedAmountByProject(Long projectId);
+    
+    // 使用悲观锁查询
+    @Query("SELECT b FROM Budget b WHERE b.id = ?1")
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Budget> findByIdForUpdate(Long id);
 
     Long countByProjectId(Long projectId);
 

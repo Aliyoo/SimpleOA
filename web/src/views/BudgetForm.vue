@@ -11,33 +11,18 @@
     </div>
 
     <el-card class="form-card">
-      <el-form
-        ref="budgetFormRef"
-        :model="budgetForm"
-        :rules="formRules"
-        label-width="120px"
-      >
+      <el-form ref="budgetFormRef" :model="budgetForm" :rules="formRules" label-width="120px">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="预算名称" prop="name">
               <el-input v-model="budgetForm.name" placeholder="请输入预算名称" />
             </el-form-item>
           </el-col>
-          
+
           <el-col :span="12">
             <el-form-item label="所属项目" prop="projectId">
-              <el-select
-                v-model="budgetForm.projectId"
-                placeholder="请选择项目"
-                style="width: 100%"
-                filterable
-              >
-                <el-option
-                  v-for="project in projects"
-                  :key="project.id"
-                  :label="project.name"
-                  :value="project.id"
-                />
+              <el-select v-model="budgetForm.projectId" placeholder="请选择项目" style="width: 100%" filterable>
+                <el-option v-for="project in projects" :key="project.id" :label="project.name" :value="project.id" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -58,11 +43,7 @@
 
           <el-col :span="12">
             <el-form-item label="状态" prop="status">
-              <el-select
-                v-model="budgetForm.status"
-                placeholder="请选择状态"
-                style="width: 100%"
-              >
+              <el-select v-model="budgetForm.status" placeholder="请选择状态" style="width: 100%">
                 <el-option label="活跃" value="活跃" />
                 <el-option label="暂停" value="暂停" />
                 <el-option label="已完成" value="已完成" />
@@ -86,23 +67,13 @@
 
           <el-col :span="12">
             <el-form-item label="结束日期" prop="endDate">
-              <el-date-picker
-                v-model="budgetForm.endDate"
-                type="date"
-                placeholder="选择结束日期"
-                style="width: 100%"
-              />
+              <el-date-picker v-model="budgetForm.endDate" type="date" placeholder="选择结束日期" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
 
         <el-form-item label="预算描述">
-          <el-input
-            v-model="budgetForm.description"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入预算描述"
-          />
+          <el-input v-model="budgetForm.description" type="textarea" :rows="4" placeholder="请输入预算描述" />
         </el-form-item>
       </el-form>
     </el-card>
@@ -112,9 +83,7 @@
       <template #header>
         <div class="card-header">
           <span>预算项目</span>
-          <el-button type="primary" size="small" @click="showAddItemDialog = true">
-            添加项目
-          </el-button>
+          <el-button type="primary" size="small" @click="showAddItemDialog = true"> 添加项目 </el-button>
         </div>
       </template>
 
@@ -153,27 +122,14 @@
     </el-card>
 
     <!-- 添加预算项目对话框 -->
-    <el-dialog
-      v-model="showAddItemDialog"
-      title="添加预算项目"
-      width="600px"
-    >
-      <el-form
-        ref="itemFormRef"
-        :model="itemForm"
-        :rules="itemFormRules"
-        label-width="100px"
-      >
+    <el-dialog v-model="showAddItemDialog" title="添加预算项目" width="600px">
+      <el-form ref="itemFormRef" :model="itemForm" :rules="itemFormRules" label-width="100px">
         <el-form-item label="项目名称" prop="name">
           <el-input v-model="itemForm.name" placeholder="请输入项目名称" />
         </el-form-item>
 
         <el-form-item label="类别" prop="category">
-          <el-select
-            v-model="itemForm.category"
-            placeholder="请选择类别"
-            style="width: 100%"
-          >
+          <el-select v-model="itemForm.category" placeholder="请选择类别" style="width: 100%">
             <el-option label="人工费用" value="人工费用" />
             <el-option label="设备费用" value="设备费用" />
             <el-option label="材料费用" value="材料费用" />
@@ -194,11 +150,7 @@
         </el-form-item>
 
         <el-form-item label="状态" prop="status">
-          <el-select
-            v-model="itemForm.status"
-            placeholder="请选择状态"
-            style="width: 100%"
-          >
+          <el-select v-model="itemForm.status" placeholder="请选择状态" style="width: 100%">
             <el-option label="活跃" value="活跃" />
             <el-option label="暂停" value="暂停" />
             <el-option label="已完成" value="已完成" />
@@ -206,12 +158,7 @@
         </el-form-item>
 
         <el-form-item label="描述">
-          <el-input
-            v-model="itemForm.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入描述"
-          />
+          <el-input v-model="itemForm.description" type="textarea" :rows="3" placeholder="请输入描述" />
         </el-form-item>
       </el-form>
 
@@ -263,33 +210,17 @@ const isEdit = computed(() => route.params.id && route.params.id !== 'new')
 
 // 表单验证规则
 const formRules = {
-  name: [
-    { required: true, message: '请输入预算名称', trigger: 'blur' }
-  ],
-  projectId: [
-    { required: true, message: '请选择项目', trigger: 'change' }
-  ],
-  totalAmount: [
-    { required: true, message: '请输入总金额', trigger: 'blur' }
-  ],
-  startDate: [
-    { required: true, message: '请选择开始日期', trigger: 'change' }
-  ],
-  endDate: [
-    { required: true, message: '请选择结束日期', trigger: 'change' }
-  ]
+  name: [{ required: true, message: '请输入预算名称', trigger: 'blur' }],
+  projectId: [{ required: true, message: '请选择项目', trigger: 'change' }],
+  totalAmount: [{ required: true, message: '请输入总金额', trigger: 'blur' }],
+  startDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
+  endDate: [{ required: true, message: '请选择结束日期', trigger: 'change' }]
 }
 
 const itemFormRules = {
-  name: [
-    { required: true, message: '请输入项目名称', trigger: 'blur' }
-  ],
-  category: [
-    { required: true, message: '请选择类别', trigger: 'change' }
-  ],
-  amount: [
-    { required: true, message: '请输入金额', trigger: 'blur' }
-  ]
+  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
+  category: [{ required: true, message: '请选择类别', trigger: 'change' }],
+  amount: [{ required: true, message: '请输入金额', trigger: 'blur' }]
 }
 
 // 方法
@@ -307,7 +238,7 @@ const loadBudget = async (id) => {
   try {
     const response = await axios.get(`/api/budgets/${id}`)
     const budget = response.data
-    
+
     Object.assign(budgetForm, {
       name: budget.name,
       projectId: budget.project?.id,
@@ -330,7 +261,7 @@ const loadBudget = async (id) => {
 const handleSubmit = async () => {
   try {
     await budgetFormRef.value.validate()
-    
+
     const submitData = {
       ...budgetForm,
       project: { id: budgetForm.projectId }
@@ -348,7 +279,7 @@ const handleSubmit = async () => {
     router.push('/budget-management')
   } catch (error) {
     if (error.message) return // 表单验证错误
-    
+
     ElMessage.error(isEdit.value ? '更新预算失败' : '创建预算失败')
     console.error('Error submitting budget:', error)
   }
@@ -361,7 +292,7 @@ const handleCancel = () => {
 const handleAddItem = async () => {
   try {
     await itemFormRef.value.validate()
-    
+
     const itemData = {
       ...itemForm,
       budget: { id: route.params.id }
@@ -369,11 +300,11 @@ const handleAddItem = async () => {
 
     await axios.post(`/api/budgets/${route.params.id}/items`, itemData)
     ElMessage.success('预算项目添加成功')
-    
+
     // 重新加载预算项目
     const response = await axios.get(`/api/budgets/${route.params.id}/items`)
     budgetItems.value = response.data
-    
+
     // 重置表单
     Object.assign(itemForm, {
       name: '',
@@ -382,11 +313,11 @@ const handleAddItem = async () => {
       status: '活跃',
       description: ''
     })
-    
+
     showAddItemDialog.value = false
   } catch (error) {
     if (error.message) return // 表单验证错误
-    
+
     ElMessage.error('添加预算项目失败')
     console.error('Error adding budget item:', error)
   }
@@ -399,25 +330,21 @@ const editBudgetItem = (item) => {
 
 const deleteBudgetItem = async (item) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要删除预算项目 "${item.name}" 吗？`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+    await ElMessageBox.confirm(`确定要删除预算项目 "${item.name}" 吗？`, '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
 
     await axios.delete(`/api/budgets/items/${item.id}`)
     ElMessage.success('删除成功')
-    
+
     // 重新加载预算项目
     const response = await axios.get(`/api/budgets/${route.params.id}/items`)
     budgetItems.value = response.data
   } catch (error) {
     if (error === 'cancel') return
-    
+
     ElMessage.error('删除失败')
     console.error('Error deleting budget item:', error)
   }
@@ -429,9 +356,9 @@ const formatCurrency = (value) => {
 
 const getItemStatusType = (status) => {
   const statusMap = {
-    '活跃': 'success',
-    '暂停': 'warning',
-    '已完成': 'info'
+    活跃: 'success',
+    暂停: 'warning',
+    已完成: 'info'
   }
   return statusMap[status] || 'default'
 }

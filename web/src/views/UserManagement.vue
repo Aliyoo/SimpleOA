@@ -2,7 +2,7 @@
   <div class="user-management-container">
     <h1>用户管理</h1>
     <el-button type="primary" @click="showAddDialog">添加用户</el-button>
-    
+
     <el-table :data="userList" style="width: 100%">
       <el-table-column prop="username" label="用户名" />
       <el-table-column prop="realName" label="真实姓名" />
@@ -26,7 +26,7 @@
           <template v-if="scope.row.roles && scope.row.roles.length > 0">
             <el-tag v-for="role in scope.row.roles" :key="role.id" style="margin-right: 5px">{{ role.name }}</el-tag>
           </template>
-          <span v-else style="color: #909399;">暂无角色</span>
+          <span v-else style="color: #909399">暂无角色</span>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="240" fixed="right">
@@ -39,15 +39,15 @@
     </el-table>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" @closed="onDialogClosed">
-      <el-form :model="userForm" :rules="rules" ref="userFormRef" label-width="100px">
+      <el-form ref="userFormRef" :model="userForm" :rules="rules" label-width="100px">
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="userForm.username" :disabled="isEdit"/>
+          <el-input v-model="userForm.username" :disabled="isEdit" />
         </el-form-item>
-        <el-form-item label="密码" prop="password" v-if="!isEdit">
+        <el-form-item v-if="!isEdit" label="密码" prop="password">
           <el-input v-model="userForm.password" type="password" />
         </el-form-item>
-        <el-form-item label="密码" prop="newPassword" v-else>
-          <el-input v-model="userForm.newPassword" type="password" placeholder="留空则不修改密码"/>
+        <el-form-item v-else label="密码" prop="newPassword">
+          <el-input v-model="userForm.newPassword" type="password" placeholder="留空则不修改密码" />
         </el-form-item>
         <el-form-item label="真实姓名" prop="realName">
           <el-input v-model="userForm.realName" />
@@ -70,20 +70,15 @@
         <el-button type="primary" @click="submitForm">确认</el-button>
       </template>
     </el-dialog>
-    
+
     <el-dialog v-model="roleDialogVisible" title="分配角色" @closed="onRoleDialogClosed">
-      <el-form :model="roleForm" ref="roleAssignFormRef" label-width="100px">
+      <el-form ref="roleAssignFormRef" :model="roleForm" label-width="100px">
         <el-form-item label="用户名">
           <el-input v-model="roleForm.username" disabled />
         </el-form-item>
         <el-form-item label="角色分配" prop="roles">
-          <el-select v-model="roleForm.roles" multiple placeholder="请选择角色" style="width: 100%;">
-            <el-option
-              v-for="role in roleList"
-              :key="role.id"
-              :label="role.name"
-              :value="role.id"
-            />
+          <el-select v-model="roleForm.roles" multiple placeholder="请选择角色" style="width: 100%">
+            <el-option v-for="role in roleList" :key="role.id" :label="role.name" :value="role.id" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -132,8 +127,8 @@ const rules = {
   newPassword: [],
   realName: [{ required: true, message: '请输入真实姓名', trigger: 'blur' }],
   email: [
-      { required: true, message: '请输入邮箱', trigger: 'blur' },
-      { type: 'email', message: '请输入有效的邮箱地址', trigger: ['blur', 'change'] }
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '请输入有效的邮箱地址', trigger: ['blur', 'change'] }
   ],
   phoneNumber: [{ required: true, message: '请输入电话', trigger: 'blur' }],
   enabled: [{ required: true, type: 'number', message: '请选择状态', trigger: 'change' }]
@@ -143,7 +138,7 @@ const fetchUsers = async () => {
   try {
     const response = await api.get('/api/users')
     console.log('获取到的用户数据:', response.data) // 添加日志
-    userList.value = response.data.map(user => {
+    userList.value = response.data.map((user) => {
       // 处理enabled字段，确保是数字类型
       let enabledValue = user.enabled
       if (typeof enabledValue === 'string') {
@@ -153,13 +148,13 @@ const fetchUsers = async () => {
       } else if (enabledValue === null || enabledValue === undefined) {
         enabledValue = 0 // 默认为禁用
       }
-      
+
       console.log(`用户 ${user.username} 的enabled值:`, user.enabled, '->', enabledValue)
-      
-      return { 
-        ...user, 
-        enabled: enabledValue, 
-        statusLoading: false 
+
+      return {
+        ...user,
+        enabled: enabledValue,
+        statusLoading: false
       }
     })
     console.log('处理后的用户列表:', userList.value) // 添加日志
@@ -181,34 +176,34 @@ const showAddDialog = async () => {
   isEdit.value = false
   dialogTitle.value = '添加用户'
   userForm.value = {
-      id: null,
-      username: '',
-      password: '',
-      newPassword: '',
-      realName: '',
-      email: '',
-      phoneNumber: '',
-      enabled: 1
-  };
+    id: null,
+    username: '',
+    password: '',
+    newPassword: '',
+    realName: '',
+    email: '',
+    phoneNumber: '',
+    enabled: 1
+  }
   dialogVisible.value = true
-  await nextTick();
-  userFormRef.value?.clearValidate();
+  await nextTick()
+  userFormRef.value?.clearValidate()
 }
 
 const handleEdit = async (user) => {
   isEdit.value = true
   dialogTitle.value = '编辑用户'
-  userForm.value.id = user.id;
-  userForm.value.username = Array.isArray(user.username) ? (user.username[0] || '') : (user.username || '');
-  userForm.value.password = '';
-  userForm.value.newPassword = '';
-  userForm.value.realName = Array.isArray(user.realName) ? (user.realName[0] || '') : (user.realName || '');
-  userForm.value.email = Array.isArray(user.email) ? (user.email[0] || '') : (user.email || '');
-  userForm.value.phoneNumber = Array.isArray(user.phoneNumber) ? (user.phoneNumber[0] || '') : (user.phoneNumber || '');
-  userForm.value.enabled = typeof user.enabled === 'string' ? parseInt(user.enabled, 10) : user.enabled;
-  dialogVisible.value = true;
-  await nextTick();
-  userFormRef.value?.clearValidate();
+  userForm.value.id = user.id
+  userForm.value.username = Array.isArray(user.username) ? user.username[0] || '' : user.username || ''
+  userForm.value.password = ''
+  userForm.value.newPassword = ''
+  userForm.value.realName = Array.isArray(user.realName) ? user.realName[0] || '' : user.realName || ''
+  userForm.value.email = Array.isArray(user.email) ? user.email[0] || '' : user.email || ''
+  userForm.value.phoneNumber = Array.isArray(user.phoneNumber) ? user.phoneNumber[0] || '' : user.phoneNumber || ''
+  userForm.value.enabled = typeof user.enabled === 'string' ? parseInt(user.enabled, 10) : user.enabled
+  dialogVisible.value = true
+  await nextTick()
+  userFormRef.value?.clearValidate()
 }
 
 const submitForm = async () => {
@@ -216,20 +211,20 @@ const submitForm = async () => {
   await userFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
-        const payload = { ...userForm.value };
+        const payload = { ...userForm.value }
         if (isEdit.value) {
-            delete payload.password;
-            if (!payload.newPassword) {
-                delete payload.newPassword;
-            }
-            payload.enabled = Number(payload.enabled);
-            await api.put(`/api/users/${payload.id}`, payload)
-            ElMessage.success('更新成功')
+          delete payload.password
+          if (!payload.newPassword) {
+            delete payload.newPassword
+          }
+          payload.enabled = Number(payload.enabled)
+          await api.put(`/api/users/${payload.id}`, payload)
+          ElMessage.success('更新成功')
         } else {
-            delete payload.newPassword;
-            payload.enabled = Number(payload.enabled);
-            await api.post('/api/users', payload)
-            ElMessage.success('添加成功')
+          delete payload.newPassword
+          payload.enabled = Number(payload.enabled)
+          await api.post('/api/users', payload)
+          ElMessage.success('添加成功')
         }
         dialogVisible.value = false
         fetchUsers()
@@ -241,76 +236,68 @@ const submitForm = async () => {
 }
 
 const onDialogClosed = () => {
-    // Optional: Reset form fully when dialog closes if needed
-    // userFormRef.value?.resetFields(); 
+  // Optional: Reset form fully when dialog closes if needed
+  // userFormRef.value?.resetFields();
 }
 
 const handleDelete = async (user) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要删除用户 "${user.username}" 吗?`, 
-      '提示', 
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
+    await ElMessageBox.confirm(`确定要删除用户 "${user.username}" 吗?`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
     await api.delete(`/api/users/${user.id}`)
     ElMessage.success('删除成功')
     fetchUsers()
   } catch (error) {
-     if (error !== 'cancel') {
-        ElMessage.error('删除失败: ' + error.message)
-     }
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败: ' + error.message)
+    }
   }
 }
 
 const confirmStatusChange = async (user) => {
-    const newEnabledState = user.enabled === 1 ? 0 : 1;
-    const actionText = newEnabledState === 1 ? '启用' : '禁用';
-    try {
-        await ElMessageBox.confirm(
-            `确定要${actionText}用户 ${user.username} 吗?`,
-            '提示',
-            {
-                confirmButtonText: '确定',
-                cancelButtonText: '取消',
-                type: 'warning'
-            }
-        );
-        await updateUserStatus(user, newEnabledState); 
-        return false;
-    } catch (error) {
-        return false;
-    }
-};
+  const newEnabledState = user.enabled === 1 ? 0 : 1
+  const actionText = newEnabledState === 1 ? '启用' : '禁用'
+  try {
+    await ElMessageBox.confirm(`确定要${actionText}用户 ${user.username} 吗?`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await updateUserStatus(user, newEnabledState)
+    return false
+  } catch (error) {
+    return false
+  }
+}
 
 const updateUserStatus = async (user, newEnabledState) => {
-    user.statusLoading = true;
-    try {
-        await api.patch(`/api/users/${user.id}/status`, { enabled: newEnabledState })
-        user.enabled = newEnabledState; 
-        ElMessage.success('状态更新成功')
-    } catch (error) {
-        ElMessage.error('状态更新失败: ' + error.message)
-    } finally {
-        user.statusLoading = false; 
-    }
-};
+  user.statusLoading = true
+  try {
+    await api.patch(`/api/users/${user.id}/status`, { enabled: newEnabledState })
+    user.enabled = newEnabledState
+    ElMessage.success('状态更新成功')
+  } catch (error) {
+    ElMessage.error('状态更新失败: ' + error.message)
+  } finally {
+    user.statusLoading = false
+  }
+}
 
 const handleAssignRoles = async (user) => {
   if (roleList.value.length === 0) {
-      await fetchRoles(); 
+    await fetchRoles()
   }
   roleForm.value = {
     id: user.id,
     username: user.username,
-    roles: Array.isArray(user.roles) ? user.roles.map(role => role.id) : []
+    roles: Array.isArray(user.roles) ? user.roles.map((role) => role.id) : []
   }
   roleDialogVisible.value = true
-  await nextTick();
-  roleAssignFormRef.value?.clearValidate();
+  await nextTick()
+  roleAssignFormRef.value?.clearValidate()
 }
 
 const submitRoleForm = async () => {
@@ -325,15 +312,14 @@ const submitRoleForm = async () => {
 }
 
 const onRoleDialogClosed = () => {
-    // Optional: Reset role assignment form if needed
+  // Optional: Reset role assignment form if needed
 }
 
 onMounted(() => {
   fetchUsers()
   // Fetch roles initially or defer until assign roles clicked
-  // fetchRoles() 
+  // fetchRoles()
 })
-
 </script>
 
 <style scoped>

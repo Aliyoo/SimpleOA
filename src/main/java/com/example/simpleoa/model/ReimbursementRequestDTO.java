@@ -1,5 +1,6 @@
 package com.example.simpleoa.model;
 
+import com.example.simpleoa.dto.ReimbursementItemDTO;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -14,7 +15,7 @@ public class ReimbursementRequestDTO {
     private Long id; // Good to have for updates
     private String title;
     private Long projectId; // New field for project association
-    private List<ReimbursementItem> items;
+    private List<ReimbursementItemDTO> items;
     private List<String> attachments;
 
     // Fields that might be part of a DTO but are often set/derived server-side

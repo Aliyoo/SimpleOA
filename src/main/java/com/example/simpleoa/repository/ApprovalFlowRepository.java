@@ -215,4 +215,16 @@ public interface ApprovalFlowRepository extends JpaRepository<ApprovalFlow, Long
     @Query("UPDATE ApprovalFlow af SET af.status = :status, af.updateTime = :updateTime " +
            "WHERE af.id IN :ids AND af.status = 'PENDING'")
     int batchUpdateStatus(@Param("ids") List<Long> ids, @Param("status") String status, @Param("updateTime") Date updateTime);
+    
+    // 新增：根据报销请求ID、请求类型和状态查询审批流程
+    @Query("SELECT af FROM ApprovalFlow af " +
+           "LEFT JOIN FETCH af.approver " +
+           "LEFT JOIN FETCH af.approver.roles " +
+           "WHERE af.reimbursementRequest.id = :reimbursementRequestId " +
+           "AND af.requestType = :requestType " +
+           "AND af.status = :status")
+    List<ApprovalFlow> findByReimbursementRequestIdAndRequestTypeAndStatus(
+            @Param("reimbursementRequestId") Long reimbursementRequestId,
+            @Param("requestType") String requestType,
+            @Param("status") String status);
 }

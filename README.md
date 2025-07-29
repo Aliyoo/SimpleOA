@@ -6,6 +6,270 @@
 - **企业管理**：包括通知公告管理、员工手册管理和用章管理。
 - **系统管理**：包括用户管理、岗位管理、权限管理和系统配置。
 
+## 报销管理系统详细说明
+
+### 核心功能概述
+报销管理系统是本项目的核心业务模块之一，实现了完整的报销申请、审批、预算校验和扣减流程。系统支持多级审批流程，与项目预算管理深度集成，确保财务合规性。
+
+### 业务流程图
+```
+员工提交报销申请 → 预算校验 → 项目经理审批 → 财务经理审批 → 预算扣减 → 审批完成
+     ↓                ↓           ↓            ↓            ↓         ↓
+   草稿状态        预算验证    待项目经理审批  待财务审批   自动扣减   审批通过
+     ↓                ↓           ↓            ↓            ↓         ↓
+  可编辑修改      不足则拒绝    可批准/驳回   可批准/驳回  更新预算   流程结束
+```
+
+### 状态流转说明
+- **DRAFT（草稿）**：初始状态，申请人可编辑修改
+- **PENDING_MANAGER_APPROVAL（待项目经理审批）**：提交后等待项目经理审批
+- **PENDING_FINANCE_APPROVAL（待财务审批）**：项目经理批准后等待财务审批
+- **APPROVED（审批通过）**：审批完成，预算已扣减
+- **REJECTED（已驳回）**：审批被拒绝，需要重新修改或撤回
+
+### 数据模型说明
+
+#### ReimbursementRequest（报销申请主表）
+| 字段名 | 类型 | 说明 | 约束 |
+|--------|------|------|------|
+| id | Long | 主键ID | 自增 |
+| applicant | User | 申请人 | 外键，非空 |
+| project | Project | 关联项目 | 外键，可空 |
+| title | String | 报销标题 | 非空，如"2025年6月差旅报销" |
+| totalAmount | BigDecimal | 总金额 | 由明细计算得出 |
+| status | ReimbursementStatus | 报销状态 | 枚举值 |
+| comment | String | 审批意见 | 可空 |
+| attachments | List\<String\> | 凭证文件路径列表 | 可空 |
+| items | List\<ReimbursementItem\> | 费用明细 | 一对多关系 |
+| createTime | LocalDateTime | 创建时间 | 自动生成 |
+| updateTime | LocalDateTime | 更新时间 | 自动更新 |
+
+#### ReimbursementItem（报销明细表）
+| 字段名 | 类型 | 说明 | 约束 |
+|--------|------|------|------|
+| id | Long | 主键ID | 自增 |
+| reimbursementRequest | ReimbursementRequest | 关联报销申请 | 外键，非空 |
+| expenseDate | LocalDate | 费用发生日期 | 格式：yyyy-MM-dd |
+| itemCategory | String | 费用类别 | 如"交通"、"餐饮"、"住宿" |
+| description | String | 费用描述 | 详细说明 |
+| amount | BigDecimal | 费用金额 | 非空 |
+| budget | Budget | 关联预算 | 外键，可空 |
+| budgetItem | BudgetItem | 关联预算明细 | 外键，可空 |
+
+#### ReimbursementRequestDTO（报销申请传输对象）
+| 字段名 | 类型 | 说明 |
+|--------|------|---------|
+| id | Long | 报销ID（用于更新） |
+| title | String | 报销标题 |
+| projectId | Long | 项目ID |
+| items | List\<ReimbursementItemDTO\> | 费用明细列表 |
+| attachments | List\<String\> | 附件路径列表 |
+
+#### ReimbursementItemDTO（报销明细传输对象）
+| 字段名 | 类型 | 说明 |
+|--------|------|---------|
+| id | Long | 明细ID（用于更新） |
+| expenseDate | LocalDate | 费用发生日期 |
+| itemCategory | String | 费用类别 |
+| description | String | 费用描述 |
+| amount | BigDecimal | 费用金额 |
+| budgetId | Long | 关联预算ID |
+| budgetItemId | Long | 关联预算明细ID |
+
+### API 接口文档
+
+#### 基础信息
+- **基础URL**: `/api/oa/reimbursement`
+- **认证方式**: JWT Token（Header: `Authorization: Bearer {token}`）
+- **返回格式**: 统一使用 `ApiResponse<T>` 包装
+
+#### 1. 创建报销申请
+```http
+POST /api/oa/reimbursement
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "title": "2025年6月差旅报销",
+  "projectId": 1,
+  "items": [
+    {
+      "expenseDate": "2025-06-15",
+      "itemCategory": "交通",
+      "description": "北京到上海高铁票",
+      "amount": 553.50,
+      "budgetId": 1
+    }
+  ],
+  "attachments": ["/uploads/receipts/receipt1.jpg"]
+}
+```
+
+**返回示例**:
+```json
+{
+  "success": true,
+  "message": "报销申请已创建",
+  "data": {
+    "id": 1,
+    "title": "2025年6月差旅报销",
+    "totalAmount": 553.50,
+    "status": "DRAFT",
+    "createTime": "2025-06-15T10:30:00"
+  }
+}
+```
+
+#### 2. 更新报销申请
+```http
+PUT /api/oa/reimbursement/{id}
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "title": "更新后的报销标题",
+  "projectId": 1,
+  "items": [...],
+  "attachments": [...]
+}
+```
+
+#### 3. 删除报销申请
+```http
+DELETE /api/oa/reimbursement/{id}
+Authorization: Bearer {token}
+```
+
+#### 4. 获取报销申请详情
+```http
+GET /api/oa/reimbursement/{id}
+Authorization: Bearer {token}
+```
+
+#### 5. 查询报销申请列表
+```http
+GET /api/oa/reimbursement?page=0&size=10&status=DRAFT&startDate=2025-06-01&endDate=2025-06-30&keyword=差旅
+Authorization: Bearer {token}
+```
+
+**查询参数**:
+- `page`: 页码（从0开始）
+- `size`: 每页数量
+- `status`: 报销状态（可选）
+- `startDate`: 开始日期（可选）
+- `endDate`: 结束日期（可选）
+- `keyword`: 关键字搜索（可选）
+
+#### 6. 提交审批
+```http
+POST /api/oa/reimbursement/{id}/submit
+Authorization: Bearer {token}
+```
+
+**返回示例**:
+```json
+{
+  "success": true,
+  "message": "报销申请已提交审批",
+  "data": {
+    "id": 1,
+    "status": "PENDING_MANAGER_APPROVAL"
+  }
+}
+```
+
+#### 7. 审批报销申请（已废弃）
+```http
+POST /api/oa/reimbursement/{id}/approval
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "decision": "APPROVE", // 或 "REJECT"
+  "comment": "审批意见"
+}
+```
+
+**注意**: 此接口已废弃，审批功能已迁移至统一审批管理系统。
+
+#### 8. 获取报销统计数据
+```http
+GET /api/oa/reimbursement/statistics?startDate=2025-06-01&endDate=2025-06-30
+Authorization: Bearer {token}
+```
+
+**返回示例**:
+```json
+{
+  "success": true,
+  "data": {
+    "summary": {
+      "totalAmount": 5230.50,
+      "totalCount": 8,
+      "approvalRate": "87.5%",
+      "avgAmount": 653.81,
+      "mostUsedCategory": "交通"
+    },
+    "details": [
+      {
+        "category": "交通",
+        "totalAmount": 2100.00,
+        "count": 3,
+        "avgAmount": 700.00
+      }
+    ]
+  }
+}
+```
+
+#### 9. 获取报销状态选项
+```http
+GET /api/oa/reimbursement/status-options
+Authorization: Bearer {token}
+```
+
+#### 10. 检查预算可用性
+```http
+GET /api/oa/reimbursement/{id}/check-budget
+Authorization: Bearer {token}
+```
+
+#### 11. 验证报销预算
+```http
+POST /api/oa/reimbursement/validate-budget
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "projectId": 1,
+  "items": [
+    {
+      "amount": 553.50,
+      "budgetId": 1
+    }
+  ]
+}
+```
+
+### 错误处理
+
+系统使用统一的错误处理机制，所有错误都会返回统一格式：
+
+```json
+{
+  "success": false,
+  "message": "错误描述",
+  "data": null
+}
+```
+
+**常见错误码**:
+- `400 Bad Request`: 参数错误或预算不足
+- `401 Unauthorized`: 未登录或Token失效
+- `403 Forbidden`: 没有权限执行该操作
+- `404 Not Found`: 资源不存在
+- `500 Internal Server Error`: 服务器内部错误
+
 ## 技术栈选型
 
 ### 前端技术

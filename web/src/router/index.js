@@ -68,7 +68,7 @@ const router = createRouter({
         {
           path: 'budget-management',
           name: 'BudgetManagement',
-          component: () => import('@/views/BudgetManagement.vue'),
+          component: () => import('@/views/BudgetManagement.vue')
         },
         {
           path: 'budget-expense-management',
@@ -287,128 +287,128 @@ const router = createRouter({
 
 // 路由与权限的映射关系
 const routePermissionMap = {
-  'Dashboard': 'dashboard:view',
-  'Projects': 'project:view',
-  'Tasks': 'task:view',
-  'OutsourcingManagement': 'outsourcing:view',
-  'PaymentManagement': 'payment:view',
-  'BudgetManagement': 'budget:view',
-  'BudgetExpenseManagement': 'budget:expense:view',
-  'PerformanceManagement': 'performance:view',
-  'TimeManagement': 'time:view',
-  'ProjectManagerTime': 'manager-time:view',
-  'LeaveManagement': 'leave:view',
-  'TravelManagement': 'travel:view',
-  'Reimbursement': 'reimbursement:view',
-  'Approvals': 'approval:view',
-  'UserManagement': 'user:view',
-  'RoleManagement': 'role:view',
-  'PermissionManagement': 'permission:view',
-  'LogManagement': 'log:view',
-  'Notification': 'notification:view',
-  'Announcement': 'announcement:view',
-  'SystemConfig': 'system:view',
-  'WorkdayManagement': 'workday:view',
-  'HolidayManagement': 'holiday:view',
-  'Profile': 'profile:view'
-};
+  Dashboard: 'dashboard:view',
+  Projects: 'project:view',
+  Tasks: 'task:view',
+  OutsourcingManagement: 'outsourcing:view',
+  PaymentManagement: 'payment:view',
+  BudgetManagement: 'budget:view',
+  BudgetExpenseManagement: 'budget:expense:view',
+  PerformanceManagement: 'performance:view',
+  TimeManagement: 'time:view',
+  ProjectManagerTime: 'manager-time:view',
+  LeaveManagement: 'leave:view',
+  TravelManagement: 'travel:view',
+  Reimbursement: 'reimbursement:view',
+  Approvals: 'approval:view',
+  UserManagement: 'user:view',
+  RoleManagement: 'role:view',
+  PermissionManagement: 'permission:view',
+  LogManagement: 'log:view',
+  Notification: 'notification:view',
+  Announcement: 'announcement:view',
+  SystemConfig: 'system:view',
+  WorkdayManagement: 'workday:view',
+  HolidayManagement: 'holiday:view',
+  Profile: 'profile:view'
+}
 
 // 添加全局状态标记
-let isUserRestoring = false;
+let isUserRestoring = false
 
 router.beforeEach(async (to, from, next) => {
-  const userStore = useUserStore();
+  const userStore = useUserStore()
 
   // 检查是否需要登录
-  if (to.matched.some(record => record.meta.requiresAuth)) {
+  if (to.matched.some((record) => record.meta.requiresAuth)) {
     // 如果没有认证状态且不在恢复过程中，跳转到登录页
     if (!userStore.isAuthenticated && !isUserRestoring) {
-      next({ name: 'Login', query: { redirect: to.fullPath } });
-      return;
+      next({ name: 'Login', query: { redirect: to.fullPath } })
+      return
     }
-    
+
     // 如果有认证状态但没有用户信息，尝试获取用户信息
     if (!userStore.user && userStore.isAuthenticated) {
       if (!isUserRestoring) {
-        isUserRestoring = true;
+        isUserRestoring = true
         try {
-          await userStore.fetchUser();
+          await userStore.fetchUser()
           // 确保权限和菜单也已加载
           if (userStore.permissions.length === 0) {
-            await userStore.fetchUserPermissions();
+            await userStore.fetchUserPermissions()
           }
           if (userStore.menus.length === 0) {
-            await userStore.fetchUserMenus();
+            await userStore.fetchUserMenus()
           }
-          isUserRestoring = false;
-          checkPermissionAndNavigate(to, next, userStore);
+          isUserRestoring = false
+          checkPermissionAndNavigate(to, next, userStore)
         } catch (error) {
-          console.error("验证用户信息失败:", error);
-          isUserRestoring = false;
+          console.error('验证用户信息失败:', error)
+          isUserRestoring = false
           // 认证失败，跳转到登录页
-          next({ name: 'Login', query: { redirect: to.fullPath } });
+          next({ name: 'Login', query: { redirect: to.fullPath } })
         }
-        return;
+        return
       } else {
         // 如果正在恢复过程中，等待一段时间再重试
         setTimeout(() => {
-          next({ ...to, replace: true });
-        }, 100);
-        return;
+          next({ ...to, replace: true })
+        }, 100)
+        return
       }
     }
-    
+
     // 已经有用户信息，但可能缺少权限或菜单，尝试补全
     if (userStore.user && (userStore.permissions.length === 0 || userStore.menus.length === 0)) {
       try {
         if (userStore.permissions.length === 0) {
-          await userStore.fetchUserPermissions();
+          await userStore.fetchUserPermissions()
         }
         if (userStore.menus.length === 0) {
-          await userStore.fetchUserMenus();
+          await userStore.fetchUserMenus()
         }
       } catch (error) {
-        console.warn("补全用户权限或菜单失败:", error);
+        console.warn('补全用户权限或菜单失败:', error)
         // 不阻塞导航，继续执行
       }
     }
-    
+
     // 检查权限后继续导航
-    checkPermissionAndNavigate(to, next, userStore);
-    return;
+    checkPermissionAndNavigate(to, next, userStore)
+    return
   }
 
   // 如果不需要登录，直接允许访问
-  next();
-});
+  next()
+})
 
 // 检查权限并导航的辅助函数
 function checkPermissionAndNavigate(to, next, userStore) {
   // 如果是admin用户，允许访问所有路由
   if (userStore.isAdmin) {
-    next();
-    return;
+    next()
+    return
   }
 
   // 检查是否有权限访问该路由
   if (to.name && routePermissionMap[to.name]) {
-    const requiredPermission = routePermissionMap[to.name];
+    const requiredPermission = routePermissionMap[to.name]
     if (userStore.hasPermission(requiredPermission)) {
-      next();
+      next()
     } else {
       // 如果没有权限，跳转到仪表盘或者有权限的第一个页面
       if (userStore.hasPermission('dashboard:view')) {
-        next({ name: 'Dashboard' });
+        next({ name: 'Dashboard' })
       } else if (userStore.hasPermission('profile:view')) {
-        next({ name: 'Profile' });
+        next({ name: 'Profile' })
       } else {
         // 如果连基本权限都没有，跳转到登录页
-        next({ name: 'Login' });
+        next({ name: 'Login' })
       }
     }
   } else {
     // 如果路由没有配置权限要求，允许访问
-    next();
+    next()
   }
 }
 

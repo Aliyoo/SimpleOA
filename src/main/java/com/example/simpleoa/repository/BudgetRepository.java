@@ -4,6 +4,7 @@ import com.example.simpleoa.model.Budget;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import jakarta.persistence.LockModeType;
@@ -56,4 +57,8 @@ public interface BudgetRepository extends JpaRepository<Budget, Long> {
 
     @Query("SELECT b FROM Budget b WHERE b.project.id = ?1 AND b.remainingAmount > 0 AND b.status = 'ACTIVE'")
     List<Budget> findAvailableBudgetsByProject(Long projectId);
+    
+    // 根据项目ID列表查询预算
+    @Query("SELECT b FROM Budget b WHERE b.project.id IN :projectIds")
+    List<Budget> findByProjectIdIn(@Param("projectIds") List<Long> projectIds);
 }

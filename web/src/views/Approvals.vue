@@ -726,7 +726,6 @@ const closeDetailDialog = () => {
   currentApprovalDetail.value = null
 }
 
-
 const handleApprove = async (approval) => {
   try {
     // 更新审批流程状态

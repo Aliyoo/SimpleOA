@@ -9,10 +9,17 @@ import com.example.simpleoa.model.BudgetItem;
 import com.example.simpleoa.model.Project;
 import com.example.simpleoa.model.User;
 import com.example.simpleoa.service.BudgetService;
+import com.example.simpleoa.service.ProjectService;
+import com.example.simpleoa.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -21,15 +28,36 @@ import java.util.Map;
 @RequestMapping("/api/budgets")
 public class BudgetController {
     private final BudgetService budgetService;
+    private final ProjectService projectService;
+    private final UserService userService;
 
     @Autowired
-    public BudgetController(BudgetService budgetService) {
+    public BudgetController(BudgetService budgetService, ProjectService projectService, UserService userService) {
         this.budgetService = budgetService;
+        this.projectService = projectService;
+        this.userService = userService;
     }
 
     // 预算基本管理
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('budget:add', 'budget:edit:own', 'budget:edit:all')")
     public Budget createBudget(@RequestBody BudgetRequestDTO budgetRequestDTO) {
+        // 检查权限
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        // 如果是项目经理，检查是否是该项目的经理
+        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER")) &&
+            !auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:edit:all"))) {
+            User currentUser = (User) userService.loadUserByUsername(username);
+            if (currentUser != null && budgetRequestDTO.getProjectId() != null) {
+                Project project = projectService.getProjectById(budgetRequestDTO.getProjectId());
+                if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
+                    throw new RuntimeException("您只能为自己管理的项目创建预算");
+                }
+            }
+        }
+        
         // 将DTO转换为Budget实体
         Budget budget = new Budget();
         budget.setName(budgetRequestDTO.getName());
@@ -54,13 +82,75 @@ public class BudgetController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('budget:edit', 'budget:edit:own', 'budget:edit:all')")
     public Budget updateBudget(@PathVariable Long id, @RequestBody Budget budget) {
+        // 检查权限
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        // 获取现有预算信息
+        Budget existingBudget = budgetService.getBudgetById(id);
+        if (existingBudget == null) {
+            throw new RuntimeException("预算不存在");
+        }
+        
+        // 检查是否有权限修改
+        boolean hasEditAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:edit:all")) ||
+                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
+                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        
+        if (!hasEditAllPermission) {
+            // 检查是否是项目经理且管理该项目
+            if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+                User currentUser = (User) userService.loadUserByUsername(username);
+                if (currentUser != null && existingBudget.getProject() != null) {
+                    Project project = projectService.getProjectById(existingBudget.getProject().getId());
+                    if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
+                        throw new RuntimeException("您没有权限修改此预算");
+                    }
+                }
+            } else {
+                throw new RuntimeException("您没有权限修改预算");
+            }
+        }
+        
         budget.setId(id);
         return budgetService.updateBudget(budget);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('budget:delete', 'budget:delete:own', 'budget:delete:all')")
     public void deleteBudget(@PathVariable Long id) {
+        // 检查权限
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        // 获取现有预算信息
+        Budget existingBudget = budgetService.getBudgetById(id);
+        if (existingBudget == null) {
+            throw new RuntimeException("预算不存在");
+        }
+        
+        // 检查是否有权限删除
+        boolean hasDeleteAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:delete:all")) ||
+                                        auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
+                                        auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        
+        if (!hasDeleteAllPermission) {
+            // 检查是否是项目经理且管理该项目
+            if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+                User currentUser = (User) userService.loadUserByUsername(username);
+                if (currentUser != null && existingBudget.getProject() != null) {
+                    Project project = projectService.getProjectById(existingBudget.getProject().getId());
+                    if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
+                        throw new RuntimeException("您没有权限删除此预算");
+                    }
+                }
+            } else {
+                throw new RuntimeException("您没有权限删除预算");
+            }
+        }
+        
         budgetService.deleteBudget(id);
     }
 
@@ -70,12 +160,59 @@ public class BudgetController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('budget:view', 'budget:view:own', 'budget:view:all')")
     public List<Budget> getAllBudgets() {
-        return budgetService.getAllBudgets();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        // 检查用户角色
+        boolean hasViewAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:view:all")) ||
+                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
+                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        
+        if (hasViewAllPermission) {
+            // 管理员和财务可以查看所有预算
+            return budgetService.getAllBudgets();
+        } else if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+            // 项目经理只能查看自己管理的项目的预算
+            User currentUser = (User) userService.loadUserByUsername(username);
+            if (currentUser != null) {
+                List<Project> managedProjects = projectService.getProjectsByManagerId(currentUser.getId());
+                List<Budget> budgets = new ArrayList<>();
+                for (Project project : managedProjects) {
+                    budgets.addAll(budgetService.getBudgetsByProject(project.getId()));
+                }
+                return budgets;
+            }
+        }
+        
+        // 其他用户返回空列表
+        return new ArrayList<>();
     }
 
     @GetMapping("/project/{projectId}")
+    @PreAuthorize("hasAnyAuthority('budget:view', 'budget:view:own', 'budget:view:all')")
     public List<Budget> getBudgetsByProject(@PathVariable Long projectId) {
+        // 检查权限
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        // 检查用户角色
+        boolean hasViewAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:view:all")) ||
+                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
+                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        
+        if (!hasViewAllPermission && auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+            // 项目经理只能查看自己管理的项目的预算
+            User currentUser = (User) userService.loadUserByUsername(username);
+            if (currentUser != null) {
+                Project project = projectService.getProjectById(projectId);
+                if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
+                    throw new RuntimeException("您没有权限查看此项目的预算");
+                }
+            }
+        }
+        
         return budgetService.getBudgetsByProject(projectId);
     }
 
@@ -270,6 +407,7 @@ public class BudgetController {
 
     @GetMapping("/{budgetId}/expenses")
     public List<BudgetExpense> getBudgetExpensesByBudget(@PathVariable Long budgetId) {
+        // 确保调用最新的 Service 方法
         return budgetService.getBudgetExpensesByBudget(budgetId);
     }
 
@@ -295,6 +433,11 @@ public class BudgetController {
         return budgetService.getBudgetExpensesByStatus(status);
     }
 
+    /**
+     * 获取项目级预算支出（已过时）
+     * @deprecated 请使用 /api/projects/{projectId}/expenses
+     */
+    @Deprecated
     @GetMapping("/project/{projectId}/expenses")
     public List<BudgetExpense> getBudgetExpensesByProject(@PathVariable Long projectId) {
         return budgetService.getBudgetExpensesByProject(projectId);
@@ -441,12 +584,54 @@ public class BudgetController {
     }
 
     @GetMapping("/project/{projectId}/available-budgets")
+    @PreAuthorize("hasAnyAuthority('budget:view', 'budget:view:own', 'budget:view:all')")
     public List<Budget> getAvailableBudgetsForProject(@PathVariable Long projectId) {
+        // 检查权限
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        // 检查用户角色
+        boolean hasViewAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:view:all")) ||
+                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
+                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        
+        if (!hasViewAllPermission && auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+            // 项目经理只能查看自己管理的项目的预算
+            User currentUser = (User) userService.loadUserByUsername(username);
+            if (currentUser != null) {
+                Project project = projectService.getProjectById(projectId);
+                if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
+                    throw new RuntimeException("您没有权限查看此项目的预算");
+                }
+            }
+        }
+        
         return budgetService.getAvailableBudgetsForProject(projectId);
     }
 
     @GetMapping("/project/{projectId}/budget-items")
+    @PreAuthorize("hasAnyAuthority('budget:view', 'budget:view:own', 'budget:view:all')")
     public List<BudgetItem> getAvailableBudgetItemsForProject(@PathVariable Long projectId) {
+        // 检查权限
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        // 检查用户角色
+        boolean hasViewAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:view:all")) ||
+                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
+                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        
+        if (!hasViewAllPermission && auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+            // 项目经理只能查看自己管理的项目的预算项目
+            User currentUser = (User) userService.loadUserByUsername(username);
+            if (currentUser != null) {
+                Project project = projectService.getProjectById(projectId);
+                if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
+                    throw new RuntimeException("您没有权限查看此项目的预算项目");
+                }
+            }
+        }
+        
         return budgetService.getBudgetItemsByProject(projectId).stream()
                 .filter(item -> item.getRemainingAmount() != null && item.getRemainingAmount() > 0)
                 .toList();

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -140,6 +141,14 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     public List<Budget> getBudgetsByProject(Long projectId) {
         return budgetRepository.findByProjectId(projectId);
+    }
+    
+    @Override
+    public List<Budget> getBudgetsByProjects(List<Long> projectIds) {
+        if (projectIds == null || projectIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return budgetRepository.findByProjectIdIn(projectIds);
     }
 
     @Override
@@ -288,20 +297,14 @@ public class BudgetServiceImpl implements BudgetService {
             Budget budget = budgetRepository.findById(budgetExpense.getBudget().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Budget not found"));
             budgetExpense.setBudget(budget);
-            budget.setUsedAmount(budget.getUsedAmount() + budgetExpense.getAmount());
-            budget.setRemainingAmount(budget.getRemainingAmount() - budgetExpense.getAmount());
-            budget.setLastUpdateTime(new Date());
-            budgetRepository.save(budget);
+            // 不再直接累加，而是在操作完成后调用统一更新方法
         }
 
         if (budgetExpense.getBudgetItem() != null && budgetExpense.getBudgetItem().getId() != null) {
             BudgetItem budgetItem = budgetItemRepository.findById(budgetExpense.getBudgetItem().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Budget item not found"));
-            budgetItem.setUsedAmount(budgetItem.getUsedAmount() + budgetExpense.getAmount());
-            budgetItem.setRemainingAmount(budgetItem.getRemainingAmount() - budgetExpense.getAmount());
-            budgetItem.setLastUpdateTime(new Date());
-            budgetItemRepository.save(budgetItem);
             budgetExpense.setBudgetItem(budgetItem);
+            // 不再直接累加，而是在操作完成后调用统一更新方法
         }
 
         if (budgetExpense.getExpenseDate() == null) {
@@ -310,7 +313,14 @@ public class BudgetServiceImpl implements BudgetService {
         budgetExpense.setCreateTime(new Date());
         budgetExpense.setLastUpdateTime(new Date());
 
-        return budgetExpenseRepository.save(budgetExpense);
+        BudgetExpense savedExpense = budgetExpenseRepository.save(budgetExpense);
+        
+        // 在保存支出后，更新预算金额
+        if (savedExpense.getBudget() != null) {
+            updateBudgetAmounts(savedExpense.getBudget().getId());
+        }
+        
+        return savedExpense;
     }
 
     @Override
@@ -474,7 +484,7 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     public List<BudgetExpense> getBudgetExpensesByProject(Long projectId) {
-        return budgetExpenseRepository.findByBudget_ProjectId(projectId);
+        return budgetExpenseRepository.findByProjectId(projectId);
     }
 
     @Override
@@ -491,13 +501,13 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     public Double getTotalExpenseAmountByProject(Long projectId) {
-        Double total = budgetExpenseRepository.sumAmountByBudget_ProjectId(projectId);
+        Double total = budgetExpenseRepository.sumAmountByProjectId(projectId);
         return total != null ? total : 0.0;
     }
 
     @Override
     public Double getTotalExpenseAmountByProjectAndDateRange(Long projectId, Date startDate, Date endDate) {
-        Double total = budgetExpenseRepository.sumAmountByBudget_ProjectIdAndExpenseDateBetween(projectId, startDate, endDate);
+        Double total = budgetExpenseRepository.sumAmountByProjectIdAndExpenseDateBetween(projectId, startDate, endDate);
         return total != null ? total : 0.0;
     }
 
@@ -531,7 +541,7 @@ public class BudgetServiceImpl implements BudgetService {
         stats.put("totalExpenseAmount", getTotalExpenseAmountByProject(projectId));
         stats.put("budgetCount", budgetRepository.countByProjectId(projectId));
         stats.put("budgetItemCount", budgetItemRepository.countByProjectId(projectId));
-        stats.put("budgetExpenseCount", budgetExpenseRepository.countByBudget_ProjectId(projectId));
+        stats.put("budgetExpenseCount", budgetExpenseRepository.countByProjectId(projectId));
         stats.put("unresolvedAlertCount", budgetAlertRepository.countByBudget_ProjectIdAndStatus(projectId, "未解决"));
 
         return stats;
@@ -844,5 +854,38 @@ public class BudgetServiceImpl implements BudgetService {
     @Override
     public List<Budget> getAvailableBudgetsForProject(Long projectId) {
         return budgetRepository.findAvailableBudgetsByProject(projectId);
+    }
+    
+    /**
+     * 更新预算的已使用金额和剩余金额
+     * 从 BudgetExpense 表重新计算，确保数据准确性和幂等性
+     */
+    @Override
+    @Transactional
+    public void updateBudgetAmounts(Long budgetId) {
+        Budget budget = budgetRepository.findById(budgetId)
+                .orElseThrow(() -> new EntityNotFoundException("Budget not found"));
+        
+        // 从 BudgetExpense 重新计算已使用金额
+        Double totalUsedAmount = budgetExpenseRepository.sumAmountByBudgetId(budgetId);
+        if (totalUsedAmount == null) {
+            totalUsedAmount = 0.0;
+        }
+        
+        // 更新预算使用金额和剩余金额
+        budget.setUsedAmount(totalUsedAmount);
+        budget.setRemainingAmount(budget.getTotalAmount() - totalUsedAmount);
+        budget.setLastUpdateTime(new Date());
+        
+        budgetRepository.save(budget);
+    }
+    
+    /**
+     * 从支出记录获取预算的总使用金额
+     */
+    @Override
+    public Double getTotalUsedAmountByBudgetFromExpenses(Long budgetId) {
+        Double total = budgetExpenseRepository.sumAmountByBudgetId(budgetId);
+        return total != null ? total : 0.0;
     }
 }

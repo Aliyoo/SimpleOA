@@ -1,7 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ReimbursementDetail from '../views/ReimbursementDetail.vue'
-import { ElDialog, ElButton, ElDescriptions, ElDescriptionsItem, ElTable, ElTableColumn, ElImage, ElIcon, ElLink, ElEmpty } from 'element-plus'
+import {
+  ElDialog,
+  ElButton,
+  ElDescriptions,
+  ElDescriptionsItem,
+  ElTable,
+  ElTableColumn,
+  ElImage,
+  ElIcon,
+  ElLink,
+  ElEmpty
+} from 'element-plus'
 
 // Mock axios
 vi.mock('../utils/axios.js', () => ({
@@ -37,14 +48,14 @@ const mockReimbursementData = {
   },
   status: 'APPROVED',
   createTime: '2024-01-01 10:00:00',
-  totalAmount: 1000.00,
+  totalAmount: 1000.0,
   items: [
     {
       id: 1,
       expenseDate: '2024-01-01',
       itemCategory: '交通费',
       description: '出差车费',
-      amount: 500.00,
+      amount: 500.0,
       budget: {
         name: '差旅预算'
       }
@@ -54,17 +65,13 @@ const mockReimbursementData = {
       expenseDate: '2024-01-02',
       itemCategory: '餐费',
       description: '午餐费用',
-      amount: 500.00,
+      amount: 500.0,
       budgetItem: {
         name: '餐饮预算'
       }
     }
   ],
-  attachments: [
-    'http://example.com/receipt1.jpg',
-    'http://example.com/receipt2.png',
-    'http://example.com/invoice.pdf'
-  ]
+  attachments: ['http://example.com/receipt1.jpg', 'http://example.com/receipt2.png', 'http://example.com/invoice.pdf']
 }
 
 describe('ReimbursementDetail', () => {
@@ -109,7 +116,7 @@ describe('ReimbursementDetail', () => {
     expect(wrapper.text()).toContain('出差车费')
     expect(wrapper.text()).toContain('¥500')
     expect(wrapper.text()).toContain('差旅预算')
-    
+
     expect(wrapper.text()).toContain('餐费')
     expect(wrapper.text()).toContain('午餐费用')
     expect(wrapper.text()).toContain('餐饮预算')

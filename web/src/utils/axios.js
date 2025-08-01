@@ -20,8 +20,8 @@ const getBaseURL = () => {
   return import.meta.env.VITE_API_BASE_URL || '/api'
 }
 
-// 从环境变量获取超时时间（毫秒）
-const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '5000', 10)
+// 从环境变量获取超时时间（毫秒），默认5分钟
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '300000', 10)
 
 // 防止重复显示登录失效对话框的状态
 let isShowingAuthDialog = false
@@ -89,22 +89,21 @@ api.interceptors.response.use(
       console.error('认证错误 (401/403)，询问用户是否重新登录:', error.response)
       if (!isShowingAuthDialog) {
         isShowingAuthDialog = true
-        ElMessageBox.confirm(
-          '登录失效，请重新登录。点击"取消"以继续停留在当前页面。',
-          '登录失效',
-          {
-            confirmButtonText: '重新登录',
-            cancelButtonText: '取消',
-            type: 'warning',
-            distinguishCancelAndClose: true
-          }
-        ).then(() => {
-          router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } })
-        }).catch(() => {
-          console.log('用户选择留在当前页面')
-        }).finally(() => {
-          isShowingAuthDialog = false
+        ElMessageBox.confirm('登录失效，请重新登录。点击"取消"以继续停留在当前页面。', '登录失效', {
+          confirmButtonText: '重新登录',
+          cancelButtonText: '取消',
+          type: 'warning',
+          distinguishCancelAndClose: true
         })
+          .then(() => {
+            router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } })
+          })
+          .catch(() => {
+            console.log('用户选择留在当前页面')
+          })
+          .finally(() => {
+            isShowingAuthDialog = false
+          })
       }
     }
     return Promise.reject(error)

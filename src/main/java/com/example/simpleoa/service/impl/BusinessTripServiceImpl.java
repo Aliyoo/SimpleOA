@@ -1,14 +1,15 @@
 package com.example.simpleoa.service.impl;
 
-import com.example.simpleoa.model.ApprovalFlow;
-import com.example.simpleoa.model.BusinessTripRequest;
-import com.example.simpleoa.model.User;
+import com.example.simpleoa.dto.BusinessTripRequestDTO;
+import com.example.simpleoa.model.*;
 import com.example.simpleoa.repository.BusinessTripRequestRepository;
 import com.example.simpleoa.repository.UserRepository;
+import com.example.simpleoa.repository.ProjectRepository;
 import com.example.simpleoa.service.ApprovalFlowService;
 import com.example.simpleoa.service.BusinessTripService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,156 @@ public class BusinessTripServiceImpl implements BusinessTripService {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private ProjectRepository projectRepository;
+
+    @Override
+    @Transactional
+    public BusinessTripRequest createBusinessTrip(BusinessTripRequestDTO dto, Long applicantId) {
+        User applicant = userRepository.findById(applicantId)
+                .orElseThrow(() -> new RuntimeException("User not found for ID: " + applicantId));
+
+        BusinessTripRequest request = new BusinessTripRequest();
+        request.setApplicant(applicant);
+        request.setDestination(dto.getDestination());
+        request.setStartTime(dto.getStartTime());
+        request.setEndTime(dto.getEndTime());
+        request.setPurpose(dto.getPurpose());
+        request.setDays(dto.getDays());
+        request.setComment(dto.getComment());
+        request.setStatus(BusinessTripStatus.DRAFT);
+
+        // 处理项目关联
+        if (dto.getProjectId() != null) {
+            Project project = projectRepository.findById(dto.getProjectId())
+                    .orElseThrow(() -> new RuntimeException("Project not found for ID: " + dto.getProjectId()));
+            request.setProject(project);
+        }
+
+        return businessTripRequestRepository.save(request);
+    }
+
+    @Override
+    @Transactional
+    public BusinessTripRequest updateBusinessTrip(Long id, BusinessTripRequestDTO dto) {
+        BusinessTripRequest request = getBusinessTripById(id);
+        
+        // 只有草稿状态的申请才能修改
+        if (request.getStatus() != BusinessTripStatus.DRAFT) {
+            throw new RuntimeException("只有草稿状态的出差申请才能修改");
+        }
+
+        request.setDestination(dto.getDestination());
+        request.setStartTime(dto.getStartTime());
+        request.setEndTime(dto.getEndTime());
+        request.setPurpose(dto.getPurpose());
+        request.setDays(dto.getDays());
+        request.setComment(dto.getComment());
+
+        // 处理项目关联更新
+        if (dto.getProjectId() != null) {
+            Project project = projectRepository.findById(dto.getProjectId())
+                    .orElseThrow(() -> new RuntimeException("Project not found for ID: " + dto.getProjectId()));
+            request.setProject(project);
+        } else {
+            request.setProject(null); // 允许取消项目关联
+        }
+
+        return businessTripRequestRepository.save(request);
+    }
+
+    @Override
+    @Transactional
+    public BusinessTripRequest submitBusinessTrip(Long id) {
+        BusinessTripRequest request = getBusinessTripById(id);
+        
+        if (request.getStatus() != BusinessTripStatus.DRAFT) {
+            throw new RuntimeException("只有草稿状态的出差申请才能提交");
+        }
+
+        // 数据验证
+        validateBusinessTripRequest(request);
+
+        // 设置为待审批状态
+        request.setStatus(BusinessTripStatus.PENDING);
+        BusinessTripRequest savedRequest = businessTripRequestRepository.save(request);
+
+        // 创建审批流程
+        if (request.getProject() != null && request.getProject().getManager() != null) {
+            approvalFlowService.createBusinessTripApproval(savedRequest, request.getProject().getManager());
+        } else {
+            throw new RuntimeException("出差申请必须关联项目，且项目必须有指定的项目经理");
+        }
+
+        return savedRequest;
+    }
+
+
+
+    @Override
+    @Transactional
+    public BusinessTripRequest rejectBusinessTrip(Long id, String comment) {
+        BusinessTripRequest request = getBusinessTripById(id);
+        
+        if (request.getStatus() == BusinessTripStatus.DRAFT || 
+            request.getStatus() == BusinessTripStatus.APPROVED || 
+            request.getStatus() == BusinessTripStatus.REJECTED) {
+            throw new RuntimeException("出差申请当前状态不允许拒绝操作");
+        }
+
+        // 设置为已拒绝状态
+        request.setStatus(BusinessTripStatus.REJECTED);
+        request.setComment(comment);
+        BusinessTripRequest savedRequest = businessTripRequestRepository.save(request);
+
+        // 更新当前审批流程状态
+        updateCurrentApprovalFlow(id, "REJECTED", comment);
+
+        return savedRequest;
+    }
+
+    @Override
+    public List<BusinessTripRequest> getBusinessTripsByProject(Long projectId) {
+        return businessTripRequestRepository.findByProjectId(projectId);
+    }
+
+    private void validateBusinessTripRequest(BusinessTripRequest request) {
+        if (request.getDestination() == null || request.getDestination().trim().isEmpty()) {
+            throw new IllegalArgumentException("出差地点不能为空");
+        }
+        if (request.getStartTime() == null || request.getEndTime() == null) {
+            throw new IllegalArgumentException("出差时间不能为空");
+        }
+        if (request.getStartTime().isAfter(request.getEndTime())) {
+            throw new IllegalArgumentException("开始时间不能晚于结束时间");
+        }
+        if (request.getPurpose() == null || request.getPurpose().trim().isEmpty()) {
+            throw new IllegalArgumentException("出差事由不能为空");
+        }
+        if (request.getProject() == null) {
+            throw new IllegalArgumentException("出差申请必须关联项目");
+        }
+    }
+
+    private void updateCurrentApprovalFlow(Long businessTripId, String status, String comment) {
+        List<ApprovalFlow> flows = approvalFlowService.getApprovalFlowsByBusinessTripRequest(businessTripId);
+        if (!flows.isEmpty()) {
+            // 更新最新的审批流程状态
+            ApprovalFlow latestFlow = flows.get(0); // 假设按创建时间排序，第一个是最新的
+            approvalFlowService.updateApprovalFlowStatus(latestFlow.getId(), status, comment);
+            
+            // 通知状态变更
+            approvalFlowService.notifyStatusChange(latestFlow.getId(), status);
+        }
+    }
+
+    private User getFinanceUser() {
+        // 这里应该实现获取财务用户的逻辑
+        // 可以通过角色查询或者配置的方式获取
+        // 暂时返回第一个用户作为测试
+        return userRepository.findAll().iterator().next();
+    }
 
     @Override
     public BusinessTripRequest createBusinessTrip(BusinessTripRequest businessTripRequest) {
@@ -44,7 +195,7 @@ public class BusinessTripServiceImpl implements BusinessTripService {
         }
         
         // 设置默认状态
-        businessTripRequest.setStatus("PENDING");
+        businessTripRequest.setStatus(BusinessTripStatus.PENDING);
         
         // 如果没有设置申请人，需要从当前用户获取
         if (businessTripRequest.getApplicant() == null) {
@@ -96,7 +247,23 @@ public class BusinessTripServiceImpl implements BusinessTripService {
     public BusinessTripRequest approveBusinessTrip(Long id, String status, String comment) {
         BusinessTripRequest request = getBusinessTripById(id);
         if (request != null) {
-            request.setStatus(status);
+            // 将字符串状态转换为枚举
+            BusinessTripStatus businessTripStatus;
+            switch (status.toUpperCase()) {
+                case "APPROVED":
+                    businessTripStatus = BusinessTripStatus.APPROVED;
+                    break;
+                case "REJECTED":
+                    businessTripStatus = BusinessTripStatus.REJECTED;
+                    break;
+                case "PENDING":
+                    businessTripStatus = BusinessTripStatus.PENDING;
+                    break;
+                default:
+                    businessTripStatus = BusinessTripStatus.PENDING;
+            }
+            
+            request.setStatus(businessTripStatus);
             request.setComment(comment);
             BusinessTripRequest savedRequest = businessTripRequestRepository.save(request);
             
@@ -182,20 +349,10 @@ public class BusinessTripServiceImpl implements BusinessTripService {
                     detail.put("totalDays", entry.getValue());
                     detail.put("totalCount", trips.stream().filter(trip -> trip.getDestination().equals(entry.getKey())).count());
                     detail.put("percentage", totalDays > 0 ? String.format("%.1f%%", (double)entry.getValue() / totalDays * 100) : "0%");
-                    // 计算总预算
-                    double totalBudget = trips.stream()
-                            .filter(trip -> trip.getDestination().equals(entry.getKey()))
-                            .mapToDouble(trip -> trip.getEstimatedCost() != null ? trip.getEstimatedCost().doubleValue() : 0.0)
-                            .sum();
-                    detail.put("totalBudget", totalBudget);
                     return detail;
                 })
                 .collect(Collectors.toList());
         
-        // 计算总预算
-        double totalBudget = trips.stream()
-                .mapToDouble(trip -> trip.getEstimatedCost() != null ? trip.getEstimatedCost().doubleValue() : 0.0)
-                .sum();
         
         // 构建返回结果
         Map<String, Object> result = new HashMap<>();
@@ -206,7 +363,6 @@ public class BusinessTripServiceImpl implements BusinessTripService {
         summary.put("totalCount", totalCount);
         summary.put("approvalRate", approvalRate);
         summary.put("mostUsedDestination", mostUsedDestination);
-        summary.put("totalBudget", totalBudget);
         
         result.put("summary", summary);
         result.put("details", details);

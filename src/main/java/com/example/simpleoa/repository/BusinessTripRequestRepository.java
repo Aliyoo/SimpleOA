@@ -1,6 +1,7 @@
 package com.example.simpleoa.repository;
 
 import com.example.simpleoa.model.BusinessTripRequest;
+import com.example.simpleoa.model.BusinessTripStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -59,4 +60,13 @@ public interface BusinessTripRequestRepository extends JpaRepository<BusinessTri
     
     // 按申请人和状态查询
     List<BusinessTripRequest> findByApplicantIdAndStatus(Long applicantId, String status);
+    
+    // 按项目ID查询
+    List<BusinessTripRequest> findByProjectId(Long projectId);
+    
+    // 按项目ID和状态查询
+    List<BusinessTripRequest> findByProjectIdAndStatus(Long projectId, BusinessTripStatus status);
+    
+    // 按状态查询（使用枚举）
+    List<BusinessTripRequest> findByStatus(BusinessTripStatus status);
 }

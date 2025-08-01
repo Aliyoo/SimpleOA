@@ -36,24 +36,50 @@ public class BusinessTripRequest {
     @JsonProperty("reason")
     private String purpose; // 前端使用reason，后端使用purpose
     
-    @JsonProperty("budget")
-    private BigDecimal estimatedCost; // 前端使用budget，后端使用estimatedCost
-    
     private Integer days; // 出差天数
-    private String status;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BusinessTripStatus status; // 使用枚举表示状态
+    
     private String comment;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "applicant_id", nullable = false)
     private User applicant;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", nullable = true) // 允许为空，如果出差不特定于项目
+    private Project project;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createTime;
+    
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updateTime;
 
     public Long getUserId() {
         return applicant != null ? applicant.getId() : null;
     }
     
-    // 数据转换方法，确保时间字段同步
     @PrePersist
+    protected void onCreate() {
+        createTime = LocalDateTime.now();
+        updateTime = LocalDateTime.now();
+        if (status == null) {
+            status = BusinessTripStatus.DRAFT;
+        }
+        syncDateFields();
+    }
+
     @PreUpdate
-    public void syncDateFields() {
+    protected void onUpdate() {
+        updateTime = LocalDateTime.now();
+        syncDateFields();
+    }
+    
+    // 数据转换方法，确保时间字段同步
+    private void syncDateFields() {
         if (startTime != null) {
             startDate = startTime.toLocalDate();
         }

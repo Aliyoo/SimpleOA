@@ -1,6 +1,7 @@
 package com.example.simpleoa.service.impl;
 
 import com.example.simpleoa.model.*;
+import com.example.simpleoa.constants.ExpenseCategory;
 import com.example.simpleoa.dto.ReimbursementItemDTO;
 import com.example.simpleoa.repository.*;
 import com.example.simpleoa.service.ReimbursementService;
@@ -285,13 +286,15 @@ public class ReimbursementServiceImpl implements ReimbursementService {
                 }
                 
                 if (item.getBudget() != null) {
-                    // 使用新的decrease方法扣减预算
-                    budgetService.decreaseBudget(item.getBudget().getId(), item.getAmount().doubleValue(), referenceNumber);
+                    // 创建预算支出记录
                     createBudgetExpenseFromReimbursement(item, request, referenceNumber);
+                    // 调用统一更新方法，重新计算预算金额
+                    budgetService.updateBudgetAmounts(item.getBudget().getId());
                 } else if (item.getBudgetItem() != null) {
-                    // 使用新的decrease方法扣减预算项
-                    budgetService.decreaseBudgetItem(item.getBudgetItem().getId(), item.getAmount().doubleValue(), referenceNumber);
+                    // 创建预算支出记录
                     createBudgetExpenseFromReimbursementItem(item, request, referenceNumber);
+                    // 调用统一更新方法，重新计算预算金额
+                    budgetService.updateBudgetAmounts(item.getBudgetItem().getBudget().getId());
                 } else {
                     logger.warn("Reimbursement item {} has no budget or budget item association", item.getId());
                 }
@@ -448,7 +451,13 @@ public class ReimbursementServiceImpl implements ReimbursementService {
             ReimbursementItem item = new ReimbursementItem();
             item.setId(dto.getId());
             item.setExpenseDate(dto.getExpenseDate());
+            
+            // 验证费用类别
+            if (dto.getItemCategory() != null && !ExpenseCategory.isValidCategory(dto.getItemCategory())) {
+                throw new IllegalArgumentException("无效的费用类别: " + dto.getItemCategory());
+            }
             item.setItemCategory(dto.getItemCategory());
+            
             item.setDescription(dto.getDescription());
             item.setAmount(dto.getAmount());
             item.setReimbursementRequest(request);

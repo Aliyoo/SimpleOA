@@ -17,6 +17,7 @@ public interface BudgetService {
     Budget getBudgetById(Long id);
     List<Budget> getAllBudgets();
     List<Budget> getBudgetsByProject(Long projectId);
+    List<Budget> getBudgetsByProjects(List<Long> projectIds);
     List<Budget> getBudgetsByStatus(String status);
     List<Budget> getBudgetsByDateRange(Date startDate, Date endDate);
     List<Budget> getActiveBudgetsByProjectAndDate(Long projectId, Date date);
@@ -92,4 +93,8 @@ public interface BudgetService {
     Map<String, Object> getBudgetStatsByDateRange(Date startDate, Date endDate);
     Map<String, Object> getBudgetPerformanceStats();
     Map<String, Object> getBudgetTrend(int months);
+    
+    // 新增的统计更新和查询方法
+    void updateBudgetAmounts(Long budgetId);
+    Double getTotalUsedAmountByBudgetFromExpenses(Long budgetId);
 }

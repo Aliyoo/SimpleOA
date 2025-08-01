@@ -64,12 +64,19 @@
                 <el-table-column label="费用类别" width="120" align="left">
                   <template #default="{ row, $index }">
                     <el-select v-model="row.itemCategory" placeholder="选择费用类别" size="small" style="width: 100%">
+                      <el-option label="劳务费" value="劳务费" />
+                      <el-option label="房屋费" value="房屋费" />
+                      <el-option label="差旅费" value="差旅费" />
                       <el-option label="交通费" value="交通费" />
-                      <el-option label="住宿费" value="住宿费" />
-                      <el-option label="餐费" value="餐费" />
-                      <el-option label="办公用品" value="办公用品" />
-                      <el-option label="通讯费" value="通讯费" />
-                      <el-option label="其他" value="其他" />
+                      <el-option label="办公费" value="办公费" />
+                      <el-option label="通信费" value="通信费" />
+                      <el-option label="车辆费" value="车辆费" />
+                      <el-option label="货运费" value="货运费" />
+                      <el-option label="物料消耗费" value="物料消耗费" />
+                      <el-option label="评审验收费" value="评审验收费" />
+                      <el-option label="加班餐费" value="加班餐费" />
+                      <el-option label="质保维护费(不含人工)" value="质保维护费(不含人工)" />
+                      <el-option label="业务招待费" value="业务招待费" />
                     </el-select>
                   </template>
                 </el-table-column>
@@ -491,7 +498,7 @@ const openDetail = async (row) => {
   try {
     console.log('openDetail called with row:', row)
     detailDialogVisible.value = true
-    
+
     // 如果传入的是完整的报销对象（包含items），直接使用
     if (row.items && Array.isArray(row.items)) {
       console.log('Using row data directly (has items):', row.items.length)

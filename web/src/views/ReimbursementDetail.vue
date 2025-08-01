@@ -121,7 +121,7 @@ const loading = ref(false)
 const fetchData = async () => {
   console.log('ReimbursementDetail fetchData called with:', props.reimbursement)
   console.log('Type of reimbursement prop:', typeof props.reimbursement)
-  
+
   if (typeof props.reimbursement === 'number') {
     // Fetch by ID
     console.log('Fetching by ID:', props.reimbursement)
@@ -145,7 +145,7 @@ const fetchData = async () => {
     console.log('No reimbursement data provided')
     reimbursementData.value = null
   }
-  
+
   console.log('Final reimbursementData in detail component:', reimbursementData.value)
 }
 

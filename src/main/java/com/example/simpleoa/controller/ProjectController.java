@@ -1,9 +1,11 @@
 package com.example.simpleoa.controller;
 
+import com.example.simpleoa.model.BudgetExpense;
 import com.example.simpleoa.model.Project;
 import com.example.simpleoa.model.ProjectStatus;
 import com.example.simpleoa.model.Task;
 import com.example.simpleoa.model.User;
+import com.example.simpleoa.service.BudgetService;
 import com.example.simpleoa.service.ProjectService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +27,12 @@ public class ProjectController {
     private static final Logger logger = LoggerFactory.getLogger(ProjectController.class);
 
     private final ProjectService projectService;
+    private final BudgetService budgetService;
 
     @Autowired
-    public ProjectController(ProjectService projectService) {
+    public ProjectController(ProjectService projectService, BudgetService budgetService) {
         this.projectService = projectService;
+        this.budgetService = budgetService;
     }
 
     @PostMapping
@@ -103,6 +107,11 @@ public class ProjectController {
     @GetMapping("/{projectId}/members")
     public Set<User> getProjectMembers(@PathVariable Long projectId) {
         return projectService.getProjectMembers(projectId);
+    }
+
+    @GetMapping("/{projectId}/expenses")
+    public List<BudgetExpense> getExpensesByProject(@PathVariable Long projectId) {
+        return budgetService.getBudgetExpensesByProject(projectId);
     }
 
     @GetMapping("/{projectId}/total-hours")

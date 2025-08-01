@@ -226,11 +226,45 @@ const itemFormRules = {
 // 方法
 const loadProjects = async () => {
   try {
-    const response = await axios.get('/api/projects')
-    projects.value = response.data
+    // 根据用户权限获取不同的项目列表
+    let response
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}')
+    const roles = userInfo.roles || []
+
+    // 检查用户角色
+    const isAdmin = roles.some((role) => role.name === 'ROLE_ADMIN')
+    const isFinance = roles.some((role) => role.name === 'ROLE_FINANCE')
+    const isProjectManager = roles.some((role) => role.name === 'ROLE_MANAGER')
+
+    if (isAdmin || isFinance) {
+      // 管理员和财务可以看到所有项目
+      response = await axios.get('/api/projects')
+    } else if (isProjectManager && userInfo.id) {
+      // 项目经理只能看到自己管理的项目
+      try {
+        response = await axios.get(`/api/projects/manager/${userInfo.id}`)
+      } catch (managerError) {
+        console.warn('项目经理项目接口调用失败，使用默认接口:', managerError)
+        response = await axios.get('/api/projects')
+      }
+    } else if (userInfo.id) {
+      // 其他用户看到参与的项目
+      try {
+        response = await axios.get(`/api/projects/user/${userInfo.id}`)
+      } catch (userError) {
+        console.warn('用户项目接口调用失败，使用默认接口:', userError)
+        response = await axios.get('/api/projects')
+      }
+    } else {
+      // 如果没有用户ID，使用默认接口
+      response = await axios.get('/api/projects')
+    }
+
+    projects.value = response.data || []
   } catch (error) {
-    ElMessage.error('加载项目列表失败')
     console.error('Error loading projects:', error)
+    ElMessage.error('加载项目列表失败: ' + (error.response?.data?.message || error.message))
+    projects.value = []
   }
 }
 

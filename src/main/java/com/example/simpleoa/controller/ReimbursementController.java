@@ -1,6 +1,7 @@
 package com.example.simpleoa.controller;
 
 import com.example.simpleoa.common.ApiResponse;
+import com.example.simpleoa.constants.ExpenseCategory;
 import com.example.simpleoa.model.ReimbursementRequest;
 import com.example.simpleoa.model.ReimbursementRequestDTO;
 import com.example.simpleoa.model.ReimbursementStatus;
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -106,5 +108,11 @@ public class ReimbursementController {
     public ResponseEntity<ApiResponse<Boolean>> validateReimbursementBudget(@RequestBody ReimbursementRequestDTO dto) {
         boolean valid = reimbursementService.validateReimbursementBudget(dto);
         return ResponseEntity.ok(ApiResponse.success("预算验证完成", valid));
+    }
+
+    @GetMapping("/expense-categories")
+    public ResponseEntity<ApiResponse<List<String>>> getExpenseCategories() {
+        List<String> categories = ExpenseCategory.getAllCategories();
+        return ResponseEntity.ok(ApiResponse.success("获取费用类别成功", categories));
     }
 }

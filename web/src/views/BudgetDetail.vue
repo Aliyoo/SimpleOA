@@ -103,7 +103,15 @@
           </el-col>
           <el-col :span="6">
             <div class="stat-item">
-              <div class="stat-value">{{ formatCurrency(budget.remainingAmount || budget.totalAmount) }}</div>
+              <div class="stat-value">
+                {{
+                  formatCurrency(
+                    budget.remainingAmount != null
+                      ? budget.remainingAmount
+                      : budget.totalAmount - (budget.usedAmount || 0)
+                  )
+                }}
+              </div>
               <div class="stat-label">剩余金额</div>
             </div>
           </el-col>
@@ -297,7 +305,7 @@ const loadBudgetDetail = async () => {
     const [budgetResponse, itemsResponse, expensesResponse, alertsResponse] = await Promise.all([
       axios.get(`/api/budgets/${budgetId.value}`),
       axios.get(`/api/budgets/${budgetId.value}/items`),
-      axios.get(`/api/budgets/${budgetId.value}/expenses`),
+      axios.get(`/api/budgets/${budgetId.value}/expenses`), // 使用预算级别接口而非项目级接口
       axios.get(`/api/budgets/${budgetId.value}/alerts`)
     ])
 
@@ -464,7 +472,8 @@ const formatCurrency = (value) => {
 
 const calculateUsagePercentage = (budget) => {
   if (!budget.totalAmount || budget.totalAmount === 0) return 0
-  const usedAmount = budget.usedAmount || 0
+  // 优先使用后端返回的 usedAmount，若没有则本地计算
+  const usedAmount = budget.usedAmount != null ? budget.usedAmount : budget.totalAmount - (budget.remainingAmount || 0)
   return Math.round((usedAmount / budget.totalAmount) * 100)
 }
 

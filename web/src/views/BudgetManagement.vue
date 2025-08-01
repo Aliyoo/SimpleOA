@@ -5,7 +5,14 @@
     <el-tabs v-model="activeTab">
       <el-tab-pane label="预算列表" name="budgetList">
         <div class="operation-bar">
-          <el-button type="primary" @click="handleCreateBudget">新建预算</el-button>
+          <el-button
+            type="primary"
+            :disabled="!canCreateBudget"
+            :title="canCreateBudget ? '新建预算' : '您没有可管理的项目，无法创建预算'"
+            @click="handleCreateBudget"
+          >
+            新建预算
+          </el-button>
           <el-input v-model="budgetSearch" placeholder="搜索预算" style="width: 300px; margin-left: 10px" clearable />
         </div>
 
@@ -26,11 +33,6 @@
               {{ formatDate(scope.row.endDate) }}
             </template>
           </el-table-column>
-          <el-table-column prop="remainingAmount" label="剩余金额" width="120">
-            <template #default="scope">
-              {{ formatCurrency(scope.row.remainingAmount) }}
-            </template>
-          </el-table-column>
           <el-table-column prop="totalAmount" label="总预算" width="120">
             <template #default="scope">
               {{ formatCurrency(scope.row.totalAmount) }}
@@ -38,7 +40,18 @@
           </el-table-column>
           <el-table-column prop="usedAmount" label="已使用" width="120">
             <template #default="scope">
-              {{ formatCurrency(scope.row.usedAmount) }}
+              {{ formatCurrency(scope.row.usedAmount || 0) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="remainingAmount" label="剩余金额" width="120">
+            <template #default="scope">
+              {{
+                formatCurrency(
+                  scope.row.remainingAmount != null
+                    ? scope.row.remainingAmount
+                    : scope.row.totalAmount - (scope.row.usedAmount || 0)
+                )
+              }}
             </template>
           </el-table-column>
           <el-table-column label="使用率" width="180">
@@ -255,11 +268,7 @@
     <!-- <el-dialog title="查看预警详情" v-model="alertViewDialogVisible"> ... </el-dialog> -->
 
     <!-- Resolve Alert Dialog -->
-    <el-dialog
-      v-model="resolveAlertDialogVisible"
-      title="解决预警"
-      @closed="handleResolveAlertDialogClosed"
-    >
+    <el-dialog v-model="resolveAlertDialogVisible" title="解决预警" @closed="handleResolveAlertDialogClosed">
       <el-form ref="resolveAlertFormRef" :model="resolveAlertForm" label-width="100px">
         <el-form-item label="预警消息">
           <el-input type="textarea" :value="selectedAlert?.message" :rows="3" readonly />
@@ -284,9 +293,11 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../utils/axios.js'
+import { useUserStore } from '@/stores/user'
 
 // --- Refs and Reactive Variables ---
 
+const userStore = useUserStore()
 const activeTab = ref('budgetList')
 
 // Budget List
@@ -312,7 +323,6 @@ const budgetForm = reactive(initialBudgetFormState())
 
 // Budget Alerts
 const budgetAlerts = ref([])
-const alertViewDialogVisible = ref(false)
 const selectedAlert = ref(null)
 const resolveAlertDialogVisible = ref(false)
 const resolveAlertForm = reactive({
@@ -347,6 +357,33 @@ const totalRemainingAmount = computed(() => {
 const totalUsagePercentage = computed(() => {
   if (totalBudgetAmount.value === 0) return 0
   return Math.round((totalUsedAmount.value / totalBudgetAmount.value) * 100)
+})
+
+// 判断用户是否可以创建预算
+const canCreateBudget = computed(() => {
+  if (!userStore.user) {
+    return false
+  }
+
+  const userInfo = userStore.user
+  const roles = userInfo.roles || []
+
+  // 管理员和财务总是可以创建预算
+  const isAdmin = roles.some((role) => role.name === 'ROLE_ADMIN')
+  const isFinance = roles.some((role) => role.name === 'ROLE_FINANCE')
+
+  if (isAdmin || isFinance) {
+    return projectOptions.value.length > 0
+  }
+
+  // 项目经理只有在有管理项目时才能创建预算
+  const isProjectManager = roles.some((role) => role.name === 'ROLE_MANAGER')
+  if (isProjectManager) {
+    return projectOptions.value.length > 0
+  }
+
+  // 其他用户不能创建预算
+  return false
 })
 
 // --- Validation Rules ---
@@ -400,11 +437,77 @@ const fetchBudgetAlerts = async () => {
 
 const fetchProjectsForSelect = async () => {
   try {
-    // Assuming an endpoint to fetch projects suitable for selection
-    const response = await api.get('/api/projects')
-    projectOptions.value = response.data // Expecting [{id: 1, name: 'Project A'}, ...]
+    // 确保用户信息已加载
+    if (!userStore.user) {
+      try {
+        await userStore.fetchUser()
+      } catch (error) {
+        console.error('获取用户信息失败:', error)
+        ElMessage.error('用户信息获取失败，请重新登录')
+        projectOptions.value = []
+        return
+      }
+    }
+
+    // 根据用户权限获取不同的项目列表
+    let response
+    const userInfo = userStore.user
+    console.log('用户信息:', userInfo)
+
+    const roles = userInfo.roles || []
+    console.log('用户角色:', roles)
+
+    // 检查用户角色
+    const isAdmin = roles.some((role) => role.name === 'ROLE_ADMIN')
+    const isFinance = roles.some((role) => role.name === 'ROLE_FINANCE')
+    const isProjectManager = roles.some((role) => role.name === 'ROLE_MANAGER')
+
+    console.log('角色判断结果:', { isAdmin, isFinance, isProjectManager })
+
+    if (isAdmin || isFinance) {
+      // 管理员和财务可以看到所有项目
+      response = await api.get('/api/projects')
+      console.log('管理员/财务用户，获取所有项目')
+    } else if (isProjectManager && userInfo.id) {
+      // 项目经理只能看到自己管理的项目
+      try {
+        response = await api.get(`/api/projects/manager/${userInfo.id}`)
+        console.log('项目经理用户，获取管理的项目:', response.data?.length || 0, '个')
+
+        // 如果项目经理没有管理的项目，显示提示信息
+        if (!response.data || response.data.length === 0) {
+          ElMessage.warning('您当前没有管理任何项目，无法创建预算')
+        }
+      } catch (managerError) {
+        console.error('获取项目经理管理的项目失败:', managerError)
+        ElMessage.error('获取管理项目失败，请联系管理员')
+        projectOptions.value = []
+        return
+      }
+    } else if (userInfo.id) {
+      // 其他用户看到参与的项目
+      try {
+        response = await api.get(`/api/projects/user/${userInfo.id}`)
+        console.log('普通用户，获取参与的项目:', response.data?.length || 0, '个')
+      } catch (userError) {
+        console.error('获取用户参与项目失败:', userError)
+        ElMessage.error('获取项目列表失败')
+        projectOptions.value = []
+        return
+      }
+    } else {
+      // 如果没有用户ID，显示错误
+      console.error('用户信息缺失')
+      ElMessage.error('用户信息缺失，请重新登录')
+      projectOptions.value = []
+      return
+    }
+
+    projectOptions.value = response.data || []
   } catch (error) {
-    ElMessage.error('获取项目列表失败: ' + error.message)
+    console.error('获取项目列表失败:', error)
+    ElMessage.error('获取项目列表失败: ' + (error.response?.data?.message || error.message))
+    projectOptions.value = []
   }
 }
 
@@ -415,6 +518,10 @@ const resetBudgetForm = () => {
 }
 
 const handleCreateBudget = () => {
+  if (!canCreateBudget.value) {
+    ElMessage.warning('您没有可管理的项目，无法创建预算')
+    return
+  }
   resetBudgetForm()
   budgetDialogVisible.value = true
 }
@@ -471,13 +578,13 @@ const handleDeleteBudget = async (item) => {
 }
 
 // Placeholder for view budget detail (could open a new page or dialog)
-const handleViewBudget = (item) => {
+const handleViewBudget = () => {
   ElMessage.info('查看预算详情功能待实现')
   // Example: router.push(`/budget/detail/${item.id}`);
 }
 
 // Alert Methods
-const handleViewAlert = (alert) => {
+const handleViewAlert = () => {
   ElMessage.info('查看预警详情功能待实现')
   // Example:
   // selectedAlert.value = alert;
@@ -525,6 +632,7 @@ const formatCurrency = (value) => {
 
 const calculateUsagePercentage = (budget) => {
   if (!budget || budget.totalAmount === 0 || budget.totalAmount == null) return 0
+  // 直接使用 (usedAmount / totalAmount) * 100
   return Math.max(0, Math.min(100, Math.round(((budget.usedAmount || 0) / budget.totalAmount) * 100)))
 }
 

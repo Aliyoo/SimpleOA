@@ -165,6 +165,7 @@ VALUES
 -- 功能权限 - 预算管理
 INSERT INTO permission (name, description, permission_type, resource, action, is_active)
 VALUES
+('budget:view:all', '查看所有预算', 'FUNCTIONAL', 'BUDGET', 'READ', TRUE),
 ('budget:view', '查看预算', 'FUNCTIONAL', 'BUDGET', 'READ', TRUE),
 ('budget:add', '添加预算', 'FUNCTIONAL', 'BUDGET', 'CREATE', TRUE),
 ('budget:edit', '编辑预算', 'FUNCTIONAL', 'BUDGET', 'UPDATE', TRUE),

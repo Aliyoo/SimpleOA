@@ -313,25 +313,49 @@ public class WorkTimeService {
     }
 
     public Map<String, Object> getDetailedStatsByUser(User user, LocalDate startDate, LocalDate endDate) {
-        List<WorkTimeRecord> records = workTimeRecordRepository.findByUserAndDateBetween(user, startDate, endDate);
+        // 使用去重查询避免重复记录
+        List<WorkTimeRecord> records = workTimeRecordRepository.findDistinctByUserAndDateBetween(user, startDate, endDate);
         Map<String, Object> stats = new HashMap<>();
-        stats.put("totalHours", workTimeRecordRepository.sumHoursByUserAndDateBetween(user, startDate, endDate));
-        stats.put("recordCount", records.size());
-        stats.put("averageHoursPerRecord", records.isEmpty() ? 0 : (Double)stats.get("totalHours") / records.size());
+        
+        // 使用新的去重统计方法
+        Double totalHours = workTimeRecordRepository.sumHoursByUserAndDateBetweenWithoutDuplicates(user.getId(), startDate, endDate);
+        if (totalHours == null) {
+            totalHours = 0.0;
+        }
+        
+        // 去重记录数统计：按日期和项目分组
+        Map<String, Set<Long>> dateProjectMap = new HashMap<>();
+        for (WorkTimeRecord record : records) {
+            String dateKey = record.getDate().toString();
+            dateProjectMap.computeIfAbsent(dateKey, k -> new HashSet<>()).add(record.getProject().getId());
+        }
+        int distinctRecordCount = dateProjectMap.values().stream()
+                .mapToInt(Set::size)
+                .sum();
+        
+        stats.put("totalHours", totalHours);
+        stats.put("recordCount", distinctRecordCount);
+        stats.put("averageHoursPerRecord", distinctRecordCount > 0 ? totalHours / distinctRecordCount : 0);
 
-        // 按项目分组统计工时
-        Map<Project, Double> projectHours = records.stream()
-                .collect(Collectors.groupingBy(
-                    WorkTimeRecord::getProject,
-                    Collectors.summingDouble(WorkTimeRecord::getHours)
-                ));
-
-        // 将Project对象转换为项目ID，以便前端处理
-        Map<Long, Double> projectIdHours = new HashMap<>();
-        projectHours.forEach((project, hours) -> {
-            if (project != null && project.getId() != null) {
-                projectIdHours.put(project.getId(), hours);
+        // 按项目分组统计工时，去重处理
+        Map<Long, Map<LocalDate, Double>> projectDateHours = new HashMap<>();
+        for (WorkTimeRecord record : records) {
+            if (record.getProject() != null && record.getProject().getId() != null) {
+                Long projectId = record.getProject().getId();
+                LocalDate date = record.getDate();
+                
+                projectDateHours.computeIfAbsent(projectId, k -> new HashMap<>())
+                    .merge(date, record.getHours(), Math::max); // 同一天同一项目取最大值
             }
+        }
+        
+        // 计算每个项目的总工时
+        Map<Long, Double> projectIdHours = new HashMap<>();
+        projectDateHours.forEach((projectId, dateHoursMap) -> {
+            double projectTotal = dateHoursMap.values().stream()
+                    .mapToDouble(Double::doubleValue)
+                    .sum();
+            projectIdHours.put(projectId, projectTotal);
         });
 
         // 添加项目工时数据

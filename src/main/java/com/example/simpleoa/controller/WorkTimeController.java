@@ -193,13 +193,27 @@ public class WorkTimeController {
                     parsedStartDate,
                     parsedEndDate);
 
-            // Include overtime hours calculation
+            // Include overtime hours calculation - 使用去重记录避免重复计算
+            Map<String, Map<Long, Double>> dateProjectHours = new HashMap<>();
             List<WorkTimeRecord> records = workTimeService.getWorkTimeRecordsByUserAndDateRange(
                     user, parsedStartDate, parsedEndDate);
-            double overtimeHours = 0.0;
+            
+            // 按日期和项目分组，避免重复计算
             for (WorkTimeRecord record : records) {
-                if (record.getHours() > 8.0) {
-                    overtimeHours += (record.getHours() - 8.0);
+                String dateKey = record.getDate().toString();
+                Long projectId = record.getProject().getId();
+                dateProjectHours.computeIfAbsent(dateKey, k -> new HashMap<>())
+                    .merge(projectId, record.getHours(), Math::max); // 同一天同一项目取最大值
+            }
+            
+            // 计算加班时长（每天超过8小时的部分）
+            double overtimeHours = 0.0;
+            for (Map.Entry<String, Map<Long, Double>> dateEntry : dateProjectHours.entrySet()) {
+                double dailyTotal = dateEntry.getValue().values().stream()
+                    .mapToDouble(Double::doubleValue)
+                    .sum();
+                if (dailyTotal > 8.0) {
+                    overtimeHours += (dailyTotal - 8.0);
                 }
             }
             stats.put("overtimeHours", overtimeHours);

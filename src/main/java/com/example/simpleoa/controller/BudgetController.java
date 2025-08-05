@@ -2,6 +2,8 @@ package com.example.simpleoa.controller;
 
 import com.example.simpleoa.dto.BudgetRequestDTO;
 import com.example.simpleoa.dto.BudgetExpenseRequestDTO;
+import com.example.simpleoa.dto.BudgetSearchDTO;
+import com.example.simpleoa.dto.PagedResponse;
 import com.example.simpleoa.model.Budget;
 import com.example.simpleoa.model.BudgetAlert;
 import com.example.simpleoa.model.BudgetExpense;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,22 +43,36 @@ public class BudgetController {
 
     // 预算基本管理
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('budget:add', 'budget:edit:own', 'budget:edit:all')")
+    @PreAuthorize("hasAnyAuthority('budget:edit:all') or hasAnyRole('ADMIN', 'FINANCE', 'MANAGER')")
     public Budget createBudget(@RequestBody BudgetRequestDTO budgetRequestDTO) {
-        // 检查权限
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
         
-        // 如果是项目经理，检查是否是该项目的经理
-        if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER")) &&
-            !auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:edit:all"))) {
-            User currentUser = (User) userService.loadUserByUsername(username);
-            if (currentUser != null && budgetRequestDTO.getProjectId() != null) {
+        boolean hasCreateAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:edit:all")) ||
+                                        auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
+                                        auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        
+        // 获取当前用户实体以检查角色
+        User currentUserForCreate = (User) userService.loadUserByUsername(username);
+        boolean isManagerForCreate = currentUserForCreate.getRoles() != null && currentUserForCreate.getRoles().stream()
+                .anyMatch(role -> {
+                    String roleName = role.getName();
+                    return "ROLE_MANAGER".equals(roleName) || 
+                           "MANAGER".equals(roleName) || 
+                           "项目经理".equals(roleName);
+                });
+        
+        if (!hasCreateAllPermission && isManagerForCreate) {
+            if (currentUserForCreate != null && budgetRequestDTO.getProjectId() != null) {
                 Project project = projectService.getProjectById(budgetRequestDTO.getProjectId());
-                if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
+                if (project == null || !currentUserForCreate.getId().equals(project.getManager().getId())) {
                     throw new RuntimeException("您只能为自己管理的项目创建预算");
                 }
+            } else {
+                throw new RuntimeException("必须为项目创建预算，且您只能为自己管理的项目创建预算");
             }
+        } else if (!hasCreateAllPermission) {
+            throw new RuntimeException("您没有权限创建预算");
         }
         
         // 将DTO转换为Budget实体
@@ -82,36 +99,43 @@ public class BudgetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('budget:edit', 'budget:edit:own', 'budget:edit:all')")
+    @PreAuthorize("hasAnyAuthority('budget:edit:all') or hasAnyRole('ADMIN', 'FINANCE', 'MANAGER')")
     public Budget updateBudget(@PathVariable Long id, @RequestBody Budget budget) {
-        // 检查权限
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
         
-        // 获取现有预算信息
         Budget existingBudget = budgetService.getBudgetById(id);
         if (existingBudget == null) {
             throw new RuntimeException("预算不存在");
         }
         
-        // 检查是否有权限修改
         boolean hasEditAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:edit:all")) ||
                                       auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
                                       auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
         
-        if (!hasEditAllPermission) {
-            // 检查是否是项目经理且管理该项目
-            if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
-                User currentUser = (User) userService.loadUserByUsername(username);
-                if (currentUser != null && existingBudget.getProject() != null) {
+        // 获取当前用户实体以检查角色
+        User currentUserForEdit = (User) userService.loadUserByUsername(username);
+        boolean isManagerForEdit = currentUserForEdit.getRoles() != null && currentUserForEdit.getRoles().stream()
+                .anyMatch(role -> {
+                    String roleName = role.getName();
+                    return "ROLE_MANAGER".equals(roleName) || 
+                           "MANAGER".equals(roleName) || 
+                           "项目经理".equals(roleName);
+                });
+        
+        if (!hasEditAllPermission && isManagerForEdit) {
+            if (currentUserForEdit != null) {
+                if (existingBudget.getProject() != null) {
                     Project project = projectService.getProjectById(existingBudget.getProject().getId());
-                    if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
-                        throw new RuntimeException("您没有权限修改此预算");
+                    if (project == null || !currentUserForEdit.getId().equals(project.getManager().getId())) {
+                        throw new RuntimeException("您只能修改自己管理项目的预算");
                     }
+                } else {
+                    throw new RuntimeException("该预算未关联项目，您无权修改");
                 }
-            } else {
-                throw new RuntimeException("您没有权限修改预算");
             }
+        } else if (!hasEditAllPermission) {
+            throw new RuntimeException("您没有权限修改预算");
         }
         
         budget.setId(id);
@@ -119,36 +143,43 @@ public class BudgetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('budget:delete', 'budget:delete:own', 'budget:delete:all')")
+    @PreAuthorize("hasAnyAuthority('budget:delete:all') or hasAnyRole('ADMIN', 'FINANCE', 'MANAGER')")
     public void deleteBudget(@PathVariable Long id) {
-        // 检查权限
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
         
-        // 获取现有预算信息
         Budget existingBudget = budgetService.getBudgetById(id);
         if (existingBudget == null) {
             throw new RuntimeException("预算不存在");
         }
         
-        // 检查是否有权限删除
         boolean hasDeleteAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:delete:all")) ||
                                         auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
                                         auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
         
-        if (!hasDeleteAllPermission) {
-            // 检查是否是项目经理且管理该项目
-            if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
-                User currentUser = (User) userService.loadUserByUsername(username);
-                if (currentUser != null && existingBudget.getProject() != null) {
+        // 获取当前用户实体以检查角色
+        User currentUserForDelete = (User) userService.loadUserByUsername(username);
+        boolean isManagerForDelete = currentUserForDelete.getRoles() != null && currentUserForDelete.getRoles().stream()
+                .anyMatch(role -> {
+                    String roleName = role.getName();
+                    return "ROLE_MANAGER".equals(roleName) || 
+                           "MANAGER".equals(roleName) || 
+                           "项目经理".equals(roleName);
+                });
+        
+        if (!hasDeleteAllPermission && isManagerForDelete) {
+            if (currentUserForDelete != null) {
+                if (existingBudget.getProject() != null) {
                     Project project = projectService.getProjectById(existingBudget.getProject().getId());
-                    if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
-                        throw new RuntimeException("您没有权限删除此预算");
+                    if (project == null || !currentUserForDelete.getId().equals(project.getManager().getId())) {
+                        throw new RuntimeException("您只能删除自己管理项目的预算");
                     }
+                } else {
+                    throw new RuntimeException("该预算未关联项目，您无权删除");
                 }
-            } else {
-                throw new RuntimeException("您没有权限删除预算");
             }
+        } else if (!hasDeleteAllPermission) {
+            throw new RuntimeException("您没有权限删除预算");
         }
         
         budgetService.deleteBudget(id);
@@ -160,57 +191,234 @@ public class BudgetController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('budget:view', 'budget:view:own', 'budget:view:all')")
+    @PreAuthorize("hasAnyAuthority('budget:view:all') or hasAnyRole('ADMIN', 'FINANCE', 'MANAGER')")
     public List<Budget> getAllBudgets() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
         
+        // 调试信息：打印当前用户的所有权限
+        System.out.println("=== 预算查询权限调试 ===");
+        System.out.println("用户名: " + username);
+        System.out.println("用户权限: " + auth.getAuthorities());
+        
+        // 获取当前用户实体以检查角色
+        User currentUser = (User) userService.loadUserByUsername(username);
+        System.out.println("用户角色: " + (currentUser.getRoles() != null ? 
+            currentUser.getRoles().stream().map(role -> role.getName()).collect(java.util.stream.Collectors.toList()) : 
+            "无角色"));
+        
         // 检查用户角色
-        boolean hasViewAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:view:all")) ||
-                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
-                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        boolean hasAdminRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_ADMIN".equals(role.getName()) || role.getName().contains("管理员"));
+                
+        boolean hasFinanceRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()) || role.getName().contains("财务"));
+                
+        // 检查用户权限（只有 budget:view:all 权限才能查看所有预算）
+        boolean hasBudgetViewAllPermission = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String authName = authority.getAuthority();
+                    return "budget:view:all".equals(authName);
+                });
+                
+        boolean hasViewAllPermission = hasAdminRole || hasFinanceRole || hasBudgetViewAllPermission;
+        
+        // 检查是否是项目经理（检查角色而不是权限）
+        boolean isManager = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> {
+                    String roleName = role.getName();
+                    return "ROLE_MANAGER".equals(roleName) || 
+                           "MANAGER".equals(roleName) || 
+                           "项目经理".equals(roleName);
+                });
+        
+        System.out.println("hasAdminRole: " + hasAdminRole);
+        System.out.println("hasFinanceRole: " + hasFinanceRole);
+        System.out.println("hasBudgetViewAllPermission: " + hasBudgetViewAllPermission);
+        System.out.println("isManager: " + isManager);
+        System.out.println("hasViewAllPermission: " + hasViewAllPermission);
         
         if (hasViewAllPermission) {
+            System.out.println("=== 执行全权限分支：管理员或财务可以查看所有预算 ===");
             // 管理员和财务可以查看所有预算
-            return budgetService.getAllBudgets();
-        } else if (auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+            List<Budget> allBudgets = budgetService.getAllBudgets();
+            System.out.println("查询到的预算数量: " + (allBudgets != null ? allBudgets.size() : 0));
+            return allBudgets;
+        } else if (isManager) {
+            System.out.println("=== 执行项目经理分支：只能查看自己管理的项目预算 ===");
             // 项目经理只能查看自己管理的项目的预算
-            User currentUser = (User) userService.loadUserByUsername(username);
             if (currentUser != null) {
-                List<Project> managedProjects = projectService.getProjectsByManagerId(currentUser.getId());
-                List<Budget> budgets = new ArrayList<>();
-                for (Project project : managedProjects) {
-                    budgets.addAll(budgetService.getBudgetsByProject(project.getId()));
+                try {
+                    List<Project> managedProjects = projectService.getProjectsByManagerId(currentUser.getId());
+                    List<Budget> budgets = new ArrayList<>();
+                    
+                    if (managedProjects != null && !managedProjects.isEmpty()) {
+                        for (Project project : managedProjects) {
+                            List<Budget> projectBudgets = budgetService.getBudgetsByProject(project.getId());
+                            if (projectBudgets != null && !projectBudgets.isEmpty()) {
+                                budgets.addAll(projectBudgets);
+                            }
+                        }
+                    }
+                    
+                    return budgets;
+                } catch (Exception e) {
+                    return new ArrayList<>();
                 }
-                return budgets;
             }
         }
         
-        // 其他用户返回空列表
+        // 其他用户（包括普通项目参与者）无权查看预算列表
+        System.out.println("用户无权限，返回空列表");
         return new ArrayList<>();
     }
-
-    @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAnyAuthority('budget:view', 'budget:view:own', 'budget:view:all')")
-    public List<Budget> getBudgetsByProject(@PathVariable Long projectId) {
-        // 检查权限
+    
+    @GetMapping("/debug/count")
+    public Map<String, Object> getDebugInfo() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
         
-        // 检查用户角色
-        boolean hasViewAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:view:all")) ||
-                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
-                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        Map<String, Object> debugInfo = new HashMap<>();
+        debugInfo.put("username", username);
+        debugInfo.put("authorities", auth.getAuthorities().toString());
         
-        if (!hasViewAllPermission && auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+        // 获取当前用户实体以检查角色
+        User currentUser = (User) userService.loadUserByUsername(username);
+        debugInfo.put("roles", currentUser.getRoles() != null ? 
+            currentUser.getRoles().stream().map(role -> role.getName()).collect(java.util.stream.Collectors.toList()) : 
+            java.util.Arrays.asList("无角色"));
+        
+        // 查询数据库中预算总数
+        List<Budget> allBudgets = budgetService.getAllBudgets();
+        debugInfo.put("totalBudgetsInDb", allBudgets != null ? allBudgets.size() : 0);
+        
+        // 检查用户角色
+        boolean hasAdminRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_ADMIN".equals(role.getName()) || role.getName().contains("管理员"));
+                
+        boolean hasFinanceRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()) || role.getName().contains("财务"));
+                
+        // 检查用户权限（只有 budget:view:all 权限才能查看所有预算）
+        boolean hasBudgetViewAllPermission = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String authName = authority.getAuthority();
+                    return "budget:view:all".equals(authName);
+                });
+                
+        boolean hasViewAllPermission = hasAdminRole || hasFinanceRole || hasBudgetViewAllPermission;
+        
+        debugInfo.put("hasAdminRole", hasAdminRole);
+        debugInfo.put("hasFinanceRole", hasFinanceRole);
+        debugInfo.put("hasBudgetViewAllPermission", hasBudgetViewAllPermission);
+        debugInfo.put("hasViewAllPermission", hasViewAllPermission);
+        
+        return debugInfo;
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasAnyAuthority('budget:view:all') or hasAnyRole('ADMIN', 'FINANCE', 'MANAGER')")
+    public PagedResponse<Budget> searchBudgets(BudgetSearchDTO searchDTO) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        // 获取当前用户实体以检查角色
+        User currentUser = (User) userService.loadUserByUsername(username);
+        
+        // 检查用户角色
+        boolean hasAdminRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_ADMIN".equals(role.getName()) || role.getName().contains("管理员"));
+                
+        boolean hasFinanceRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()) || role.getName().contains("财务"));
+                
+        // 检查用户权限（只有 budget:view:all 权限才能查看所有预算）
+        boolean hasBudgetViewAllPermission = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String authName = authority.getAuthority();
+                    return "budget:view:all".equals(authName);
+                });
+                
+        boolean hasViewAllPermission = hasAdminRole || hasFinanceRole || hasBudgetViewAllPermission;
+        
+        // 检查是否是项目经理（检查角色而不是权限）
+        boolean isManager = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> {
+                    String roleName = role.getName();
+                    return "ROLE_MANAGER".equals(roleName) || 
+                           "MANAGER".equals(roleName) || 
+                           "项目经理".equals(roleName);
+                });
+        
+        if (hasViewAllPermission) {
+            // 管理员和财务可以搜索所有预算
+            return budgetService.searchBudgets(searchDTO);
+        } else if (isManager) {
+            // 项目经理只能搜索自己管理的项目的预算
+            if (currentUser != null) {
+                try {
+                    List<Project> managedProjects = projectService.getProjectsByManagerId(currentUser.getId());
+                    List<Long> projectIds = managedProjects != null ? 
+                        managedProjects.stream().map(Project::getId).toList() : 
+                        new ArrayList<>();
+                    
+                    return budgetService.searchBudgetsForManager(searchDTO, projectIds);
+                } catch (Exception e) {
+                    return new PagedResponse<>(new ArrayList<>(), searchDTO.getPage(), searchDTO.getSize(), 0);
+                }
+            }
+        }
+        
+        // 其他用户无权搜索预算
+        return new PagedResponse<>(new ArrayList<>(), searchDTO.getPage(), searchDTO.getSize(), 0);
+    }
+
+    @GetMapping("/project/{projectId}")
+    @PreAuthorize("hasAnyAuthority('budget:view:all') or hasAnyRole('ADMIN', 'FINANCE', 'MANAGER')")
+    public List<Budget> getBudgetsByProject(@PathVariable Long projectId) {
+        // 检查权限 - 只有管理员、财务和项目经理可以查看特定项目的预算
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        
+        // 获取当前用户实体以检查角色
+        User currentUser = (User) userService.loadUserByUsername(username);
+        
+        // 检查用户角色
+        boolean hasAdminRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_ADMIN".equals(role.getName()) || role.getName().contains("管理员"));
+                
+        boolean hasFinanceRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()) || role.getName().contains("财务"));
+                
+        // 检查用户权限（只有 budget:view:all 权限才能查看所有预算）
+        boolean hasBudgetViewAllPermission = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String authName = authority.getAuthority();
+                    return "budget:view:all".equals(authName);
+                });
+                
+        boolean hasViewAllPermission = hasAdminRole || hasFinanceRole || hasBudgetViewAllPermission;
+        
+        // 检查是否是项目经理（检查角色而不是权限）
+        boolean isManager = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> {
+                    String roleName = role.getName();
+                    return "ROLE_MANAGER".equals(roleName) || 
+                           "MANAGER".equals(roleName) || 
+                           "项目经理".equals(roleName);
+                });
+        
+        if (!hasViewAllPermission && isManager) {
             // 项目经理只能查看自己管理的项目的预算
-            User currentUser = (User) userService.loadUserByUsername(username);
             if (currentUser != null) {
                 Project project = projectService.getProjectById(projectId);
                 if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
                     throw new RuntimeException("您没有权限查看此项目的预算");
                 }
             }
+        } else if (!hasViewAllPermission) {
+            // 非管理员、非财务、非项目经理的用户无权查看项目预算
+            throw new RuntimeException("您没有权限查看项目预算");
         }
         
         return budgetService.getBudgetsByProject(projectId);
@@ -584,18 +792,46 @@ public class BudgetController {
     }
 
     @GetMapping("/project/{projectId}/available-budgets")
-    @PreAuthorize("hasAnyAuthority('budget:view', 'budget:view:own', 'budget:view:all')")
+    @PreAuthorize("hasAnyAuthority('budget:view:all') or hasAnyRole('ADMIN', 'FINANCE', 'MANAGER')")
     public List<Budget> getAvailableBudgetsForProject(@PathVariable Long projectId) {
-        // 检查权限
+        // 检查权限 - 只有管理员、财务和项目经理可以查看项目可用预算
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
         
-        // 检查用户角色
-        boolean hasViewAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:view:all")) ||
-                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
-                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        // 分别检查角色和权限
+        boolean hasAdminRole = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String authName = authority.getAuthority();
+                    return "ROLE_ADMIN".equals(authName) || authName.contains("管理员");
+                });
+                
+        boolean hasFinanceRole = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String authName = authority.getAuthority();
+                    return "ROLE_FINANCE".equals(authName) || authName.contains("财务");
+                });
+                
+        boolean hasBudgetViewPermission = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String authName = authority.getAuthority();
+                    return "budget:view:all".equals(authName) || 
+                           "budget:view".equals(authName);
+                });
+                
+        boolean hasViewAllPermission = hasAdminRole || hasFinanceRole || hasBudgetViewPermission;
         
-        if (!hasViewAllPermission && auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+        // 检查是否是项目经理
+        boolean isManager = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String role = authority.getAuthority();
+                    return "ROLE_MANAGER".equals(role) || 
+                           "MANAGER".equals(role) || 
+                           "项目经理".equals(role) ||
+                           "manager-time:manage".equals(role) ||
+                           "project:edit".equals(role);
+                });
+        
+        if (!hasViewAllPermission && isManager) {
             // 项目经理只能查看自己管理的项目的预算
             User currentUser = (User) userService.loadUserByUsername(username);
             if (currentUser != null) {
@@ -604,24 +840,55 @@ public class BudgetController {
                     throw new RuntimeException("您没有权限查看此项目的预算");
                 }
             }
+        } else if (!hasViewAllPermission) {
+            // 非管理员、非财务、非项目经理的用户无权查看项目预算
+            throw new RuntimeException("您没有权限查看此项目的预算");
         }
         
         return budgetService.getAvailableBudgetsForProject(projectId);
     }
 
     @GetMapping("/project/{projectId}/budget-items")
-    @PreAuthorize("hasAnyAuthority('budget:view', 'budget:view:own', 'budget:view:all')")
+    @PreAuthorize("hasAnyAuthority('budget:view:all') or hasAnyRole('ADMIN', 'FINANCE', 'MANAGER')")
     public List<BudgetItem> getAvailableBudgetItemsForProject(@PathVariable Long projectId) {
-        // 检查权限
+        // 检查权限 - 只有管理员、财务和项目经理可以查看项目预算项目
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = auth.getName();
         
-        // 检查用户角色
-        boolean hasViewAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:view:all")) ||
-                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
-                                      auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+        // 分别检查角色和权限
+        boolean hasAdminRole = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String authName = authority.getAuthority();
+                    return "ROLE_ADMIN".equals(authName) || authName.contains("管理员");
+                });
+                
+        boolean hasFinanceRole = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String authName = authority.getAuthority();
+                    return "ROLE_FINANCE".equals(authName) || authName.contains("财务");
+                });
+                
+        boolean hasBudgetViewPermission = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String authName = authority.getAuthority();
+                    return "budget:view:all".equals(authName) || 
+                           "budget:view".equals(authName);
+                });
+                
+        boolean hasViewAllPermission = hasAdminRole || hasFinanceRole || hasBudgetViewPermission;
         
-        if (!hasViewAllPermission && auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_MANAGER"))) {
+        // 检查是否是项目经理
+        boolean isManager = auth.getAuthorities().stream()
+                .anyMatch(authority -> {
+                    String role = authority.getAuthority();
+                    return "ROLE_MANAGER".equals(role) || 
+                           "MANAGER".equals(role) || 
+                           "项目经理".equals(role) ||
+                           "manager-time:manage".equals(role) ||
+                           "project:edit".equals(role);
+                });
+        
+        if (!hasViewAllPermission && isManager) {
             // 项目经理只能查看自己管理的项目的预算项目
             User currentUser = (User) userService.loadUserByUsername(username);
             if (currentUser != null) {
@@ -630,6 +897,9 @@ public class BudgetController {
                     throw new RuntimeException("您没有权限查看此项目的预算项目");
                 }
             }
+        } else if (!hasViewAllPermission) {
+            // 非管理员、非财务、非项目经理的用户无权查看项目预算项目
+            throw new RuntimeException("您没有权限查看此项目的预算项目");
         }
         
         return budgetService.getBudgetItemsByProject(projectId).stream()

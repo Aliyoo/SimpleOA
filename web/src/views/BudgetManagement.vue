@@ -13,10 +13,76 @@
           >
             新建预算
           </el-button>
-          <el-input v-model="budgetSearch" placeholder="搜索预算" style="width: 300px; margin-left: 10px" clearable />
+          <el-button 
+            type="info" 
+            :icon="searchFormVisible ? 'ArrowUp' : 'ArrowDown'" 
+            @click="toggleSearchForm"
+            style="margin-left: 10px"
+          >
+            {{ searchFormVisible ? '收起搜索' : '展开搜索' }}
+          </el-button>
         </div>
 
-        <el-table :data="filteredBudgets" style="width: 100%; margin-top: 20px">
+        <!-- 高级搜索表单 -->
+        <el-collapse-transition>
+          <div v-show="searchFormVisible" class="search-form">
+            <el-form :model="searchForm" label-width="100px" :inline="true">
+              <el-form-item label="关键词">
+                <el-input v-model="searchForm.keyword" placeholder="搜索预算名称" clearable style="width: 200px" />
+              </el-form-item>
+              <el-form-item label="所属项目">
+                <el-select v-model="searchForm.projectId" placeholder="选择项目" clearable style="width: 200px">
+                  <el-option v-for="project in projectOptions" :key="project.id" :label="project.name" :value="project.id" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="状态">
+                <el-select v-model="searchForm.status" placeholder="选择状态" clearable style="width: 150px">
+                  <el-option label="活跃" value="ACTIVE" />
+                  <el-option label="待定" value="PENDING" />
+                  <el-option label="关闭" value="CLOSED" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="开始日期">
+                <el-date-picker
+                  v-model="searchForm.startDateRange"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  value-format="YYYY-MM-DD"
+                  style="width: 240px"
+                />
+              </el-form-item>
+              <el-form-item label="结束日期">
+                <el-date-picker
+                  v-model="searchForm.endDateRange"
+                  type="daterange"
+                  range-separator="至"
+                  start-placeholder="开始日期"
+                  end-placeholder="结束日期"
+                  value-format="YYYY-MM-DD"
+                  style="width: 240px"
+                />
+              </el-form-item>
+              <el-form-item label="总预算">
+                <el-input-number v-model="searchForm.totalAmountFrom" placeholder="最小金额" :min="0" :precision="2" style="width: 120px" />
+                <span style="margin: 0 10px">-</span>
+                <el-input-number v-model="searchForm.totalAmountTo" placeholder="最大金额" :min="0" :precision="2" style="width: 120px" />
+              </el-form-item>
+              <el-form-item label="已使用">
+                <el-input-number v-model="searchForm.usedAmountFrom" placeholder="最小金额" :min="0" :precision="2" style="width: 120px" />
+                <span style="margin: 0 10px">-</span>
+                <el-input-number v-model="searchForm.usedAmountTo" placeholder="最大金额" :min="0" :precision="2" style="width: 120px" />
+              </el-form-item>
+              <el-form-item>
+                <el-button type="primary" @click="handleSearch" :loading="loading">搜索</el-button>
+                <el-button @click="handleResetSearch">重置</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+        </el-collapse-transition>
+
+        <el-table :data="budgets" v-loading="loading" style="width: 100%; margin-top: 20px">
           <el-table-column prop="name" label="预算名称" width="180" />
           <el-table-column label="所属项目" width="180">
             <template #default="scope">
@@ -76,6 +142,19 @@
             </template>
           </el-table-column>
         </el-table>
+
+        <!-- 分页组件 -->
+        <div class="pagination-container">
+          <el-pagination
+            v-model:current-page="pagination.page"
+            v-model:page-size="pagination.size"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </el-tab-pane>
 
       <el-tab-pane label="预算统计" name="budgetStatistics">
@@ -302,7 +381,29 @@ const activeTab = ref('budgetList')
 
 // Budget List
 const budgets = ref([])
-const budgetSearch = ref('')
+const loading = ref(false)
+const searchFormVisible = ref(false)
+
+// 搜索表单
+const searchForm = reactive({
+  keyword: '',
+  projectId: null,
+  status: '',
+  startDateRange: null,
+  endDateRange: null,
+  totalAmountFrom: null,
+  totalAmountTo: null,
+  usedAmountFrom: null,
+  usedAmountTo: null
+})
+
+// 分页信息
+const pagination = reactive({
+  page: 1,
+  size: 20,
+  total: 0,
+  totalPages: 0
+})
 const budgetDialogVisible = ref(false)
 const submittingBudget = ref(false)
 const budgetFormRef = ref(null)
@@ -334,30 +435,20 @@ const resolveAlertFormRef = ref(null)
 
 // --- Computed Properties ---
 
-const filteredBudgets = computed(() => {
-  if (!budgetSearch.value) return budgets.value
-  const searchLower = budgetSearch.value.toLowerCase()
-  return budgets.value.filter(
-    (item) => item.name?.toLowerCase().includes(searchLower) || item.project?.name?.toLowerCase().includes(searchLower)
-  )
+// 移除filteredBudgets计算属性，直接使用budgets
+
+// 统计数据
+const statistics = ref({
+  totalBudgetAmount: 0,
+  totalUsedAmount: 0,
+  totalRemainingAmount: 0,
+  totalUsagePercentage: 0
 })
 
-const totalBudgetAmount = computed(() => {
-  return budgets.value.reduce((sum, budget) => sum + (budget.totalAmount || 0), 0)
-})
-
-const totalUsedAmount = computed(() => {
-  return budgets.value.reduce((sum, budget) => sum + (budget.usedAmount || 0), 0)
-})
-
-const totalRemainingAmount = computed(() => {
-  return totalBudgetAmount.value - totalUsedAmount.value
-})
-
-const totalUsagePercentage = computed(() => {
-  if (totalBudgetAmount.value === 0) return 0
-  return Math.round((totalUsedAmount.value / totalBudgetAmount.value) * 100)
-})
+const totalBudgetAmount = computed(() => statistics.value.totalBudgetAmount)
+const totalUsedAmount = computed(() => statistics.value.totalUsedAmount)
+const totalRemainingAmount = computed(() => statistics.value.totalRemainingAmount)
+const totalUsagePercentage = computed(() => statistics.value.totalUsagePercentage)
 
 // 判断用户是否可以创建预算
 const canCreateBudget = computed(() => {
@@ -413,13 +504,97 @@ const budgetRules = {
 
 // --- Methods ---
 
+// 搜索相关方法
+const toggleSearchForm = () => {
+  searchFormVisible.value = !searchFormVisible.value
+}
+
+const handleSearch = () => {
+  pagination.page = 1
+  fetchBudgets()
+}
+
+const handleResetSearch = () => {
+  Object.assign(searchForm, {
+    keyword: '',
+    projectId: null,
+    status: '',
+    startDateRange: null,
+    endDateRange: null,
+    totalAmountFrom: null,
+    totalAmountTo: null,
+    usedAmountFrom: null,
+    usedAmountTo: null
+  })
+  pagination.page = 1
+  fetchBudgets()
+}
+
+// 分页相关方法
+const handleSizeChange = (newSize) => {
+  pagination.size = newSize
+  pagination.page = 1
+  fetchBudgets()
+}
+
+const handleCurrentChange = (newPage) => {
+  pagination.page = newPage
+  fetchBudgets()
+}
+
 // Data Fetching
 const fetchBudgets = async () => {
+  loading.value = true
   try {
-    const response = await api.get('/api/budgets') // Adjust endpoint if needed
-    budgets.value = response.data
+    // 构建搜索参数
+    const searchParams = {
+      page: pagination.page - 1, // 后端从0开始
+      size: pagination.size,
+      keyword: searchForm.keyword || null,
+      projectId: searchForm.projectId || null,
+      status: searchForm.status || null,
+      startDateFrom: searchForm.startDateRange?.[0] || null,
+      startDateTo: searchForm.startDateRange?.[1] || null,
+      endDateFrom: searchForm.endDateRange?.[0] || null,
+      endDateTo: searchForm.endDateRange?.[1] || null,
+      totalAmountFrom: searchForm.totalAmountFrom || null,
+      totalAmountTo: searchForm.totalAmountTo || null,
+      usedAmountFrom: searchForm.usedAmountFrom || null,
+      usedAmountTo: searchForm.usedAmountTo || null,
+      sortBy: 'createTime',
+      sortDirection: 'desc'
+    }
+
+    const response = await api.get('/api/budgets/search', { params: searchParams })
+    const data = response.data
+    
+    budgets.value = data.content || []
+    pagination.total = data.totalElements || 0
+    pagination.totalPages = data.totalPages || 0
+    
+    // 更新统计数据
+    updateStatistics()
   } catch (error) {
-    ElMessage.error('获取预算列表失败: ' + error.message)
+    console.error('获取预算列表失败:', error)
+    ElMessage.error('获取预算列表失败: ' + (error.response?.data?.message || error.message))
+    budgets.value = []
+    pagination.total = 0
+    pagination.totalPages = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+// 更新统计数据
+const updateStatistics = () => {
+  const totalAmount = budgets.value.reduce((sum, budget) => sum + (budget.totalAmount || 0), 0)
+  const usedAmount = budgets.value.reduce((sum, budget) => sum + (budget.usedAmount || 0), 0)
+  
+  statistics.value = {
+    totalBudgetAmount: totalAmount,
+    totalUsedAmount: usedAmount,
+    totalRemainingAmount: totalAmount - usedAmount,
+    totalUsagePercentage: totalAmount > 0 ? Math.round((usedAmount / totalAmount) * 100) : 0
   }
 }
 
@@ -554,7 +729,7 @@ const submitBudgetForm = async () => {
           ElMessage.success('预算创建成功')
         }
         budgetDialogVisible.value = false
-        fetchBudgets()
+        fetchBudgets() // Use the new paginated fetchBudgets method
       } catch (error) {
         ElMessage.error('操作失败: ' + error.message)
       } finally {
@@ -569,7 +744,7 @@ const handleDeleteBudget = async (item) => {
     await ElMessageBox.confirm(`确定删除预算 "${item.name}"?`, '提示', { type: 'warning' })
     await api.delete(`/api/budgets/${item.id}`)
     ElMessage.success('删除成功')
-    fetchBudgets()
+    fetchBudgets() // Use the new paginated fetchBudgets method
   } catch (error) {
     if (error !== 'cancel') {
       ElMessage.error('删除失败: ' + error.message)
@@ -679,9 +854,9 @@ const formatDate = (dateString) => {
 
 // --- Lifecycle Hook ---
 onMounted(() => {
-  fetchBudgets()
+  fetchProjectsForSelect() // Fetch projects for the dropdown first
+  fetchBudgets() // Then fetch budgets with search/pagination
   fetchBudgetAlerts()
-  fetchProjectsForSelect() // Fetch projects for the dropdown
 })
 </script>
 
@@ -755,5 +930,23 @@ onMounted(() => {
 .operation-buttons .el-button {
   margin: 0;
   min-width: 48px;
+}
+
+.search-form {
+  background-color: #f8f9fa;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.search-form .el-form-item {
+  margin-bottom: 15px;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 </style>

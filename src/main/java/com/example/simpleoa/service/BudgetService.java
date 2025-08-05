@@ -1,5 +1,7 @@
 package com.example.simpleoa.service;
 
+import com.example.simpleoa.dto.BudgetSearchDTO;
+import com.example.simpleoa.dto.PagedResponse;
 import com.example.simpleoa.model.Budget;
 import com.example.simpleoa.model.BudgetAlert;
 import com.example.simpleoa.model.BudgetExpense;
@@ -97,4 +99,8 @@ public interface BudgetService {
     // 新增的统计更新和查询方法
     void updateBudgetAmounts(Long budgetId);
     Double getTotalUsedAmountByBudgetFromExpenses(Long budgetId);
+    
+    // 新增分页搜索方法
+    PagedResponse<Budget> searchBudgets(BudgetSearchDTO searchDTO);
+    PagedResponse<Budget> searchBudgetsForManager(BudgetSearchDTO searchDTO, List<Long> projectIds);
 }

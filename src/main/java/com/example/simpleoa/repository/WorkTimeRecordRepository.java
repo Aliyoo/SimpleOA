@@ -163,4 +163,27 @@ public interface WorkTimeRecordRepository extends JpaRepository<WorkTimeRecord, 
            "FROM WorkTimeRecord w " +
            "WHERE CONCAT(w.user.id, '-', w.project.id, '-', w.date) IN :keys")
     List<String> findExistingKeys(@Param("keys") List<String> keys);
+    
+    // 获取用户在指定日期范围内的去重工时记录（避免重复统计）
+    @Query("SELECT DISTINCT w FROM WorkTimeRecord w " +
+           "WHERE w.user = :user " +
+           "AND w.date BETWEEN :startDate AND :endDate " +
+           "ORDER BY w.date DESC, w.project.id")
+    List<WorkTimeRecord> findDistinctByUserAndDateBetween(
+        @Param("user") User user, 
+        @Param("startDate") LocalDate startDate, 
+        @Param("endDate") LocalDate endDate);
+    
+    // 统计用户在指定日期范围内的总工时（通过子查询避免重复统计同一天同一项目的多条记录）
+    @Query(value = "SELECT SUM(maxHours) FROM (" +
+           "SELECT date, project_id, MAX(hours) as maxHours " +
+           "FROM work_time_record " +
+           "WHERE user_id = :userId " +
+           "AND date BETWEEN :startDate AND :endDate " +
+           "GROUP BY date, project_id" +
+           ") AS subquery", nativeQuery = true)
+    Double sumHoursByUserAndDateBetweenWithoutDuplicates(
+        @Param("userId") Long userId, 
+        @Param("startDate") LocalDate startDate, 
+        @Param("endDate") LocalDate endDate);
 }

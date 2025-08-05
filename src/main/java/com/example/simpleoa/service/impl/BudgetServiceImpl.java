@@ -1,10 +1,16 @@
 package com.example.simpleoa.service.impl;
 
+import com.example.simpleoa.dto.BudgetSearchDTO;
+import com.example.simpleoa.dto.PagedResponse;
 import com.example.simpleoa.model.*;
 import com.example.simpleoa.repository.*;
 import com.example.simpleoa.service.BudgetService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -887,5 +893,139 @@ public class BudgetServiceImpl implements BudgetService {
     public Double getTotalUsedAmountByBudgetFromExpenses(Long budgetId) {
         Double total = budgetExpenseRepository.sumAmountByBudgetId(budgetId);
         return total != null ? total : 0.0;
+    }
+    
+    /**
+     * 分页搜索预算（管理员和财务用）
+     */
+    @Override
+    public PagedResponse<Budget> searchBudgets(BudgetSearchDTO searchDTO) {
+        // 创建分页和排序参数
+        Sort sort = createSort(searchDTO.getSortBy(), searchDTO.getSortDirection());
+        Pageable pageable = PageRequest.of(searchDTO.getPage(), searchDTO.getSize(), sort);
+        
+        // 执行查询
+        Page<Budget> budgetPage = budgetRepository.findBudgetsWithConditions(
+            searchDTO.getKeyword(),
+            searchDTO.getProjectId(),
+            searchDTO.getStatus(),
+            searchDTO.getStartDateFrom(),
+            searchDTO.getStartDateTo(),
+            searchDTO.getEndDateFrom(),
+            searchDTO.getEndDateTo(),
+            searchDTO.getTotalAmountFrom(),
+            searchDTO.getTotalAmountTo(),
+            searchDTO.getUsedAmountFrom(),
+            searchDTO.getUsedAmountTo(),
+            pageable
+        );
+        
+        // 转换为自定义分页响应
+        return new PagedResponse<>(
+            budgetPage.getContent(),
+            budgetPage.getNumber(),
+            budgetPage.getSize(),
+            budgetPage.getTotalElements()
+        );
+    }
+    
+    /**
+     * 分页搜索预算（项目经理用）
+     */
+    @Override
+    public PagedResponse<Budget> searchBudgetsForManager(BudgetSearchDTO searchDTO, List<Long> projectIds) {
+        System.out.println("=== searchBudgetsForManager 开始执行 ===");
+        System.out.println("projectIds: " + projectIds);
+        System.out.println("searchDTO: " + searchDTO);
+        
+        if (projectIds == null || projectIds.isEmpty()) {
+            System.out.println("projectIds 为空，返回空结果");
+            // 如果没有管理的项目，返回空结果
+            return new PagedResponse<>(new ArrayList<>(), searchDTO.getPage(), searchDTO.getSize(), 0);
+        }
+        
+        System.out.println("项目ID数量: " + projectIds.size() + ", IDs: " + projectIds);
+        
+        // 创建分页和排序参数
+        System.out.println("原始排序参数: sortBy=" + searchDTO.getSortBy() + ", sortDirection=" + searchDTO.getSortDirection());
+        Sort sort = createSort(searchDTO.getSortBy(), searchDTO.getSortDirection());
+        Pageable pageable = PageRequest.of(searchDTO.getPage(), searchDTO.getSize(), sort);
+        
+        System.out.println("分页参数: page=" + searchDTO.getPage() + ", size=" + searchDTO.getSize());
+        System.out.println("排序参数: " + sort);
+        
+        System.out.println("开始执行数据库查询...");
+        
+        Page<Budget> budgetPage;
+        try {
+            // 先尝试简化查询
+            if (isSimpleSearch(searchDTO)) {
+                System.out.println("使用简化查询...");
+                budgetPage = budgetRepository.findSimpleBudgetsForManager(projectIds, pageable);
+            } else {
+                System.out.println("使用复杂条件查询...");
+                // 执行复杂查询
+                budgetPage = budgetRepository.findBudgetsWithConditionsForManager(
+                    projectIds,
+                    searchDTO.getKeyword(),
+                    searchDTO.getProjectId(),
+                    searchDTO.getStatus(),
+                    searchDTO.getStartDateFrom(),
+                    searchDTO.getStartDateTo(),
+                    searchDTO.getEndDateFrom(),
+                    searchDTO.getEndDateTo(),
+                    searchDTO.getTotalAmountFrom(),
+                    searchDTO.getTotalAmountTo(),
+                    searchDTO.getUsedAmountFrom(),
+                    searchDTO.getUsedAmountTo(),
+                    pageable
+                );
+            }
+        } catch (Exception e) {
+            System.out.println("数据库查询异常: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
+        
+        System.out.println("数据库查询完成，结果数量: " + (budgetPage != null ? budgetPage.getContent().size() : "null"));
+        
+        // 转换为自定义分页响应
+        return new PagedResponse<>(
+            budgetPage.getContent(),
+            budgetPage.getNumber(),
+            budgetPage.getSize(),
+            budgetPage.getTotalElements()
+        );
+    }
+    
+    /**
+     * 判断是否为简单搜索（无附加条件）
+     */
+    private boolean isSimpleSearch(BudgetSearchDTO searchDTO) {
+        return (searchDTO.getKeyword() == null || searchDTO.getKeyword().trim().isEmpty()) &&
+               searchDTO.getProjectId() == null &&
+               (searchDTO.getStatus() == null || searchDTO.getStatus().trim().isEmpty()) &&
+               searchDTO.getStartDateFrom() == null &&
+               searchDTO.getStartDateTo() == null &&
+               searchDTO.getEndDateFrom() == null &&
+               searchDTO.getEndDateTo() == null &&
+               searchDTO.getTotalAmountFrom() == null &&
+               searchDTO.getTotalAmountTo() == null &&
+               searchDTO.getUsedAmountFrom() == null &&
+               searchDTO.getUsedAmountTo() == null;
+    }
+    
+    /**
+     * 创建排序对象
+     */
+    private Sort createSort(String sortBy, String sortDirection) {
+        if (sortBy == null || sortBy.trim().isEmpty()) {
+            sortBy = "createTime";  // 确保字段名正确
+        }
+        
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? 
+            Sort.Direction.ASC : Sort.Direction.DESC;
+            
+        return Sort.by(direction, sortBy);
     }
 }

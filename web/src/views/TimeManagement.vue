@@ -429,12 +429,13 @@
             <!-- 项目统计表格 -->
             <div class="statistics-section">
               <h3 class="section-title">项目工时统计</h3>
-              <el-table :data="statisticsData" style="width: 100%" :row-class-name="tableRowClassName">
-                <el-table-column prop="projectName" label="项目" />
-                <el-table-column prop="totalHours" label="总工时" sortable>
+              <el-table :data="statisticsData" style="width: 100%;" :row-class-name="tableRowClassName" border class="full-width-table">
+                <el-table-column type="index" label="序号" width="60" fixed="left" />
+                <el-table-column prop="projectName" label="项目" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="totalHours" label="总工时" width="150" align="center" sortable>
                   <template #default="scope"> {{ scope.row.totalHours.toFixed(2) }} 小时 </template>
                 </el-table-column>
-                <el-table-column prop="percentage" label="占比" sortable />
+                <el-table-column prop="percentage" label="占比" width="120" align="center" sortable />
               </el-table>
             </div>
 
@@ -2283,5 +2284,19 @@ h1 {
 
 .retry-actions .el-button {
   min-width: 120px;
+}
+
+/* 确保表格撑满宽度的样式 */
+.full-width-table {
+  width: 100% !important;
+  table-layout: auto;
+}
+
+.full-width-table .el-table__body-wrapper {
+  width: 100% !important;
+}
+
+.full-width-table .el-table__header-wrapper {
+  width: 100% !important;
 }
 </style>

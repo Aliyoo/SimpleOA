@@ -221,12 +221,12 @@
               <!-- 项目统计表格 -->
               <div class="stats-projects">
                 <h3>项目工时统计</h3>
-                <el-table :data="projectsStats" style="width: 100%" border :max-height="400">
-                  <el-table-column type="index" label="序号" width="60" />
-                  <el-table-column prop="projectName" label="项目名称" min-width="200" />
-                  <el-table-column prop="totalHours" label="总工时" width="100" align="center" />
-                  <el-table-column prop="percentage" label="占比" width="100" align="center" />
-                  <el-table-column label="操作" width="120" align="center">
+                <el-table :data="projectsStats" style="width: 100%;" border :max-height="400" class="full-width-table">
+                  <el-table-column type="index" label="序号" width="60" fixed="left" />
+                  <el-table-column prop="projectName" label="项目名称" min-width="250" show-overflow-tooltip />
+                  <el-table-column prop="totalHours" label="总工时" width="120" align="center" sortable />
+                  <el-table-column prop="percentage" label="占比" width="120" align="center" sortable />
+                  <el-table-column label="操作" width="120" align="center" fixed="right">
                     <template #default="scope">
                       <el-button type="primary" size="small" @click="viewProjectDetail(scope.row.projectId)">
                         详情
@@ -241,22 +241,23 @@
                 <h3>人员工时统计</h3>
                 <el-table
                   :data="memberStatsAggregated"
-                  style="width: 100%"
+                  style="width: 100%;"
                   border
                   :max-height="400"
                   stripe
                   row-style="cursor: pointer;"
                   @row-click="viewMemberDetail"
+                  class="full-width-table"
                 >
                   <el-table-column type="index" label="序号" width="60" fixed="left" />
-                  <el-table-column prop="username" label="用户名" width="120" />
-                  <el-table-column prop="realName" label="姓名" width="120" show-overflow-tooltip />
-                  <el-table-column prop="totalHours" label="总工时" width="100" align="center" sortable />
-                  <el-table-column prop="projectCount" label="项目数" width="100" align="center" sortable />
-                  <el-table-column prop="recordCount" label="记录数" width="100" align="center" sortable />
+                  <el-table-column prop="username" label="用户名" min-width="120" show-overflow-tooltip />
+                  <el-table-column prop="realName" label="姓名" min-width="120" show-overflow-tooltip />
+                  <el-table-column prop="totalHours" label="总工时" width="110" align="center" sortable />
+                  <el-table-column prop="projectCount" label="项目数" width="110" align="center" sortable />
+                  <el-table-column prop="recordCount" label="记录数" width="110" align="center" sortable />
                   <el-table-column prop="averageHours" label="平均工时/记录" width="140" align="center" sortable />
                   <el-table-column prop="percentage" label="总占比" width="120" align="center" />
-                  <el-table-column label="操作" width="120" align="center">
+                  <el-table-column label="操作" width="120" align="center" fixed="right">
                     <template #default="scope">
                       <el-button type="primary" size="small" @click.stop="viewMemberDetail(scope.row)">
                         详情
@@ -294,13 +295,13 @@
                   <!-- 该人员的项目工时统计 -->
                   <div class="member-projects">
                     <h3>项目工时分布</h3>
-                    <el-table :data="memberProjectStats" style="width: 100%" border :max-height="300" stripe>
+                    <el-table :data="memberProjectStats" style="width: 100%;" border :max-height="300" stripe class="full-width-table">
                       <el-table-column type="index" label="序号" width="60" fixed="left" />
-                      <el-table-column prop="projectName" label="项目名称" min-width="200" show-overflow-tooltip />
-                      <el-table-column prop="totalHours" label="工时" width="100" align="center" sortable />
-                      <el-table-column prop="recordCount" label="记录数" width="100" align="center" sortable />
-                      <el-table-column prop="averageHours" label="平均工时/记录" width="140" align="center" sortable />
-                      <el-table-column prop="percentage" label="占比" width="100" align="center" />
+                      <el-table-column prop="projectName" label="项目名称" min-width="250" show-overflow-tooltip />
+                      <el-table-column prop="totalHours" label="工时" width="120" align="center" sortable />
+                      <el-table-column prop="recordCount" label="记录数" width="120" align="center" sortable />
+                      <el-table-column prop="averageHours" label="平均工时/记录" width="150" align="center" sortable />
+                      <el-table-column prop="percentage" label="占比" width="120" align="center" />
                     </el-table>
                   </div>
                 </div>
@@ -334,14 +335,14 @@
                   <!-- 成员工时统计 -->
                   <div class="member-stats">
                     <h3>成员工时统计</h3>
-                    <el-table :data="memberStats" style="width: 100%" border :max-height="300" stripe>
+                    <el-table :data="memberStats" style="width: 100%;" border :max-height="300" stripe class="full-width-table">
                       <el-table-column type="index" label="序号" width="60" fixed="left" />
-                      <el-table-column prop="username" label="用户名" width="120" />
-                      <el-table-column prop="realName" label="姓名" width="120" show-overflow-tooltip />
-                      <el-table-column prop="totalHours" label="总工时" width="100" align="center" sortable />
-                      <el-table-column prop="recordCount" label="记录数" width="100" align="center" sortable />
-                      <el-table-column prop="averageHours" label="平均工时/记录" width="140" align="center" sortable />
-                      <el-table-column prop="percentage" label="占比" width="100" align="center" />
+                      <el-table-column prop="username" label="用户名" min-width="120" show-overflow-tooltip />
+                      <el-table-column prop="realName" label="姓名" min-width="120" show-overflow-tooltip />
+                      <el-table-column prop="totalHours" label="总工时" width="120" align="center" sortable />
+                      <el-table-column prop="recordCount" label="记录数" width="120" align="center" sortable />
+                      <el-table-column prop="averageHours" label="平均工时/记录" width="150" align="center" sortable />
+                      <el-table-column prop="percentage" label="占比" width="120" align="center" />
                     </el-table>
                   </div>
                 </div>
@@ -2082,6 +2083,7 @@ h1 {
 
 .stats-projects .el-table {
   width: 100% !important;
+  table-layout: auto;
 }
 
 .stats-members {
@@ -2096,6 +2098,21 @@ h1 {
 }
 
 .stats-members .el-table {
+  width: 100% !important;
+  table-layout: auto;
+}
+
+/* 确保表格撑满宽度的样式 */
+.full-width-table {
+  width: 100% !important;
+  table-layout: auto;
+}
+
+.full-width-table .el-table__body-wrapper {
+  width: 100% !important;
+}
+
+.full-width-table .el-table__header-wrapper {
   width: 100% !important;
 }
 
@@ -2134,6 +2151,7 @@ h1 {
 
 .member-projects .el-table {
   width: 100% !important;
+  table-layout: auto;
 }
 
 .project-detail-summary {
@@ -2166,6 +2184,7 @@ h1 {
 
 .member-stats .el-table {
   width: 100% !important;
+  table-layout: auto;
 }
 
 /* 每日工时合计样式 */

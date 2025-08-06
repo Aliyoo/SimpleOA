@@ -14,22 +14,42 @@
       <div class="action-buttons">
         <div class="action-item">
           <router-link to="/time-management">
-            <el-button type="primary" icon="Clock" size="default">填报工时</el-button>
+            <el-button type="primary" size="default">
+              <template #icon>
+                <el-icon><Timer /></el-icon>
+              </template>
+              填报工时
+            </el-button>
           </router-link>
         </div>
         <div class="action-item">
           <router-link to="/leave-management">
-            <el-button type="success" icon="Calendar" size="default">申请请假</el-button>
+            <el-button type="success" size="default">
+              <template #icon>
+                <el-icon><DocumentAdd /></el-icon>
+              </template>
+              申请请假
+            </el-button>
           </router-link>
         </div>
         <div class="action-item">
           <router-link to="/reimbursement">
-            <el-button type="warning" icon="Money" size="default">申请报销</el-button>
+            <el-button type="warning" size="default">
+              <template #icon>
+                <el-icon><CreditCard /></el-icon>
+              </template>
+              申请报销
+            </el-button>
           </router-link>
         </div>
         <div class="action-item">
           <router-link to="/projects">
-            <el-button type="info" icon="FolderOpened" size="default">项目管理</el-button>
+            <el-button type="info" size="default">
+              <template #icon>
+                <el-icon><Briefcase /></el-icon>
+              </template>
+              项目管理
+            </el-button>
           </router-link>
         </div>
       </div>
@@ -59,7 +79,7 @@
             <div class="stat-content">
               <div class="stat-title">项目总数</div>
               <div class="stat-value">{{ stats.projectCount }}</div>
-              <div class="stat-trend">进行中: {{ stats.activeProjectCount }}</div>
+              <div class="stat-trend">开发中: {{ stats.activeProjectCount }}</div>
             </div>
           </el-card>
         </el-col>
@@ -79,7 +99,7 @@
 
         <el-col :span="6">
           <el-card
-            v-if="userStore.isAdmin || userStore.hasPermission('budget:view')"
+            v-if="userStore.canViewBudget"
             shadow="hover"
             class="stat-card budget-stat"
           >
@@ -192,7 +212,7 @@
     <!-- 审批流程和财务概览 -->
     <div class="bottom-section">
       <el-row :gutter="20">
-        <el-col :span="userStore.isAdmin || userStore.hasPermission('budget:view') ? 12 : 24">
+        <el-col :span="userStore.canViewBudget ? 12 : 24">
           <el-card shadow="hover">
             <template #header>
               <div class="card-header">
@@ -206,7 +226,7 @@
           </el-card>
         </el-col>
 
-        <el-col v-if="userStore.isAdmin || userStore.hasPermission('budget:view')" :span="12">
+        <el-col v-if="userStore.canViewBudget" :span="12">
           <el-card shadow="hover">
             <template #header>
               <div class="card-header">
@@ -248,7 +268,9 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useUserStore } from '../stores/user'
 import api from '../utils/axios.js'
 import * as echarts from 'echarts'
-import { User, FolderOpened, DocumentChecked, Money, Clock, Calendar } from '@element-plus/icons-vue'
+import { User, FolderOpened, DocumentChecked, Money, Clock, Calendar, 
+         Timer, DocumentAdd, CreditCard, Briefcase, 
+         Files, Operation, Refresh } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const currentUser = ref(userStore.userInfo || {})

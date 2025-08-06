@@ -478,6 +478,159 @@ const getApprovalFlowStatusText = (status) => {
   }
   return statusTextMap[status] || status
 }
+
+// Project status methods
+const getProjectStatusType = (status) => {
+  const statusMap = {
+    CANCELLED: 'danger',
+    REQUIREMENT: 'info',
+    DESIGN: 'warning',
+    DEVELOPMENT: 'primary',
+    ACCEPTANCE: 'warning',
+    COMPLETED: 'success'
+  }
+  return statusMap[status] || 'info'
+}
+
+const getProjectStatusText = (status) => {
+  const statusMap = {
+    CANCELLED: '已取消',
+    REQUIREMENT: '需求阶段',
+    DESIGN: '设计阶段',
+    DEVELOPMENT: '开发阶段',
+    ACCEPTANCE: '终验阶段',
+    COMPLETED: '已完成'
+  }
+  return statusMap[status] || status
+}
+
+// Additional helper methods that might be missing
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(value || 0)
+}
+
+const calculateUsagePercentage = (budget) => {
+  if (!budget || budget.totalAmount === 0 || budget.totalAmount == null) return 0
+  return Math.max(0, Math.min(100, Math.round(((budget.usedAmount || 0) / budget.totalAmount) * 100)))
+}
+
+const getProgressStatus = (budget) => {
+  const percentage = calculateUsagePercentage(budget)
+  if (percentage >= 90) return 'exception'
+  if (percentage >= 75) return 'warning'
+  return 'success'
+}
+
+const getApprovalStatusType = (status) => {
+  const statusMap = {
+    pending: 'warning',
+    approved: 'success',
+    rejected: 'danger'
+  }
+  return statusMap[status] || 'info'
+}
+
+const getApprovalStatusText = (status) => {
+  const statusMap = {
+    pending: '待审批',
+    approved: '已批准',
+    rejected: '已拒绝'
+  }
+  return statusMap[status] || status
+}
+
+const getAlertTypeTag = (type) => {
+  return type === 'PERCENTAGE' ? 'warning' : 'danger'
+}
+
+const getAlertTypeText = (type) => {
+  return type === 'PERCENTAGE' ? '百分比预警' : '金额预警'
+}
+
+const getActivityType = (type) => {
+  const typeMap = {
+    info: 'primary',
+    warning: 'warning',
+    error: 'danger',
+    success: 'success'
+  }
+  return typeMap[type] || 'primary'
+}
+
+const getTaskCompletionStatus = (row) => {
+  const completionRate = (row.completedTaskCount / row.taskCount) * 100
+  if (completionRate >= 90) return 'success'
+  if (completionRate >= 75) return 'warning'
+  return 'exception'
+}
+
+const getScoreClass = (score) => {
+  if (score >= 90) return 'score-excellent'
+  if (score >= 80) return 'score-good'
+  if (score >= 70) return 'score-average'
+  return 'score-poor'
+}
+
+const getRatingTagType = (rating) => {
+  const ratingMap = {
+    '优秀': 'success',
+    '良好': 'primary',
+    '一般': 'warning',
+    '较差': 'danger'
+  }
+  return ratingMap[rating] || 'info'
+}
+
+const getEvaluationStatusType = (status) => {
+  const statusMap = {
+    completed: 'success',
+    pending: 'warning',
+    draft: 'info'
+  }
+  return statusMap[status] || 'info'
+}
+
+const getEvaluationStatusText = (status) => {
+  const statusMap = {
+    completed: '已完成',
+    pending: '待评估',
+    draft: '草稿'
+  }
+  return statusMap[status] || status
+}
+
+// Data properties that might be missing
+const dashboardCards = ref([
+  { title: '项目总数', value: 25, trend: 'up', trendValue: '+5', trendPeriod: '较上月' },
+  { title: '开发中项目', value: 12, trend: 'up', trendValue: '+3', trendPeriod: '较上月' },
+  { title: '待审批', value: 8, trend: 'down', trendValue: '-2', trendPeriod: '较昨日' },
+  { title: '预算使用率', value: '75%', trend: 'up', trendValue: '+5%', trendPeriod: '较上月' }
+])
+
+const recentActivities = ref([
+  { time: '2024-01-15 10:30', type: 'info', content: '用户张三提交了新的项目申请' },
+  { time: '2024-01-15 09:15', type: 'success', content: '项目ABC已完成开发阶段' },
+  { time: '2024-01-15 08:45', type: 'warning', content: '项目XYZ预算使用率达到80%' },
+  { time: '2024-01-14 17:20', type: 'info', content: '用户李四申请了年假' }
+])
+
+const projects = ref([])
+const selectedProject = ref(null)
+const budgetSummary = ref(null)
+const selectedProjectForPerformance = ref(null)
+const performanceDateRange = ref([])
+const performanceReport = ref(null)
+
+// Methods for fetching data
+const fetchProjectBudgetSummary = () => {
+  // TODO: Implement API call
+  console.log('Fetching budget summary for project:', selectedProject.value)
+}
+
+const fetchProjectPerformanceReport = () => {
+  // TODO: Implement API call
+  console.log('Fetching performance report for project:', selectedProjectForPerformance.value)
+}
 </script>
 
 <style scoped>

@@ -53,6 +53,35 @@ export const useUserStore = defineStore('user', {
         return true
       }
       return permissions.every((permission) => state.permissions.includes(permission))
+    },
+    // 检查是否有预算查看权限（管理员、财务、项目经理）
+    canViewBudget: (state) => {
+      if (!state.user) return false
+      
+      // 管理员拥有所有权限
+      if (state.user.username === 'admin' || 
+          (state.user.roles && state.user.roles.some((role) => role.name === 'ADMIN' || role.name.includes('管理员')))) {
+        return true
+      }
+      
+      // 检查财务角色
+      if (state.user.roles && state.user.roles.some((role) => 
+          role.name === 'ROLE_FINANCE' || role.name === 'FINANCE' || role.name.includes('财务'))) {
+        return true
+      }
+      
+      // 检查项目经理角色
+      if (state.user.roles && state.user.roles.some((role) => 
+          role.name === 'ROLE_MANAGER' || role.name === 'MANAGER' || role.name === '项目经理')) {
+        return true
+      }
+      
+      // 检查budget:view:all权限
+      if (state.permissions.includes('budget:view:all')) {
+        return true
+      }
+      
+      return false
     }
   },
   actions: {

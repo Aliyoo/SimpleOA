@@ -20,7 +20,7 @@ public interface PaymentService {
     
     List<?> getPaymentReminderList();
     
-    void markAsPaid(String id);
+    void markAsPaid(Long id);
     
     List<Payment> getPaymentsByReimbursementRequestId(Long reimbursementRequestId);
     

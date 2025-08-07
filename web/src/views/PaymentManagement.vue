@@ -206,11 +206,19 @@ const fetchReminderList = async () => {
   }
 }
 
+const resetPaymentForm = () => {
+  paymentForm.project = ''
+  paymentForm.amount = 0
+  paymentForm.date = ''
+  paymentForm.method = ''
+  paymentForm.remark = ''
+}
+
 const submitPayment = async () => {
   try {
     await api.post('/api/payment/record', paymentForm)
     ElMessage.success('回款记录提交成功')
-    paymentForm.remark = ''
+    resetPaymentForm()
     fetchStatisticsData()
     fetchReminderList()
   } catch (error) {

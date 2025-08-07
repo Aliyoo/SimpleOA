@@ -35,7 +35,7 @@ public class PaymentController {
     }
     
     @PostMapping("/mark-paid/{id}")
-    public ResponseEntity<?> markAsPaid(@PathVariable String id) {
+    public ResponseEntity<?> markAsPaid(@PathVariable Long id) {
         paymentService.markAsPaid(id);
         return ResponseEntity.ok().build();
     }

@@ -23,6 +23,11 @@ public class Payment {
     private LocalDate paymentDate;
     private String description;
     private String status; // PENDING, PAID, CANCELLED
+    private String method;
+    private String remark;
+
+    @ManyToOne
+    private Project project;
 
     @ManyToOne
     private ReimbursementRequest reimbursementRequest;

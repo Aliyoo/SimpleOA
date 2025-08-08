@@ -852,54 +852,49 @@ const fetchStatisticsData = async () => {
     console.log('当前用户ID:', currentUser.value.id)
     console.log('选择的项目ID:', selectedProjectId.value)
 
-    let apiUrl
+    // 使用统一的综合统计API，消除N+1查询问题
+    const apiUrl = '/api/worktime/unified/stats'
     let params = { startDate, endDate }
-
-    // 根据是否选择了特定项目决定使用哪个API
-    if (selectedProjectId.value) {
-      // 获取特定项目的统计数据
-      apiUrl = `/api/worktime/project/${selectedProjectId.value}/stats`
-      console.log('使用项目统计API:', apiUrl)
-    } else {
-      // 如果没有选择特定项目，则获取所有项目的统计数据或用户的统计数据
-      if (currentUser.value && currentUser.value.id) {
-        // 获取当前用户的统计数据
-        apiUrl = `/api/worktime/user/${currentUser.value.id}/stats`
-        console.log('使用用户统计API:', apiUrl)
-      } else {
-        // 获取所有项目的统计数据
-        apiUrl = `/api/worktime/projects/stats`
-        console.log('使用所有项目统计API:', apiUrl)
-      }
+    
+    // 始终添加当前用户过滤，统计报表仅统计当前用户工时
+    if (currentUser.value && currentUser.value.id) {
+      params.userId = currentUser.value.id
     }
 
-    console.log('最终API请求URL:', apiUrl)
+    // 如果选择了项目，再叠加项目过滤（个人视角下的某个项目）
+    if (selectedProjectId.value) {
+      params.projectId = selectedProjectId.value
+    }
+
+    console.log('使用统一综合统计API:', apiUrl, '参数:', params)
     const response = await api.get(apiUrl, { params })
 
     console.log('API响应数据:', response.data)
 
-    // 检查响应数据结构
+    // 处理统一API的响应数据结构
     let responseData
     if (response.data && response.data.code === 200 && response.data.data) {
-      // 新的嵌套结构 {code, message, data}
+      // 统一API的嵌套结构 {code, message, data}
       responseData = response.data.data
-      console.log('使用嵌套数据结构:', responseData)
+      console.log('使用统一API数据结构:', responseData)
     } else {
-      // 旧的直接结构
+      // 直接结构（兼容性处理）
       responseData = response.data
       console.log('使用直接数据结构:', responseData)
     }
 
-    // 从响应中获取数据
+    // 从统一API响应中获取聚合数据
     const totalHours = responseData.totalHours || 0
     const overtimeHours = responseData.overtimeHours || 0
     const workload = responseData.workload || 0
     const recordCount = responseData.recordCount || 0
     const averageHoursPerRecord = responseData.averageHoursPerRecord || 0
-    const projectHours = responseData.projects || {}
+    const projectStats = responseData.projectStats || []
+    const userStats = responseData.userStats || []
 
-    console.log('项目工时数据:', projectHours)
-    console.log('统计数据详情:', {
+    console.log('项目统计数据:', projectStats)
+    console.log('用户统计数据:', userStats)
+    console.log('汇总统计数据:', {
       totalHours,
       overtimeHours,
       workload,
@@ -907,31 +902,25 @@ const fetchStatisticsData = async () => {
       averageHoursPerRecord
     })
 
-    // 处理项目工时数据用于表格显示
-    if (selectedProjectId.value) {
-      // 如果选择了特定项目，只显示该项目的数据
-      const project = projectList.value.find((p) => p.id === parseInt(selectedProjectId.value)) || { name: '未知项目' }
-      statisticsData.value = [
-        {
-          projectName: project.name,
-          totalHours: totalHours,
-          percentage: '100%'
-        }
-      ]
+    // 处理统计数据用于表格显示
+    if (selectedProjectId.value && projectStats.length > 0) {
+      // 如果选择了特定项目，显示该项目的用户分布数据
+      statisticsData.value = userStats.map(userStat => ({
+        projectName: `${userStat.userName} (${userStat.userEmail})`,
+        totalHours: userStat.totalHours,
+        percentage: totalHours > 0 ? ((userStat.totalHours / totalHours) * 100).toFixed(2) + '%' : '0%'
+      }))
     } else {
-      // 如果没有选择特定项目，显示所有项目的数据
-      statisticsData.value = Object.entries(projectHours).map(([projectId, hours]) => {
-        const project = projectList.value.find((p) => p.id === parseInt(projectId)) || { name: '未知项目' }
-        return {
-          projectName: project.name,
-          totalHours: hours,
-          percentage: totalHours > 0 ? ((hours / totalHours) * 100).toFixed(2) + '%' : '0%'
-        }
-      })
-
-      // 按工时降序排序
-      statisticsData.value.sort((a, b) => b.totalHours - a.totalHours)
+      // 显示所有项目的数据
+      statisticsData.value = projectStats.map(projectStat => ({
+        projectName: projectStat.projectName,
+        totalHours: projectStat.totalHours,
+        percentage: totalHours > 0 ? ((projectStat.totalHours / totalHours) * 100).toFixed(2) + '%' : '0%'
+      }))
     }
+
+    // 按工时降序排序
+    statisticsData.value.sort((a, b) => b.totalHours - a.totalHours)
 
     // 更新汇总数据
     summaryData.value = {

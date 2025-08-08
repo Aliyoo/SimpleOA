@@ -359,6 +359,7 @@
 import { APP_CONFIG } from '../utils/config.js'
 import { ref, onMounted } from 'vue'
 import api from '../utils/axios.js'
+import optimizedApi from '../utils/optimizedApi.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../stores/user'
 import { Download, InfoFilled } from '@element-plus/icons-vue'
@@ -1329,8 +1330,8 @@ const fetchProjectsStats = async () => {
       _t: new Date().getTime() // 添加时间戳参数，避免浏览器缓存
     }
 
-    // 调用API获取所有项目的工时统计数据
-    const response = await api.get('/api/worktime/projects/stats', { params })
+    // 使用统一的综合统计API，消除N+1查询问题
+    const response = await api.get('/api/worktime/unified/stats', { params })
 
     // 处理返回的数据
     let stats = {}
@@ -1340,7 +1341,7 @@ const fetchProjectsStats = async () => {
       stats = response.data
     }
 
-    // 处理项目工时数据
+    // 处理统一API的项目工时数据 - 直接使用projects字段（保持原有格式兼容）
     const projectHours = stats.projects || {}
 
     // 根据选择的范围确定要统计的项目
@@ -1380,36 +1381,20 @@ const fetchProjectsStats = async () => {
     let targetAverageHoursPerRecord = 0
     let targetWorkload = 0
 
-    // 获取目标项目的详细统计数据
-    for (const project of targetProjects) {
-      try {
-        // 获取项目详情统计数据
-        const projectResponse = await api.get(`/api/worktime/project/${project.id}/stats`, {
-          params: {
-            startDate,
-            endDate,
-            _t: new Date().getTime()
-          }
-        })
-
-        // 处理返回的数据
-        let projectStats = {}
-        if (projectResponse.data && projectResponse.data.data) {
-          projectStats = projectResponse.data.data
-        } else if (projectResponse.data) {
-          projectStats = projectResponse.data
-        }
-
-        // 累加记录数和加班工时
-        targetRecordCount += projectStats.recordCount || 0
-        targetOvertimeHours += projectStats.overtimeHours || 0
-
-        // 工作负荷取平均值
-        if (projectStats.workload) {
-          targetWorkload += projectStats.workload
-        }
-      } catch (error) {
-        console.error(`获取项目 ${project.id} 统计数据失败:`, error)
+    // 从统一API响应中获取项目统计数据，无需循环调用
+    const targetProjectStatsData = stats.projectStats || []
+    
+    // 过滤出目标项目的统计数据
+    const targetProjectStats = targetProjectStatsData.filter(stat => 
+      targetProjectIds.includes(stat.projectId)
+    )
+    
+    // 累加目标项目的统计数据
+    for (const stat of targetProjectStats) {
+      targetRecordCount += stat.recordCount || 0
+      targetOvertimeHours += stat.overtimeHours || 0
+      if (stat.workload) {
+        targetWorkload += stat.workload
       }
     }
 
@@ -1431,87 +1416,52 @@ const fetchProjectsStats = async () => {
     console.log('获取到项目统计数据:', projectsStats.value)
     console.log('更新后的总体统计数据:', overallStats.value)
 
-    // 获取所有目标项目的成员工时统计
-    allMemberStats.value = [] // 清空之前的数据
+    // 获取所有目标项目的成员工时统计（一次请求，避免 N+1）
+    allMemberStats.value = []
+    try {
+      const projectIds = targetProjectIds
+      const batchResp = await optimizedApi.getProjectUserStatsBatch(projectIds, startDate, endDate)
+      const data = batchResp?.data || []
 
-    // 为每个目标项目获取成员工时统计
-    for (const project of targetProjects) {
-      try {
-        // 获取项目成员列表
-        const membersResponse = await api.get(`/api/projects/${project.id}/members`)
-        const members = membersResponse.data || []
+      // 为计算占比先按项目汇总总工时
+      const projectTotals = {}
+      data.forEach(row => {
+        const pid = Number(row.projectId)
+        projectTotals[pid] = (projectTotals[pid] || 0) + (row.totalHours || 0)
+      })
 
-        // 获取项目工时记录
-        const recordsResponse = await api.get('/api/worktime/project/range', {
-          params: {
-            projectId: project.id,
-            startDate,
-            endDate,
-            size: 1000,
-            _t: new Date().getTime()
-          }
-        })
-
-        // 处理返回的数据
-        let workTimeRecords = []
-        if (Array.isArray(recordsResponse.data)) {
-          workTimeRecords = recordsResponse.data
-        } else if (recordsResponse.data && recordsResponse.data.content) {
-          workTimeRecords = recordsResponse.data.content
-        }
-
-        // 按用户分组统计工时
-        const userHoursMap = {}
-        const userRecordsMap = {}
-
-        workTimeRecords.forEach((record) => {
-          const userId = record.user?.id
-          if (userId) {
-            if (!userHoursMap[userId]) {
-              userHoursMap[userId] = 0
-              userRecordsMap[userId] = 0
-            }
-            userHoursMap[userId] += record.hours || 0
-            userRecordsMap[userId] += 1
-          }
-        })
-
-        // 计算项目总工时
-        const projectTotalHours = Object.values(userHoursMap).reduce((sum, hours) => sum + hours, 0)
-
-        // 构建成员工时统计数据
-        const projectMemberStats = members.map((member) => {
-          const userId = member.id
-          const totalHours = userHoursMap[userId] || 0
-          const recordCount = userRecordsMap[userId] || 0
-
+      // 映射为前端需要的结构
+      const projectMap = Object.fromEntries(targetProjects.map(p => [p.id, p]))
+      allMemberStats.value = data
+        .filter(row => targetProjectIds.includes(Number(row.projectId)))
+        .map(row => {
+          const pid = Number(row.projectId)
+          const totalHours = row.totalHours || 0
+          const recordCount = row.recordCount || 0
+          const pct = projectTotals[pid] > 0 ? ((totalHours / projectTotals[pid]) * 100).toFixed(2) + '%' : '0%'
           return {
-            projectId: project.id,
-            projectName: project.name,
-            userId,
-            username: member.username,
-            realName: member.realName || member.username,
+            projectId: pid,
+            projectName: projectMap[pid]?.name || '未知项目',
+            userId: row.userId,
+            username: row.username,
+            realName: row.realName || row.username,
             totalHours,
             recordCount,
             averageHours: recordCount > 0 ? (totalHours / recordCount).toFixed(2) : '0',
-            percentage: projectTotalHours > 0 ? ((totalHours / projectTotalHours) * 100).toFixed(2) + '%' : '0%'
+            percentage: pct
           }
         })
 
-        // 添加到所有成员统计数据中
-        allMemberStats.value = [...allMemberStats.value, ...projectMemberStats]
-      } catch (error) {
-        console.error(`获取项目 ${project.id} 成员工时统计失败:`, error)
-      }
+      // 按工时降序排序
+      allMemberStats.value.sort((a, b) => b.totalHours - a.totalHours)
+
+      // 聚合生成按人员统计的数据
+      aggregateMemberStats()
+
+      console.log('获取到所有项目成员工时统计数据(批量):', allMemberStats.value)
+    } catch (error) {
+      console.error('批量获取项目成员工时统计失败:', error)
     }
-
-    // 按工时降序排序
-    allMemberStats.value.sort((a, b) => b.totalHours - a.totalHours)
-
-    // 聚合生成按人员统计的数据
-    aggregateMemberStats()
-
-    console.log('获取到所有项目成员工时统计数据:', allMemberStats.value)
   } catch (error) {
     console.error('获取项目统计数据失败:', error)
     ElMessage.error('获取项目统计数据失败: ' + error.message)
@@ -1535,11 +1485,12 @@ const viewProjectDetail = async (projectId) => {
     const startDate = statsDateRange.value[0]
     const endDate = statsDateRange.value[1]
 
-    // 调用API获取项目工时统计数据
-    const response = await api.get(`/api/worktime/project/${projectId}/stats`, {
+    // 使用统一的综合统计API，添加项目过滤参数
+    const response = await api.get('/api/worktime/unified/stats', {
       params: {
         startDate,
         endDate,
+        projectId: projectId,
         _t: new Date().getTime() // 添加时间戳参数，避免浏览器缓存
       }
     })

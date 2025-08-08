@@ -12,9 +12,14 @@ import com.example.simpleoa.service.OutsourcingService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.example.simpleoa.dto.OutsourcingDTO;
+import com.example.simpleoa.dto.OutsourcingStatsDTO;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class OutsourcingServiceImpl implements OutsourcingService {
@@ -69,8 +74,8 @@ public class OutsourcingServiceImpl implements OutsourcingService {
             existingOutsourcing.setProject(project);
         }
         
-        existingOutsourcing.setName(outsourcing.getName());
-        existingOutsourcing.setVendor(outsourcing.getVendor());
+        existingOutsourcing.setProjectName(outsourcing.getProjectName());
+        existingOutsourcing.setCompany(outsourcing.getCompany());
         existingOutsourcing.setContactPerson(outsourcing.getContactPerson());
         existingOutsourcing.setContactPhone(outsourcing.getContactPhone());
         existingOutsourcing.setContactEmail(outsourcing.getContactEmail());
@@ -119,8 +124,8 @@ public class OutsourcingServiceImpl implements OutsourcingService {
     }
 
     @Override
-    public List<Outsourcing> getOutsourcingByVendor(String vendor) {
-        return outsourcingRepository.findByVendor(vendor);
+    public List<Outsourcing> getOutsourcingByCompany(String company) {
+        return outsourcingRepository.findByCompany(company);
     }
 
     @Override
@@ -321,5 +326,68 @@ public class OutsourcingServiceImpl implements OutsourcingService {
         result.put("progressStats", progressStats);
         
         return result;
+    }
+
+    @Override
+    @Transactional
+    public Outsourcing apply(OutsourcingDTO outsourcingDTO) {
+        Outsourcing outsourcing = new Outsourcing();
+        outsourcing.setProjectName(outsourcingDTO.getProjectName());
+        outsourcing.setCompany(outsourcingDTO.getCompany());
+        outsourcing.setBudget(outsourcingDTO.getBudget());
+        outsourcing.setDescription(outsourcingDTO.getDescription());
+        outsourcing.setStatus("待审批");
+        outsourcing.setCompletionPercentage(0);
+
+        try {
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+            outsourcing.setStartDate(formatter.parse(outsourcingDTO.getStartTime()));
+            outsourcing.setEndDate(formatter.parse(outsourcingDTO.getEndTime()));
+        } catch (ParseException e) {
+            throw new RuntimeException("Invalid date format. Please use yyyy-MM-dd.", e);
+        }
+
+        return outsourcingRepository.save(outsourcing);
+    }
+
+    @Override
+    public List<Outsourcing> getApprovalList() {
+        return outsourcingRepository.findAll();
+    }
+
+    @Override
+    @Transactional
+    public Outsourcing approve(Long id) {
+        Outsourcing outsourcing = getOutsourcingById(id);
+        outsourcing.setStatus("已通过");
+        return outsourcingRepository.save(outsourcing);
+    }
+
+    @Override
+    @Transactional
+    public Outsourcing reject(Long id) {
+        Outsourcing outsourcing = getOutsourcingById(id);
+        outsourcing.setStatus("已拒绝");
+        return outsourcingRepository.save(outsourcing);
+    }
+
+    @Override
+    public List<OutsourcingStatsDTO> getStatistics(String startDateStr, String endDateStr) {
+        // Find all projects that are active during the given date range.
+        List<Outsourcing> allOutsourcing = outsourcingRepository.findAll();
+
+        // Group by company and calculate statistics
+        Map<String, List<Outsourcing>> byCompany = allOutsourcing.stream()
+                .collect(Collectors.groupingBy(Outsourcing::getCompany));
+
+        return byCompany.entrySet().stream()
+                .map(entry -> {
+                    String company = entry.getKey();
+                    List<Outsourcing> projects = entry.getValue();
+                    double totalBudget = projects.stream().mapToDouble(Outsourcing::getBudget).sum();
+                    long projectCount = projects.size();
+                    return new OutsourcingStatsDTO(company, totalBudget, projectCount);
+                })
+                .collect(Collectors.toList());
     }
 }

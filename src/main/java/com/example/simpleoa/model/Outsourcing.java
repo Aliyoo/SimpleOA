@@ -18,10 +18,10 @@ public class Outsourcing {
     private Long id;
 
     @Column(nullable = false)
-    private String name;
+    private String projectName;
 
     @Column(nullable = false)
-    private String vendor;
+    private String company;
 
     @Column(nullable = false)
     private String contactPerson;

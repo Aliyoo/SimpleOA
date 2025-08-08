@@ -1,5 +1,7 @@
 package com.example.simpleoa.controller;
 
+import com.example.simpleoa.dto.OutsourcingDTO;
+import com.example.simpleoa.dto.OutsourcingStatsDTO;
 import com.example.simpleoa.model.Outsourcing;
 import com.example.simpleoa.model.OutsourcingContract;
 import com.example.simpleoa.model.OutsourcingProgress;
@@ -54,9 +56,9 @@ public class OutsourcingController {
         return outsourcingService.getOutsourcingByProject(projectId);
     }
 
-    @GetMapping("/vendor/{vendor}")
-    public List<Outsourcing> getOutsourcingByVendor(@PathVariable String vendor) {
-        return outsourcingService.getOutsourcingByVendor(vendor);
+    @GetMapping("/company/{company}")
+    public List<Outsourcing> getOutsourcingByCompany(@PathVariable String company) {
+        return outsourcingService.getOutsourcingByCompany(company);
     }
 
     @GetMapping("/status/{status}")
@@ -143,5 +145,31 @@ public class OutsourcingController {
     @GetMapping("/{outsourcingId}/stats")
     public Map<String, Object> getOutsourcingStats(@PathVariable Long outsourcingId) {
         return outsourcingService.getOutsourcingStats(outsourcingId);
+    }
+
+    // Endpoints for frontend
+    @PostMapping("/apply")
+    public Outsourcing apply(@RequestBody OutsourcingDTO outsourcingDTO) {
+        return outsourcingService.apply(outsourcingDTO);
+    }
+
+    @GetMapping("/approval-list")
+    public List<Outsourcing> getApprovalList() {
+        return outsourcingService.getApprovalList();
+    }
+
+    @PostMapping("/approve/{id}")
+    public Outsourcing approve(@PathVariable Long id) {
+        return outsourcingService.approve(id);
+    }
+
+    @PostMapping("/reject/{id}")
+    public Outsourcing reject(@PathVariable Long id) {
+        return outsourcingService.reject(id);
+    }
+
+    @GetMapping("/statistics")
+    public List<OutsourcingStatsDTO> getStatistics(@RequestParam String startDate, @RequestParam String endDate) {
+        return outsourcingService.getStatistics(startDate, endDate);
     }
 }

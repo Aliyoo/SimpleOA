@@ -9,6 +9,6 @@ import java.util.List;
 @Repository
 public interface OutsourcingRepository extends JpaRepository<Outsourcing, Long> {
     List<Outsourcing> findByProjectId(Long projectId);
-    List<Outsourcing> findByVendor(String vendor);
+    List<Outsourcing> findByCompany(String company);
     List<Outsourcing> findByStatus(String status);
 }

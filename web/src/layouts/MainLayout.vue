@@ -185,8 +185,11 @@
     <el-container>
       <el-header>
         <div class="header-container">
-          <div class="header-left"></div>
+          <div class="header-left">
+            <h1 class="header-title">SimpleOA 办公系统</h1>
+          </div>
           <div class="header-right">
+            <ThemeToggle mode="dropdown" />
             <el-dropdown>
               <span class="user-dropdown">
                 <el-avatar
@@ -221,6 +224,7 @@ import { useUserStore } from '../stores/user'
 import defaultAvatar from '@/assets/default-avatar.png'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { ArrowDown } from '@element-plus/icons-vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 
 // 导入所有需要的图标组件
 const {
@@ -318,36 +322,60 @@ const goToProfile = () => {
 .layout-container {
   height: 100vh;
   overflow: hidden;
+  background-color: var(--oa-bg-primary);
 }
 
 .el-aside {
-  background-color: #304156;
-  transition: width 0.3s;
+  background-color: var(--oa-sidebar-bg);
+  transition: width var(--oa-transition-base);
+  width: var(--oa-sidebar-width);
+  box-shadow: var(--oa-shadow-light);
 }
 
 .el-menu-vertical:not(.el-menu--collapse) {
-  width: 200px;
-  min-height: 400px;
+  width: var(--oa-sidebar-width);
+  min-height: 100vh;
 }
 
 .el-menu {
   border-right: none;
+  background-color: transparent;
+}
+
+.el-menu-item {
+  color: var(--oa-sidebar-text);
+  transition: all var(--oa-transition-fast);
+  border-radius: var(--oa-border-radius-base);
+  margin: var(--oa-spacing-xs) var(--oa-spacing-sm);
 }
 
 .el-menu-item.is-active {
-  background-color: #2d8cf0 !important;
+  background-color: var(--oa-sidebar-active-bg) !important;
+  color: var(--oa-bg-white) !important;
+  box-shadow: var(--oa-shadow-light);
+}
+
+.el-sub-menu__title {
+  color: var(--oa-sidebar-text);
+  transition: all var(--oa-transition-fast);
+  border-radius: var(--oa-border-radius-base);
+  margin: var(--oa-spacing-xs) var(--oa-spacing-sm);
 }
 
 .el-sub-menu__title:hover,
 .el-menu-item:hover {
-  background-color: #263445 !important;
+  background-color: var(--oa-sidebar-hover-bg) !important;
+  color: var(--oa-sidebar-active-text) !important;
+  transform: translateX(2px);
 }
 
 .el-header {
-  background-color: #fff;
-  border-bottom: 1px solid #e6e6e6;
-  padding: 0 20px;
-  height: 50px;
+  background-color: var(--oa-bg-white);
+  border-bottom: 1px solid var(--oa-border-light);
+  padding: 0 var(--oa-spacing-lg);
+  height: var(--oa-header-height);
+  box-shadow: var(--oa-shadow-light);
+  z-index: var(--oa-z-index-top);
 }
 
 .header-container {
@@ -360,34 +388,154 @@ const goToProfile = () => {
 .header-left {
   display: flex;
   align-items: center;
+  gap: var(--oa-spacing-base);
+}
+
+.header-title {
+  font-size: var(--oa-font-size-lg);
+  font-weight: var(--oa-font-weight-medium);
+  color: var(--oa-text-primary);
+  margin: 0;
 }
 
 .toggle-sidebar {
-  font-size: 20px;
+  font-size: var(--oa-font-size-xl);
   cursor: pointer;
-  color: #606266;
+  color: var(--oa-text-regular);
+  transition: color var(--oa-transition-fast);
+  padding: var(--oa-spacing-sm);
+  border-radius: var(--oa-border-radius-base);
+}
+
+.toggle-sidebar:hover {
+  color: var(--oa-primary-color);
+  background-color: var(--oa-primary-light-9);
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  gap: var(--oa-spacing-base);
 }
 
 .user-dropdown {
   display: flex;
   align-items: center;
   cursor: pointer;
-  color: #303133;
+  color: var(--oa-text-primary);
+  padding: var(--oa-spacing-sm) var(--oa-spacing-base);
+  border-radius: var(--oa-border-radius-base);
+  transition: all var(--oa-transition-fast);
+  font-weight: var(--oa-font-weight-medium);
+}
+
+.user-dropdown:hover {
+  background-color: var(--oa-primary-light-9);
+  color: var(--oa-primary-color);
 }
 
 .user-dropdown .el-icon {
-  margin-left: 5px;
+  margin-left: var(--oa-spacing-xs);
+  transition: transform var(--oa-transition-fast);
+}
+
+.user-dropdown:hover .el-icon {
+  transform: rotate(180deg);
 }
 
 .el-main {
-  background-color: #f0f2f5;
-  padding: 20px;
+  background-color: var(--oa-bg-primary);
+  padding: var(--oa-content-padding);
   overflow-y: auto;
-  height: calc(100vh - 50px);
+  height: calc(100vh - var(--oa-header-height));
+  min-width: var(--oa-content-min-width);
+}
+
+/* 侧边栏子菜单样式优化 */
+.el-sub-menu .el-menu-item {
+  background-color: transparent;
+  color: var(--oa-sidebar-text);
+  padding-left: 48px !important;
+}
+
+.el-sub-menu .el-menu-item.is-active {
+  background-color: var(--oa-primary-color) !important;
+  color: var(--oa-bg-white) !important;
+}
+
+.el-sub-menu .el-menu-item:hover {
+  background-color: var(--oa-sidebar-hover-bg) !important;
+  color: var(--oa-sidebar-active-text) !important;
+}
+
+/* 头像样式优化 */
+.el-avatar {
+  border: 2px solid var(--oa-border-light);
+  transition: border-color var(--oa-transition-fast);
+}
+
+.user-dropdown:hover .el-avatar {
+  border-color: var(--oa-primary-color);
+}
+
+/* 菜单图标优化 */
+.el-menu-item .el-icon,
+.el-sub-menu__title .el-icon {
+  margin-right: var(--oa-spacing-sm);
+  font-size: var(--oa-font-size-md);
+  color: inherit;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .el-aside {
+    width: var(--oa-sidebar-collapsed-width);
+  }
+  
+  .el-menu-vertical:not(.el-menu--collapse) {
+    width: var(--oa-sidebar-collapsed-width);
+  }
+  
+  .el-main {
+    padding: var(--oa-spacing-base);
+    min-width: auto;
+  }
+  
+  .header-container {
+    padding: 0 var(--oa-spacing-base);
+  }
+  
+  .header-title {
+    display: none;
+  }
+}
+
+/* 布局收缩动画 */
+.layout-container.collapsed .el-aside {
+  width: var(--oa-sidebar-collapsed-width);
+}
+
+.layout-container.collapsed .el-menu-item span,
+.layout-container.collapsed .el-sub-menu__title span {
+  display: none;
+}
+
+/* 加载状态 */
+.layout-container.loading {
+  pointer-events: none;
+}
+
+.layout-container.loading::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--oa-bg-overlay);
+  z-index: var(--oa-z-index-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

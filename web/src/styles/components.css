@@ -1,0 +1,465 @@
+/* OA系统组件样式增强 */
+
+/* 按钮组件增强 */
+.el-button {
+  border-radius: var(--oa-border-radius-base);
+  font-weight: var(--oa-font-weight-medium);
+  transition: all var(--oa-transition-fast);
+  padding: var(--oa-button-padding-y) var(--oa-button-padding-x);
+  font-size: var(--oa-font-size-base);
+  box-shadow: none;
+}
+
+.el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--oa-shadow-light);
+}
+
+.el-button:active {
+  transform: translateY(0);
+}
+
+.el-button--primary {
+  background-color: var(--oa-primary-color);
+  border-color: var(--oa-primary-color);
+}
+
+.el-button--primary:hover {
+  background-color: var(--oa-primary-light-1);
+  border-color: var(--oa-primary-light-1);
+}
+
+.el-button--success {
+  background-color: var(--oa-success-color);
+  border-color: var(--oa-success-color);
+}
+
+.el-button--warning {
+  background-color: var(--oa-warning-color);
+  border-color: var(--oa-warning-color);
+}
+
+.el-button--danger {
+  background-color: var(--oa-danger-color);
+  border-color: var(--oa-danger-color);
+}
+
+.el-button--info {
+  background-color: var(--oa-info-color);
+  border-color: var(--oa-info-color);
+}
+
+/* 按钮组 */
+.el-button-group .el-button {
+  margin: 0;
+}
+
+.el-button-group .el-button:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.el-button-group .el-button:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.el-button-group .el-button:not(:first-child):not(:last-child) {
+  border-radius: 0;
+}
+
+/* 表格组件增强 */
+.el-table {
+  border-radius: var(--oa-border-radius-md);
+  overflow: hidden;
+  box-shadow: var(--oa-shadow-light);
+  background-color: var(--oa-bg-white);
+}
+
+.el-table th.el-table__cell {
+  background-color: var(--oa-bg-secondary);
+  color: var(--oa-text-primary);
+  font-weight: var(--oa-font-weight-medium);
+  font-size: var(--oa-font-size-base);
+  border-bottom: 1px solid var(--oa-border-base);
+  height: var(--oa-table-row-height);
+}
+
+.el-table td.el-table__cell {
+  height: var(--oa-table-row-height);
+  color: var(--oa-text-regular);
+  border-bottom: 1px solid var(--oa-border-light);
+  transition: background-color var(--oa-transition-fast);
+}
+
+.el-table .el-table__row:hover > td {
+  background-color: var(--oa-primary-light-9) !important;
+}
+
+.el-table .el-table__row.current-row > td {
+  background-color: var(--oa-primary-light-8) !important;
+}
+
+/* 表格操作按钮 */
+.table-actions {
+  display: flex;
+  gap: var(--oa-spacing-xs);
+  align-items: center;
+}
+
+.table-actions .el-button {
+  padding: var(--oa-spacing-xs) var(--oa-spacing-sm);
+  font-size: var(--oa-font-size-sm);
+  min-width: auto;
+}
+
+/* 卡片组件增强 */
+.el-card {
+  border-radius: var(--oa-border-radius-md);
+  border: 1px solid var(--oa-border-light);
+  box-shadow: var(--oa-shadow-light);
+  transition: all var(--oa-transition-base);
+  background-color: var(--oa-bg-card);
+}
+
+.el-card:hover {
+  box-shadow: var(--oa-shadow-base);
+  transform: translateY(-2px);
+}
+
+.el-card__header {
+  background-color: var(--oa-bg-secondary);
+  border-bottom: 1px solid var(--oa-border-light);
+  padding: var(--oa-spacing-base) var(--oa-spacing-lg);
+  font-weight: var(--oa-font-weight-medium);
+  color: var(--oa-text-primary);
+}
+
+.el-card__body {
+  padding: var(--oa-spacing-lg);
+}
+
+/* 表单组件增强 */
+.el-form {
+  background-color: var(--oa-bg-white);
+  border-radius: var(--oa-border-radius-md);
+  padding: var(--oa-spacing-lg);
+  box-shadow: var(--oa-shadow-light);
+}
+
+.el-form-item {
+  margin-bottom: var(--oa-form-item-margin);
+}
+
+.el-form-item__label {
+  color: var(--oa-text-primary);
+  font-weight: var(--oa-font-weight-medium);
+  font-size: var(--oa-font-size-base);
+}
+
+.el-form-item__error {
+  color: var(--oa-danger-color);
+  font-size: var(--oa-font-size-sm);
+}
+
+/* 输入框组件增强 */
+.el-input__wrapper {
+  border-radius: var(--oa-border-radius-base);
+  box-shadow: none;
+  border: 1px solid var(--oa-border-base);
+  transition: all var(--oa-transition-fast);
+}
+
+.el-input__wrapper:hover {
+  border-color: var(--oa-primary-light-3);
+}
+
+.el-input__wrapper.is-focus {
+  border-color: var(--oa-primary-color);
+  box-shadow: 0 0 0 2px var(--oa-primary-light-9);
+}
+
+.el-input__inner {
+  color: var(--oa-text-primary);
+  font-size: var(--oa-font-size-base);
+}
+
+.el-input__inner::placeholder {
+  color: var(--oa-text-placeholder);
+}
+
+/* 选择器组件增强 */
+.el-select .el-input__wrapper {
+  cursor: pointer;
+}
+
+.el-select-dropdown {
+  border-radius: var(--oa-border-radius-md);
+  box-shadow: var(--oa-shadow-base);
+  border: 1px solid var(--oa-border-light);
+}
+
+.el-select-dropdown__item {
+  padding: var(--oa-spacing-sm) var(--oa-spacing-base);
+  transition: background-color var(--oa-transition-fast);
+}
+
+.el-select-dropdown__item:hover {
+  background-color: var(--oa-primary-light-9);
+}
+
+.el-select-dropdown__item.selected {
+  background-color: var(--oa-primary-color);
+  color: var(--oa-bg-white);
+}
+
+/* 日期选择器增强 */
+.el-date-editor .el-input__wrapper {
+  border-radius: var(--oa-border-radius-base);
+}
+
+.el-date-picker {
+  border-radius: var(--oa-border-radius-md);
+  box-shadow: var(--oa-shadow-base);
+}
+
+/* 弹窗组件增强 */
+.el-dialog {
+  border-radius: var(--oa-border-radius-lg);
+  box-shadow: var(--oa-shadow-dark);
+  background-color: var(--oa-bg-white);
+}
+
+.el-dialog__header {
+  background-color: var(--oa-bg-secondary);
+  padding: var(--oa-spacing-lg);
+  border-bottom: 1px solid var(--oa-border-light);
+  border-radius: var(--oa-border-radius-lg) var(--oa-border-radius-lg) 0 0;
+}
+
+.el-dialog__title {
+  color: var(--oa-text-primary);
+  font-weight: var(--oa-font-weight-medium);
+  font-size: var(--oa-font-size-lg);
+}
+
+.el-dialog__body {
+  padding: var(--oa-spacing-lg);
+  color: var(--oa-text-regular);
+}
+
+.el-dialog__footer {
+  padding: var(--oa-spacing-lg);
+  border-top: 1px solid var(--oa-border-light);
+  background-color: var(--oa-bg-secondary);
+  border-radius: 0 0 var(--oa-border-radius-lg) var(--oa-border-radius-lg);
+}
+
+/* 抽屉组件增强 */
+.el-drawer {
+  box-shadow: var(--oa-shadow-dark);
+  background-color: var(--oa-bg-white);
+}
+
+.el-drawer__header {
+  background-color: var(--oa-bg-secondary);
+  padding: var(--oa-spacing-lg);
+  border-bottom: 1px solid var(--oa-border-light);
+  margin-bottom: 0;
+}
+
+.el-drawer__title {
+  color: var(--oa-text-primary);
+  font-weight: var(--oa-font-weight-medium);
+  font-size: var(--oa-font-size-lg);
+}
+
+.el-drawer__body {
+  padding: var(--oa-spacing-lg);
+}
+
+/* 标签组件增强 */
+.el-tag {
+  border-radius: var(--oa-border-radius-base);
+  font-weight: var(--oa-font-weight-medium);
+  font-size: var(--oa-font-size-sm);
+  padding: var(--oa-spacing-xs) var(--oa-spacing-sm);
+  border: none;
+}
+
+.el-tag--primary {
+  background-color: var(--oa-primary-light-9);
+  color: var(--oa-primary-color);
+}
+
+.el-tag--success {
+  background-color: var(--oa-success-light);
+  color: var(--oa-success-color);
+}
+
+.el-tag--warning {
+  background-color: var(--oa-warning-light);
+  color: var(--oa-warning-color);
+}
+
+.el-tag--danger {
+  background-color: var(--oa-danger-light);
+  color: var(--oa-danger-color);
+}
+
+.el-tag--info {
+  background-color: var(--oa-info-light);
+  color: var(--oa-info-color);
+}
+
+/* 分页组件增强 */
+.el-pagination {
+  margin-top: var(--oa-spacing-lg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--oa-spacing-xs);
+}
+
+.el-pagination .el-pager li {
+  border-radius: var(--oa-border-radius-base);
+  transition: all var(--oa-transition-fast);
+}
+
+.el-pagination .el-pager li:hover {
+  background-color: var(--oa-primary-light-9);
+  color: var(--oa-primary-color);
+}
+
+.el-pagination .el-pager li.active {
+  background-color: var(--oa-primary-color);
+  color: var(--oa-bg-white);
+}
+
+/* 消息提示增强 */
+.el-message {
+  border-radius: var(--oa-border-radius-md);
+  box-shadow: var(--oa-shadow-base);
+  font-size: var(--oa-font-size-base);
+  font-weight: var(--oa-font-weight-medium);
+}
+
+.el-notification {
+  border-radius: var(--oa-border-radius-md);
+  box-shadow: var(--oa-shadow-base);
+}
+
+/* 加载组件增强 */
+.el-loading-mask {
+  background-color: var(--oa-bg-overlay);
+  border-radius: var(--oa-border-radius-md);
+}
+
+.el-loading-text {
+  color: var(--oa-text-primary);
+  font-weight: var(--oa-font-weight-medium);
+}
+
+/* 步骤条增强 */
+.el-steps {
+  margin: var(--oa-spacing-lg) 0;
+}
+
+.el-step__icon {
+  border-radius: var(--oa-border-radius-round);
+}
+
+/* 面包屑增强 */
+.el-breadcrumb {
+  margin-bottom: var(--oa-spacing-lg);
+  font-size: var(--oa-font-size-base);
+}
+
+.el-breadcrumb__item {
+  font-weight: var(--oa-font-weight-medium);
+}
+
+.el-breadcrumb__inner {
+  color: var(--oa-text-regular);
+  transition: color var(--oa-transition-fast);
+}
+
+.el-breadcrumb__inner:hover {
+  color: var(--oa-primary-color);
+}
+
+/* 标签页增强 */
+.el-tabs {
+  background-color: var(--oa-bg-white);
+  border-radius: var(--oa-border-radius-md);
+  overflow: hidden;
+}
+
+.el-tabs__header {
+  background-color: var(--oa-bg-secondary);
+  margin: 0;
+  border-bottom: 1px solid var(--oa-border-light);
+}
+
+.el-tabs__item {
+  color: var(--oa-text-regular);
+  font-weight: var(--oa-font-weight-medium);
+  transition: all var(--oa-transition-fast);
+  padding: var(--oa-spacing-base) var(--oa-spacing-lg);
+}
+
+.el-tabs__item:hover {
+  color: var(--oa-primary-color);
+}
+
+.el-tabs__item.is-active {
+  color: var(--oa-primary-color);
+  background-color: var(--oa-bg-white);
+}
+
+.el-tabs__content {
+  padding: var(--oa-spacing-lg);
+}
+
+/* 折叠面板增强 */
+.el-collapse {
+  border-radius: var(--oa-border-radius-md);
+  overflow: hidden;
+  border: 1px solid var(--oa-border-light);
+}
+
+.el-collapse-item__header {
+  background-color: var(--oa-bg-secondary);
+  color: var(--oa-text-primary);
+  font-weight: var(--oa-font-weight-medium);
+  padding: var(--oa-spacing-base) var(--oa-spacing-lg);
+  transition: background-color var(--oa-transition-fast);
+}
+
+.el-collapse-item__header:hover {
+  background-color: var(--oa-primary-light-9);
+  color: var(--oa-primary-color);
+}
+
+.el-collapse-item__content {
+  padding: var(--oa-spacing-lg);
+  background-color: var(--oa-bg-white);
+}
+
+/* 头像增强 */
+.el-avatar {
+  border: 2px solid var(--oa-border-light);
+  transition: all var(--oa-transition-fast);
+}
+
+.el-avatar:hover {
+  border-color: var(--oa-primary-color);
+  box-shadow: var(--oa-shadow-light);
+}
+
+/* 徽章增强 */
+.el-badge__content {
+  border-radius: var(--oa-border-radius-round);
+  font-weight: var(--oa-font-weight-medium);
+  font-size: var(--oa-font-size-xs);
+}

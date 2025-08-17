@@ -4,23 +4,26 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'App'
-}
+<script setup>
+import { onMounted, onUnmounted } from 'vue'
+import { useTheme } from '@/composables/useTheme'
+
+// 初始化主题系统
+let themeCleanup = null
+
+onMounted(() => {
+  const { initTheme } = useTheme()
+  themeCleanup = initTheme()
+})
+
+onUnmounted(() => {
+  if (themeCleanup) {
+    themeCleanup()
+    themeCleanup = null
+  }
+})
 </script>
 
 <style>
-html,
-body {
-  margin: 0;
-  padding: 0;
-}
-
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
-}
+@import './styles/global.css';
 </style>

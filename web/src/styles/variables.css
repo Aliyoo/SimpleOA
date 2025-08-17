@@ -1,0 +1,172 @@
+/* OA系统全局CSS变量定义 */
+:root {
+  /* 主色调 - ElementUI 默认蓝色系 */
+  --oa-primary-color: #409EFF;
+  --oa-primary-light-1: #53a8ff;
+  --oa-primary-light-2: #66b1ff;
+  --oa-primary-light-3: #79bbff;
+  --oa-primary-light-4: #8cc5ff;
+  --oa-primary-light-5: #a0cfff;
+  --oa-primary-light-6: #b3d8ff;
+  --oa-primary-light-7: #c6e2ff;
+  --oa-primary-light-8: #d9ecff;
+  --oa-primary-light-9: #ecf5ff;
+  --oa-primary-dark-1: #337ecc;
+  --oa-primary-dark-2: #2d70b3;
+
+  /* 辅助色 */
+  --oa-success-color: #67C23A;
+  --oa-warning-color: #E6A23C;
+  --oa-danger-color: #F56C6C;
+  --oa-error-color: #F56C6C;
+  --oa-info-color: #909399;
+
+  /* 功能状态色 */
+  --oa-success-light: #f0f9ff;
+  --oa-warning-light: #fdf6ec;
+  --oa-danger-light: #fef0f0;
+  --oa-info-light: #f4f4f5;
+
+  /* 文本颜色 */
+  --oa-text-primary: #303133;
+  --oa-text-regular: #606266;
+  --oa-text-secondary: #909399;
+  --oa-text-placeholder: #C0C4CC;
+  --oa-text-disabled: #C0C4CC;
+
+  /* 背景颜色 */
+  --oa-bg-primary: #F2F6FC;
+  --oa-bg-secondary: #F4F4F5;
+  --oa-bg-white: #FFFFFF;
+  --oa-bg-card: #FFFFFF;
+  --oa-bg-overlay: rgba(0, 0, 0, 0.5);
+
+  /* 边框颜色 */
+  --oa-border-light: #EBEEF5;
+  --oa-border-base: #DCDFE6;
+  --oa-border-dark: #C0C4CC;
+  --oa-border-darker: #A0A4AA;
+
+  /* 阴影 */
+  --oa-shadow-light: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+  --oa-shadow-base: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --oa-shadow-dark: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  /* 字体 */
+  --oa-font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  --oa-font-size-xs: 12px;
+  --oa-font-size-sm: 13px;
+  --oa-font-size-base: 14px;
+  --oa-font-size-md: 16px;
+  --oa-font-size-lg: 18px;
+  --oa-font-size-xl: 20px;
+  --oa-font-size-2xl: 24px;
+
+  /* 字重 */
+  --oa-font-weight-normal: 400;
+  --oa-font-weight-medium: 500;
+  --oa-font-weight-bold: 600;
+
+  /* 行高 */
+  --oa-line-height-xs: 1.2;
+  --oa-line-height-sm: 1.4;
+  --oa-line-height-base: 1.5;
+  --oa-line-height-lg: 1.6;
+
+  /* 间距 */
+  --oa-spacing-xs: 4px;
+  --oa-spacing-sm: 8px;
+  --oa-spacing-base: 16px;
+  --oa-spacing-md: 20px;
+  --oa-spacing-lg: 24px;
+  --oa-spacing-xl: 32px;
+  --oa-spacing-2xl: 48px;
+
+  /* 布局尺寸 */
+  --oa-header-height: 60px;
+  --oa-sidebar-width: 200px;
+  --oa-sidebar-collapsed-width: 64px;
+  --oa-content-padding: var(--oa-spacing-lg);
+  --oa-content-min-width: 1200px;
+
+  /* 圆角 */
+  --oa-border-radius-xs: 2px;
+  --oa-border-radius-sm: 4px;
+  --oa-border-radius-base: 6px;
+  --oa-border-radius-md: 8px;
+  --oa-border-radius-lg: 12px;
+  --oa-border-radius-xl: 16px;
+  --oa-border-radius-round: 50%;
+
+  /* 过渡动画 */
+  --oa-transition-fast: 0.2s;
+  --oa-transition-base: 0.3s;
+  --oa-transition-slow: 0.5s;
+  --oa-transition-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* Z-index层级 */
+  --oa-z-index-normal: 1;
+  --oa-z-index-top: 1000;
+  --oa-z-index-popper: 2000;
+  --oa-z-index-modal: 3000;
+  --oa-z-index-message: 4000;
+
+  /* 组件特定变量 */
+  --oa-table-row-height: 40px;
+  --oa-card-padding: var(--oa-spacing-base);
+  --oa-form-item-margin: var(--oa-spacing-base);
+  --oa-button-padding-y: 8px;
+  --oa-button-padding-x: 15px;
+
+  /* 侧边栏主题色 */
+  --oa-sidebar-bg: #304156;
+  --oa-sidebar-text: #bfcbd9;
+  --oa-sidebar-active-text: var(--oa-primary-color);
+  --oa-sidebar-hover-bg: #263445;
+  --oa-sidebar-active-bg: #2d8cf0;
+}
+
+/* 暗色主题变量 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --oa-bg-primary: #1F1F1F;
+    --oa-bg-secondary: #2A2A2A;
+    --oa-bg-white: #2A2A2A;
+    --oa-bg-card: #2A2A2A;
+    --oa-text-primary: #E8E8E8;
+    --oa-text-regular: #B8B8B8;
+    --oa-text-secondary: #888888;
+    --oa-border-light: #3A3A3A;
+    --oa-border-base: #4A4A4A;
+    --oa-border-dark: #5A5A5A;
+  }
+}
+
+/* 主题切换类 */
+.theme-dark {
+  --oa-bg-primary: #1F1F1F;
+  --oa-bg-secondary: #2A2A2A;
+  --oa-bg-white: #2A2A2A;
+  --oa-bg-card: #2A2A2A;
+  --oa-text-primary: #E8E8E8;
+  --oa-text-regular: #B8B8B8;
+  --oa-text-secondary: #888888;
+  --oa-border-light: #3A3A3A;
+  --oa-border-base: #4A4A4A;
+  --oa-border-dark: #5A5A5A;
+  --oa-sidebar-bg: #1A1A1A;
+}
+
+.theme-light {
+  --oa-bg-primary: #F2F6FC;
+  --oa-bg-secondary: #F4F4F5;
+  --oa-bg-white: #FFFFFF;
+  --oa-bg-card: #FFFFFF;
+  --oa-text-primary: #303133;
+  --oa-text-regular: #606266;
+  --oa-text-secondary: #909399;
+  --oa-border-light: #EBEEF5;
+  --oa-border-base: #DCDFE6;
+  --oa-border-dark: #C0C4CC;
+  --oa-sidebar-bg: #304156;
+}

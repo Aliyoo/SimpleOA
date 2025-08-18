@@ -300,6 +300,20 @@
                     {{ calculateTotalHours(scope.row.hours) }}
                   </template>
                 </el-table-column>
+
+                <!-- 操作列 -->
+                <el-table-column label="操作" width="100" fixed="right">
+                  <template #default="scope">
+                    <el-button 
+                      size="small" 
+                      type="primary" 
+                      @click="quickFillRow(scope.row)"
+                      :disabled="batchLoading"
+                    >
+                      一键填写
+                    </el-button>
+                  </template>
+                </el-table-column>
               </el-table>
 
               <!-- 空状态显示 -->
@@ -1883,6 +1897,51 @@ const onBatchDateRangeChange = async (range) => {
     }
   } else {
     console.warn('日期范围无效或不完整')
+  }
+}
+
+// 一键填写当前行的工时
+const quickFillRow = (project) => {
+  console.log('一键填写项目工时:', project.name)
+  
+  if (!batchDates.value || batchDates.value.length === 0) {
+    ElMessage.warning('没有可填写的日期')
+    return
+  }
+
+  let filledCount = 0
+  
+  // 遍历所有日期，只填写工作日
+  batchDates.value.forEach((date) => {
+    // 检查是否是工作日
+    if (isWorkdayForDate(date)) {
+      // 计算当前日期其他项目的工时总和
+      let otherProjectsHours = 0
+      batchProjects.value.forEach((otherProject) => {
+        if (otherProject.id !== project.id) {
+          otherProjectsHours += otherProject.hours[date] || 0
+        }
+      })
+      
+      // 计算当前项目可以填写的最大工时（保证总工时不超过8小时）
+      const maxAllowedHours = Math.max(0, 8 - otherProjectsHours)
+      
+      if (maxAllowedHours > 0) {
+        // 填写工时，最多8小时
+        const hoursToFill = Math.min(8, maxAllowedHours)
+        project.hours[date] = hoursToFill
+        filledCount++
+      } else {
+        // 如果当天已经有8小时工时，则不填写
+        console.log(`${date} 当天已有工时 ${otherProjectsHours} 小时，无法为项目 ${project.name} 添加工时`)
+      }
+    }
+  })
+  
+  if (filledCount > 0) {
+    ElMessage.success(`已为项目 "${project.name}" 填写 ${filledCount} 个工作日的工时`)
+  } else {
+    ElMessage.info(`项目 "${project.name}" 没有可填写的工作日或当天工时已满`)
   }
 }
 

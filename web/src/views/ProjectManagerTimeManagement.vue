@@ -117,14 +117,27 @@
                     </template>
                   </el-table-column>
 
-                  <!-- 当日总工时列 -->
+                  <!-- 跨项目合计列 -->
                   <el-table-column label="跨项目合计" width="100" fixed="right" align="center">
                     <template #default="scope">
-                      <div class="daily-total-info">
-                        <span :class="getDailyTotalClass(scope.row.id, batchDates)">
-                          最高: {{ getMaxDailyHours(scope.row.id) }}h
-                        </span>
+                      <div class="cross-project-total-info">
+                        <div class="total-line">{{ calculateTotalHours(scope.row.hours) }}h/{{ getMemberCrossProjectTotal(scope.row.id) }}h</div>
+                        <div class="total-desc">当前/总计</div>
                       </div>
+                    </template>
+                  </el-table-column>
+
+                  <!-- 操作列 -->
+                  <el-table-column label="操作" width="100" fixed="right" v-if="isProjectManager(project)">
+                    <template #default="scope">
+                      <el-button 
+                        size="small" 
+                        type="primary" 
+                        @click="quickFillMemberRow(scope.row, project.id)"
+                        :disabled="batchLoading"
+                      >
+                        一键填写
+                      </el-button>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -1084,6 +1097,18 @@ const getMaxDailyHours = (memberId) => {
   return maxHours
 }
 
+// 获取成员跨所有项目的工时总合计
+const getMemberCrossProjectTotal = (memberId) => {
+  let totalHours = 0
+  displayProjects.value.forEach((project) => {
+    const member = project.members.find((m) => m.id === memberId)
+    if (member) {
+      totalHours += calculateTotalHours(member.hours)
+    }
+  })
+  return totalHours
+}
+
 // 获取每日总工时的样式类
 const getDailyTotalClass = (memberId) => {
   const maxHours = getMaxDailyHours(memberId)
@@ -1828,6 +1853,60 @@ const exportStatisticalReportData = async () => {
   }
 }
 
+// 一键填写成员工时
+const quickFillMemberRow = (member, projectId) => {
+  console.log('一键填写成员工时:', member.realName || member.username, '项目ID:', projectId)
+  
+  if (!batchDates.value || batchDates.value.length === 0) {
+    ElMessage.warning('没有可填写的日期')
+    return
+  }
+
+  let filledCount = 0
+  
+  // 遍历所有日期，只填写工作日
+  batchDates.value.forEach((date) => {
+    // 检查是否是工作日
+    if (isWorkdayForDate(date)) {
+      // 计算该成员在指定日期跨所有项目的总工时
+      let totalHours = 0
+      
+      displayProjects.value.forEach((project) => {
+        const projectMember = project.members.find((m) => m.id === member.id)
+        if (projectMember) {
+          if (project.id === projectId) {
+            // 当前项目先不计算，因为我们要填写8小时
+            totalHours += 0
+          } else {
+            // 其他项目使用现有工时值
+            totalHours += projectMember.hours[date] || 0
+          }
+        }
+      })
+      
+      // 计算当前项目可以填写的最大工时（保证总工时不超过8小时）
+      const maxAllowedHours = Math.max(0, 8 - totalHours)
+      
+      if (maxAllowedHours > 0) {
+        // 填写工时，最多8小时
+        const hoursToFill = Math.min(8, maxAllowedHours)
+        member.hours[date] = hoursToFill
+        filledCount++
+      } else {
+        // 如果当天已经有8小时工时，则不填写
+        console.log(`${date} 当天 ${member.realName || member.username} 已有工时 ${totalHours} 小时，无法添加更多工时`)
+      }
+    }
+  })
+  
+  const memberName = member.realName || member.username
+  if (filledCount > 0) {
+    ElMessage.success(`已为 "${memberName}" 填写 ${filledCount} 个工作日的工时`)
+  } else {
+    ElMessage.info(`"${memberName}" 没有可填写的工作日或当天工时已满`)
+  }
+}
+
 onMounted(async () => {
   // 在页面加载时确保从缓存中获取用户信息，如果没有则从服务器获取
   if (!currentUser.value || !currentUser.value.id) {
@@ -2173,5 +2252,24 @@ h1 {
   background-color: #f5f5f5;
   color: #c0c4cc;
   cursor: not-allowed;
+}
+
+/* 跨项目合计信息样式 */
+.cross-project-total-info {
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.total-line {
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.total-desc {
+  font-size: 10px;
+  color: #909399;
+  font-weight: normal;
 }
 </style>

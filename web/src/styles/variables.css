@@ -144,29 +144,93 @@
 
 /* 主题切换类 */
 .theme-dark {
-  --oa-bg-primary: #1F1F1F;
-  --oa-bg-secondary: #2A2A2A;
+  /* 背景颜色 - 深色主题 */
+  --oa-bg-primary: #121212;
+  --oa-bg-secondary: #1E1E1E;
   --oa-bg-white: #2A2A2A;
   --oa-bg-card: #2A2A2A;
+  --oa-bg-overlay: rgba(255, 255, 255, 0.1);
+  
+  /* 文本颜色 - 深色主题 */
   --oa-text-primary: #E8E8E8;
   --oa-text-regular: #B8B8B8;
   --oa-text-secondary: #888888;
+  --oa-text-placeholder: #555555;
+  --oa-text-disabled: #555555;
+  
+  /* 边框颜色 - 深色主题 */
   --oa-border-light: #3A3A3A;
   --oa-border-base: #4A4A4A;
   --oa-border-dark: #5A5A5A;
+  --oa-border-darker: #6A6A6A;
+  
+  /* 阴影 - 深色主题 */
+  --oa-shadow-light: 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 6px rgba(0, 0, 0, 0.2);
+  --oa-shadow-base: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --oa-shadow-dark: 0 4px 12px rgba(0, 0, 0, 0.5);
+  
+  /* 功能状态色 - 深色主题 */
+  --oa-success-light: #1A2E1A;
+  --oa-warning-light: #2E251A;
+  --oa-danger-light: #2E1A1A;
+  --oa-info-light: #1A1A1E;
+  
+  /* 侧边栏主题色 - 深色主题 */
   --oa-sidebar-bg: #1A1A1A;
+  --oa-sidebar-text: #B8B8B8;
+  --oa-sidebar-active-text: var(--oa-primary-color);
+  --oa-sidebar-hover-bg: #2A2A2A;
+  --oa-sidebar-active-bg: #337ecc;
+  
+  /* ECharts图表适配 */
+  --oa-chart-bg: #2A2A2A;
+  --oa-chart-text: #E8E8E8;
+  --oa-chart-line: #4A4A4A;
+  --oa-chart-grid: #3A3A3A;
 }
 
 .theme-light {
+  /* 背景颜色 - 浅色主题 */
   --oa-bg-primary: #F2F6FC;
   --oa-bg-secondary: #F4F4F5;
   --oa-bg-white: #FFFFFF;
   --oa-bg-card: #FFFFFF;
+  --oa-bg-overlay: rgba(0, 0, 0, 0.5);
+  
+  /* 文本颜色 - 浅色主题 */
   --oa-text-primary: #303133;
   --oa-text-regular: #606266;
   --oa-text-secondary: #909399;
+  --oa-text-placeholder: #C0C4CC;
+  --oa-text-disabled: #C0C4CC;
+  
+  /* 边框颜色 - 浅色主题 */
   --oa-border-light: #EBEEF5;
   --oa-border-base: #DCDFE6;
   --oa-border-dark: #C0C4CC;
+  --oa-border-darker: #A0A4AA;
+  
+  /* 阴影 - 浅色主题 */
+  --oa-shadow-light: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+  --oa-shadow-base: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --oa-shadow-dark: 0 4px 12px rgba(0, 0, 0, 0.15);
+  
+  /* 功能状态色 - 浅色主题 */
+  --oa-success-light: #f0f9ff;
+  --oa-warning-light: #fdf6ec;
+  --oa-danger-light: #fef0f0;
+  --oa-info-light: #f4f4f5;
+  
+  /* 侧边栏主题色 - 浅色主题 */
   --oa-sidebar-bg: #304156;
+  --oa-sidebar-text: #bfcbd9;
+  --oa-sidebar-active-text: var(--oa-primary-color);
+  --oa-sidebar-hover-bg: #263445;
+  --oa-sidebar-active-bg: #2d8cf0;
+  
+  /* ECharts图表适配 */
+  --oa-chart-bg: #FFFFFF;
+  --oa-chart-text: #303133;
+  --oa-chart-line: #E4E7ED;
+  --oa-chart-grid: #F5F5F5;
 }

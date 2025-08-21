@@ -1,5 +1,76 @@
 /* OA系统组件样式增强 */
 
+/* 深色模式适配 */
+.theme-dark {
+  /* 确保所有组件都能正确继承深色模式变量 */
+  color-scheme: dark;
+}
+
+.theme-light {
+  color-scheme: light;
+}
+
+/* Element Plus 组件深色模式覆盖 */
+.theme-dark .el-card,
+.theme-dark .el-form,
+.theme-dark .el-dialog,
+.theme-dark .el-drawer,
+.theme-dark .el-table {
+  background-color: var(--oa-bg-card);
+  border-color: var(--oa-border-light);
+  color: var(--oa-text-primary);
+}
+
+.theme-dark .el-card__header,
+.theme-dark .el-dialog__header,
+.theme-dark .el-drawer__header,
+.theme-dark .el-table th.el-table__cell,
+.theme-dark .el-tabs__header,
+.theme-dark .el-collapse-item__header {
+  background-color: var(--oa-bg-secondary);
+  border-color: var(--oa-border-light);
+  color: var(--oa-text-primary);
+}
+
+.theme-dark .el-input__wrapper,
+.theme-dark .el-textarea__inner,
+.theme-dark .el-select .el-input__wrapper {
+  background-color: var(--oa-bg-card);
+  border-color: var(--oa-border-base);
+  color: var(--oa-text-primary);
+}
+
+.theme-dark .el-input__inner,
+.theme-dark .el-textarea__inner {
+  color: var(--oa-text-primary);
+}
+
+.theme-dark .el-input__inner::placeholder,
+.theme-dark .el-textarea__inner::placeholder {
+  color: var(--oa-text-placeholder);
+}
+
+.theme-dark .el-select-dropdown,
+.theme-dark .el-date-picker {
+  background-color: var(--oa-bg-card);
+  border-color: var(--oa-border-light);
+  color: var(--oa-text-primary);
+}
+
+.theme-dark .el-select-dropdown__item {
+  color: var(--oa-text-regular);
+}
+
+.theme-dark .el-select-dropdown__item:hover {
+  background-color: var(--oa-primary-light-9);
+  color: var(--oa-primary-color);
+}
+
+.theme-dark .el-select-dropdown__item.selected {
+  background-color: var(--oa-primary-color);
+  color: var(--oa-bg-white);
+}
+
 /* 按钮组件增强 */
 .el-button {
   border-radius: var(--oa-border-radius-base);

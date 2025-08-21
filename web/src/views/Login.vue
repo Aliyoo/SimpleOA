@@ -1,5 +1,9 @@
 <template>
   <div class="login-container">
+    <!-- 主题切换按钮 -->
+    <div class="theme-toggle-wrapper">
+      <ThemeToggle mode="button" />
+    </div>
     <el-form
       ref="loginFormRef"
       :model="loginForm"
@@ -45,10 +49,15 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useTheme } from '@/composables/useTheme'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+// 初始化主题
+const { initTheme } = useTheme()
 
 const loginForm = ref({
   username: '',
@@ -83,6 +92,9 @@ const handleLogin = () => {
 }
 
 onMounted(() => {
+  // 初始化主题
+  initTheme()
+  
   // 自动聚焦用户名输入框
   usernameInput.value?.focus()
 })
@@ -92,12 +104,25 @@ onMounted(() => {
 .login-container {
   min-height: 100vh;
   width: 100%;
-  background-color: #2d3a4b;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
   box-sizing: border-box;
+  position: relative;
+  transition: all var(--oa-transition-base);
+}
+
+.theme-dark .login-container {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+}
+
+.theme-toggle-wrapper {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
 }
 
 .login-form {
@@ -107,33 +132,89 @@ onMounted(() => {
   padding: 40px 35px;
   margin: 0;
   overflow: hidden;
-  background: #fff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
+  background: var(--oa-bg-card);
+  box-shadow: var(--oa-shadow-dark);
+  border-radius: var(--oa-border-radius-lg);
+  border: 1px solid var(--oa-border-light);
+  transition: all var(--oa-transition-base);
+  backdrop-filter: blur(10px);
 }
 
 .title {
   font-size: 26px;
-  color: #333;
+  color: var(--oa-text-primary);
   margin: 0 auto 10px auto;
   text-align: center;
-  font-weight: bold;
+  font-weight: var(--oa-font-weight-bold);
+  transition: color var(--oa-transition-base);
 }
 
 .subtitle {
   font-size: 12px;
-  color: #999;
+  color: var(--oa-text-secondary);
   margin: 0 auto 30px auto;
   text-align: center;
-  font-weight: normal;
+  font-weight: var(--oa-font-weight-normal);
+  transition: color var(--oa-transition-base);
 }
 
 .login-button {
   width: 100%;
-  background-color: #409eff;
-  border-radius: 6px;
-  color: #fff;
+  background-color: var(--oa-primary-color);
+  border-radius: var(--oa-border-radius-base);
+  color: var(--oa-bg-white);
   border: none;
-  font-weight: 500;
+  font-weight: var(--oa-font-weight-medium);
+  height: 40px;
+  font-size: var(--oa-font-size-base);
+  transition: all var(--oa-transition-fast);
+}
+
+.login-button:hover {
+  background-color: var(--oa-primary-light-1);
+  transform: translateY(-1px);
+  box-shadow: var(--oa-shadow-light);
+}
+
+/* 登录表单内的输入框样式 */
+.login-form :deep(.el-input__wrapper) {
+  background-color: var(--oa-bg-white);
+  border: 1px solid var(--oa-border-base);
+  transition: all var(--oa-transition-fast);
+}
+
+.login-form :deep(.el-input__wrapper:hover) {
+  border-color: var(--oa-primary-light-3);
+}
+
+.login-form :deep(.el-input__wrapper.is-focus) {
+  border-color: var(--oa-primary-color);
+  box-shadow: 0 0 0 2px var(--oa-primary-light-9);
+}
+
+.login-form :deep(.el-input__inner) {
+  color: var(--oa-text-primary);
+  background-color: transparent;
+}
+
+.login-form :deep(.el-input__inner::placeholder) {
+  color: var(--oa-text-placeholder);
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .login-form {
+    width: 90%;
+    padding: 30px 25px;
+  }
+  
+  .theme-toggle-wrapper {
+    top: 15px;
+    right: 15px;
+  }
+  
+  .title {
+    font-size: 22px;
+  }
 }
 </style>

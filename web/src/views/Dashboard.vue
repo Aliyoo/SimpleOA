@@ -264,8 +264,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { useUserStore } from '../stores/user'
+import { useTheme } from '@/composables/useTheme'
 import api from '../utils/axios.js'
 import * as echarts from 'echarts'
 import { User, FolderOpened, DocumentChecked, Money, Clock, Calendar, 
@@ -274,6 +275,7 @@ import { User, FolderOpened, DocumentChecked, Money, Clock, Calendar,
 
 const userStore = useUserStore()
 const currentUser = ref(userStore.userInfo || {})
+const { isDarkMode, getThemeInfo } = useTheme()
 
 const stats = ref({
   userCount: 0,
@@ -397,24 +399,44 @@ const initCharts = () => {
   fetchApprovalStats()
 }
 
+// 获取图表主题颜色
+const getChartTheme = () => {
+  const themeInfo = getThemeInfo()
+  return {
+    backgroundColor: themeInfo.isDark ? getComputedStyle(document.documentElement).getPropertyValue('--oa-chart-bg').trim() : '#FFFFFF',
+    textColor: themeInfo.isDark ? getComputedStyle(document.documentElement).getPropertyValue('--oa-chart-text').trim() : '#303133',
+    lineColor: themeInfo.isDark ? getComputedStyle(document.documentElement).getPropertyValue('--oa-chart-line').trim() : '#E4E7ED',
+    gridColor: themeInfo.isDark ? getComputedStyle(document.documentElement).getPropertyValue('--oa-chart-grid').trim() : '#F5F5F5'
+  }
+}
+
 // 更新工时趋势图表
 const updateWorktimeChart = () => {
   const chartElement = document.getElementById('worktimeChart')
   if (!chartElement) return
 
   const chart = echarts.init(chartElement)
+  const theme = getChartTheme()
+  
   chart.setOption({
+    backgroundColor: 'transparent',
     title: {
       text: '工时趋势',
       left: 'center',
       textStyle: {
         fontSize: 14,
-        fontWeight: 'normal'
+        fontWeight: 'normal',
+        color: theme.textColor
       }
     },
     tooltip: {
       trigger: 'axis',
-      formatter: '{b}<br/>{a}: {c}小时'
+      formatter: '{b}<br/>{a}: {c}小时',
+      backgroundColor: theme.backgroundColor,
+      textStyle: {
+        color: theme.textColor
+      },
+      borderColor: theme.lineColor
     },
     grid: {
       left: '3%',
@@ -427,15 +449,26 @@ const updateWorktimeChart = () => {
       data: worktimeTrends.value.map((item) => item.date),
       axisLine: {
         lineStyle: {
-          color: '#E4E7ED'
+          color: theme.lineColor
         }
+      },
+      axisLabel: {
+        color: theme.textColor
       }
     },
     yAxis: {
       type: 'value',
       axisLine: {
         lineStyle: {
-          color: '#E4E7ED'
+          color: theme.lineColor
+        }
+      },
+      axisLabel: {
+        color: theme.textColor
+      },
+      splitLine: {
+        lineStyle: {
+          color: theme.gridColor
         }
       }
     },
@@ -472,18 +505,32 @@ const updateProjectChart = () => {
   if (!chartElement) return
 
   const chart = echarts.init(chartElement)
+  const theme = getChartTheme()
+  
   chart.setOption({
+    backgroundColor: 'transparent',
     title: {
       text: '项目工时分布',
       left: 'center',
       textStyle: {
         fontSize: 14,
-        fontWeight: 'normal'
+        fontWeight: 'normal',
+        color: theme.textColor
       }
     },
     tooltip: {
       trigger: 'item',
-      formatter: '{a} <br/>{b}: {c}小时 ({d}%)'
+      formatter: '{a} <br/>{b}: {c}小时 ({d}%)',
+      backgroundColor: theme.backgroundColor,
+      textStyle: {
+        color: theme.textColor
+      },
+      borderColor: theme.lineColor
+    },
+    legend: {
+      textStyle: {
+        color: theme.textColor
+      }
     },
     series: [
       {
@@ -496,8 +543,11 @@ const updateProjectChart = () => {
           itemStyle: {
             shadowBlur: 10,
             shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
+            shadowColor: theme.textColor === '#E8E8E8' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)'
           }
+        },
+        label: {
+          color: theme.textColor
         }
       }
     ]
@@ -510,18 +560,32 @@ const updateApprovalChart = () => {
   if (!chartElement) return
 
   const chart = echarts.init(chartElement)
+  const theme = getChartTheme()
+  
   chart.setOption({
+    backgroundColor: 'transparent',
     title: {
       text: '审批类型分布',
       left: 'center',
       textStyle: {
         fontSize: 14,
-        fontWeight: 'normal'
+        fontWeight: 'normal',
+        color: theme.textColor
       }
     },
     tooltip: {
       trigger: 'item',
-      formatter: '{a} <br/>{b}: {c}件 ({d}%)'
+      formatter: '{a} <br/>{b}: {c}件 ({d}%)',
+      backgroundColor: theme.backgroundColor,
+      textStyle: {
+        color: theme.textColor
+      },
+      borderColor: theme.lineColor
+    },
+    legend: {
+      textStyle: {
+        color: theme.textColor
+      }
     },
     series: [
       {
@@ -534,8 +598,11 @@ const updateApprovalChart = () => {
           itemStyle: {
             shadowBlur: 10,
             shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
+            shadowColor: theme.textColor === '#E8E8E8' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)'
           }
+        },
+        label: {
+          color: theme.textColor
         }
       }
     ]
@@ -599,6 +666,15 @@ const generateMockWorktimeTrends = (days) => {
   return trends
 }
 
+// 监听主题变化，重新渲染图表
+watch(isDarkMode, () => {
+  nextTick(() => {
+    updateWorktimeChart()
+    updateProjectChart()
+    updateApprovalChart()
+  })
+}, { flush: 'post' })
+
 onMounted(() => {
   fetchStats()
 })
@@ -607,7 +683,9 @@ onMounted(() => {
 <style scoped>
 .dashboard-container {
   padding: 20px;
-  background-color: #f5f5f5;
+  background-color: var(--oa-bg-primary);
+  min-height: 100vh;
+  transition: background-color var(--oa-transition-base);
 }
 
 /* 头部样式 */
@@ -617,15 +695,17 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 30px;
   padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--oa-bg-card);
+  border-radius: var(--oa-border-radius-md);
+  box-shadow: var(--oa-shadow-light);
+  transition: all var(--oa-transition-base);
 }
 
 .dashboard-header h1 {
   margin: 0;
-  color: #303133;
-  font-size: 24px;
+  color: var(--oa-text-primary);
+  font-size: var(--oa-font-size-2xl);
+  transition: color var(--oa-transition-base);
 }
 
 .welcome-info {
@@ -636,13 +716,14 @@ onMounted(() => {
 }
 
 .welcome-info span {
-  color: #606266;
-  font-size: 14px;
+  color: var(--oa-text-regular);
+  font-size: var(--oa-font-size-base);
+  transition: color var(--oa-transition-base);
 }
 
 .last-login {
-  color: #909399 !important;
-  font-size: 12px !important;
+  color: var(--oa-text-secondary) !important;
+  font-size: var(--oa-font-size-sm) !important;
 }
 
 /* 统计卡片样式 */
@@ -822,9 +903,10 @@ onMounted(() => {
 .quick-actions {
   margin-bottom: 25px;
   padding: 15px 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--oa-bg-card);
+  border-radius: var(--oa-border-radius-md);
+  box-shadow: var(--oa-shadow-light);
+  transition: all var(--oa-transition-base);
 }
 
 .action-buttons {

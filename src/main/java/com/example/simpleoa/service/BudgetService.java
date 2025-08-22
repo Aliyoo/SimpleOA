@@ -1,11 +1,13 @@
 package com.example.simpleoa.service;
 
 import com.example.simpleoa.dto.BudgetSearchDTO;
+import com.example.simpleoa.dto.BulkBudgetCreateRequestDTO;
 import com.example.simpleoa.dto.PagedResponse;
 import com.example.simpleoa.model.Budget;
 import com.example.simpleoa.model.BudgetAlert;
 import com.example.simpleoa.model.BudgetExpense;
 import com.example.simpleoa.model.BudgetItem;
+import com.example.simpleoa.model.User;
 
 import java.util.Date;
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.Map;
 public interface BudgetService {
     // 预算基本管理
     Budget createBudget(Budget budget);
+    void createBulkBudgets(BulkBudgetCreateRequestDTO request, User currentUser);
     Budget updateBudget(Budget budget);
     void deleteBudget(Long id);
     Budget getBudgetById(Long id);

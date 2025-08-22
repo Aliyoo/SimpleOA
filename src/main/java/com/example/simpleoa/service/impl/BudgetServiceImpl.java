@@ -1,6 +1,8 @@
 package com.example.simpleoa.service.impl;
 
 import com.example.simpleoa.dto.BudgetSearchDTO;
+import com.example.simpleoa.dto.BulkBudgetCreateRequestDTO;
+import com.example.simpleoa.dto.BulkBudgetItemDTO;
 import com.example.simpleoa.dto.PagedResponse;
 import com.example.simpleoa.model.*;
 import com.example.simpleoa.repository.*;
@@ -78,6 +80,38 @@ public class BudgetServiceImpl implements BudgetService {
         budget.setLastUpdateTime(new Date());
         
         return budgetRepository.save(budget);
+    }
+
+    @Override
+    @Transactional
+    public void createBulkBudgets(BulkBudgetCreateRequestDTO request, User currentUser) {
+        Project project = projectRepository.findById(request.getProjectId())
+                .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + request.getProjectId()));
+
+        List<Budget> budgetsToSave = new ArrayList<>();
+
+        for (BulkBudgetItemDTO item : request.getItems()) {
+            Budget budget = new Budget();
+            budget.setProject(project);
+            budget.setBudgetType(item.getBudgetType());
+            budget.setName(project.getName() + " - " + item.getBudgetType() + "预算"); // e.g., "Project Alpha - 交通费预算"
+            budget.setTotalAmount(item.getTotalAmount());
+            budget.setDescription(item.getDescription());
+            budget.setStartDate(request.getStartDate());
+            budget.setEndDate(request.getEndDate());
+            
+            // Set default values
+            budget.setUsedAmount(0.0);
+            budget.setRemainingAmount(item.getTotalAmount());
+            budget.setStatus("ACTIVE");
+            budget.setCreatedBy(currentUser);
+            budget.setCreateTime(new Date());
+            budget.setLastUpdateTime(new Date());
+
+            budgetsToSave.add(budget);
+        }
+
+        budgetRepository.saveAll(budgetsToSave);
     }
 
     @Override

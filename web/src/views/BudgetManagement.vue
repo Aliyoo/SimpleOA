@@ -35,6 +35,23 @@
                   <el-option v-for="project in projectOptions" :key="project.id" :label="project.name" :value="project.id" />
                 </el-select>
               </el-form-item>
+              <el-form-item label="预算类型">
+                <el-select v-model="searchForm.budgetType" placeholder="选择预算类型" clearable style="width: 200px">
+                  <el-option label="劳务费" value="劳务费" />
+                  <el-option label="房屋费" value="房屋费" />
+                  <el-option label="差旅费" value="差旅费" />
+                  <el-option label="交通费" value="交通费" />
+                  <el-option label="办公费" value="办公费" />
+                  <el-option label="通信费" value="通信费" />
+                  <el-option label="车辆费" value="车辆费" />
+                  <el-option label="货运费" value="货运费" />
+                  <el-option label="物料消耗费" value="物料消耗费" />
+                  <el-option label="评审验收费" value="评审验收费" />
+                  <el-option label="加班餐费" value="加班餐费" />
+                  <el-option label="质保维护费(不含人工)" value="质保维护费(不含人工)" />
+                  <el-option label="业务招待费" value="业务招待费" />
+                </el-select>
+              </el-form-item>
               <el-form-item label="状态">
                 <el-select v-model="searchForm.status" placeholder="选择状态" clearable style="width: 150px">
                   <el-option label="活跃" value="ACTIVE" />
@@ -89,6 +106,7 @@
               {{ scope.row.project?.name || 'N/A' }}
             </template>
           </el-table-column>
+          <el-table-column prop="budgetType" label="预算类型" width="150" />
           <el-table-column prop="startDate" label="开始日期" width="120">
             <template #default="scope">
               {{ formatDate(scope.row.startDate) }}
@@ -287,55 +305,88 @@
     </el-tabs>
 
     <!-- Budget Form Dialog -->
-    <el-dialog v-model="budgetDialogVisible" :title="budgetForm.id ? '编辑预算' : '新建预算'" @closed="resetBudgetForm">
+    <el-dialog v-model="budgetDialogVisible" :title="isEditMode ? '编辑预算' : '批量新建预算'" @closed="resetBudgetForm" width="70%">
       <el-form ref="budgetFormRef" :model="budgetForm" :rules="budgetRules" label-width="100px">
-        <el-form-item label="预算名称" prop="name">
-          <el-input v-model="budgetForm.name" />
-        </el-form-item>
-        <el-form-item label="所属项目" prop="projectId">
-          <!-- Assuming projects are fetched into a ref named 'projectOptions' -->
-          <el-select v-model="budgetForm.projectId" placeholder="选择项目" style="width: 100%">
-            <el-option v-for="project in projectOptions" :key="project.id" :label="project.name" :value="project.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="总预算" prop="totalAmount">
-          <el-input-number
-            v-model="budgetForm.totalAmount"
-            :precision="2"
-            :step="1000"
-            :min="0"
-            controls-position="right"
-            style="width: 100%"
-          />
-        </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="budgetForm.description" type="textarea" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="budgetForm.status" placeholder="选择状态" style="width: 100%">
-            <el-option label="活跃" value="ACTIVE" />
-            <el-option label="待定" value="PENDING" />
-            <el-option label="关闭" value="CLOSED" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="开始日期" prop="startDate">
-          <el-date-picker
-            v-model="budgetForm.startDate"
-            type="date"
-            placeholder="选择开始日期"
-            style="width: 100%"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
-        <el-form-item label="结束日期" prop="endDate">
-          <el-date-picker
-            v-model="budgetForm.endDate"
-            type="date"
-            placeholder="选择结束日期"
-            style="width: 100%"
-            value-format="YYYY-MM-DD"
-          />
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="所属项目" prop="projectId">
+              <el-select v-model="budgetForm.projectId" placeholder="选择项目" style="width: 100%" :disabled="isEditMode">
+                <el-option v-for="project in projectOptions" :key="project.id" :label="project.name" :value="project.id" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="开始日期" prop="startDate">
+              <el-date-picker
+                v-model="budgetForm.startDate"
+                type="date"
+                placeholder="选择开始日期"
+                style="width: 100%"
+                value-format="YYYY-MM-DD"
+                :disabled="isEditMode"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结束日期" prop="endDate">
+              <el-date-picker
+                v-model="budgetForm.endDate"
+                type="date"
+                placeholder="选择结束日期"
+                style="width: 100%"
+                value-format="YYYY-MM-DD"
+                :disabled="isEditMode"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-divider>预算明细</el-divider>
+
+        <el-table :data="budgetForm.items" style="width: 100%">
+          <el-table-column label="预算类型" width="280">
+            <template #default="scope">
+              <el-form-item :prop="`items.${scope.$index}.budgetType`" :rules="{ required: true, message: '请选择预算类型', trigger: 'change' }">
+                <el-select v-model="scope.row.budgetType" placeholder="选择预算类型" :disabled="isEditMode">
+                  <el-option label="劳务费" value="劳务费" />
+                  <el-option label="房屋费" value="房屋费" />
+                  <el-option label="差旅费" value="差旅费" />
+                  <el-option label="交通费" value="交通费" />
+                  <el-option label="办公费" value="办公费" />
+                  <el-option label="通信费" value="通信费" />
+                  <el-option label="车辆费" value="车辆费" />
+                  <el-option label="货运费" value="货运费" />
+                  <el-option label="物料消耗费" value="物料消耗费" />
+                  <el-option label="评审验收费" value="评审验收费" />
+                  <el-option label="加班餐费" value="加班餐费" />
+                  <el-option label="质保维护费(不含人工)" value="质保维护费(不含人工)" />
+                  <el-option label="业务招待费" value="业务招待费" />
+                </el-select>
+              </el-form-item>
+            </template>
+          </el-table-column>
+          <el-table-column label="总预算">
+            <template #default="scope">
+              <el-form-item :prop="`items.${scope.$index}.totalAmount`" :rules="[{ required: true, message: '请输入总预算', trigger: 'blur' }, { type: 'number', min: 0, message: '金额必须大于0', trigger: 'blur' }]">
+                <el-input-number v-model="scope.row.totalAmount" :precision="2" :min="0" controls-position="right" style="width: 100%" />
+              </el-form-item>
+            </template>
+          </el-table-column>
+          <el-table-column label="描述">
+            <template #default="scope">
+              <el-input v-model="scope.row.description" type="textarea" :rows="1" />
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="100">
+            <template #default="scope">
+              <el-button v-if="!isEditMode" type="danger" @click="removeBudgetItem(scope.$index)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-button v-if="!isEditMode" @click="addBudgetItem" style="margin-top: 12px; width: 100%;">+ 添加预算项</el-button>
+
       </el-form>
       <template #footer>
         <el-button @click="budgetDialogVisible = false">取消</el-button>
@@ -388,6 +439,7 @@ const searchFormVisible = ref(false)
 const searchForm = reactive({
   keyword: '',
   projectId: null,
+  budgetType: null,
   status: '',
   startDateRange: null,
   endDateRange: null,
@@ -408,17 +460,14 @@ const budgetDialogVisible = ref(false)
 const submittingBudget = ref(false)
 const budgetFormRef = ref(null)
 const projectOptions = ref([]) // For project selection
+const isEditMode = ref(false);
 
 // Budget Form
 const initialBudgetFormState = () => ({
-  id: null,
-  name: '',
   projectId: null,
-  totalAmount: 0,
-  description: '',
-  status: 'ACTIVE',
   startDate: null,
-  endDate: null
+  endDate: null,
+  items: []
 })
 const budgetForm = reactive(initialBudgetFormState())
 
@@ -479,13 +528,7 @@ const canCreateBudget = computed(() => {
 
 // --- Validation Rules ---
 const budgetRules = {
-  name: [{ required: true, message: '请输入预算名称', trigger: 'blur' }],
   projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }],
-  totalAmount: [
-    { required: true, message: '请输入总预算金额', trigger: ['blur', 'change'] },
-    { type: 'number', min: 0, message: '预算金额不能为负', trigger: ['blur', 'change'] }
-  ],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }],
   startDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
   endDate: [
     { required: true, message: '请选择结束日期', trigger: 'change' },
@@ -552,6 +595,7 @@ const fetchBudgets = async () => {
       size: pagination.size,
       keyword: searchForm.keyword || null,
       projectId: searchForm.projectId || null,
+      budgetType: searchForm.budgetType || null,
       status: searchForm.status || null,
       startDateFrom: searchForm.startDateRange?.[0] || null,
       startDateTo: searchForm.startDateRange?.[1] || null,
@@ -697,47 +741,99 @@ const handleCreateBudget = () => {
     ElMessage.warning('您没有可管理的项目，无法创建预算')
     return
   }
+  isEditMode.value = false;
   resetBudgetForm()
   budgetDialogVisible.value = true
 }
 
 const handleEditBudget = (item) => {
-  // Ensure projectId is correctly assigned
-  const formData = {
-    ...item,
-    projectId: item.project?.id, // Handle if project object is nested
-    startDate: item.startDate ? new Date(item.startDate).toISOString().slice(0, 10) : null,
-    endDate: item.endDate ? new Date(item.endDate).toISOString().slice(0, 10) : null
-  }
-  Object.assign(budgetForm, formData)
-  budgetDialogVisible.value = true
-  // nextTick(() => budgetFormRef.value?.clearValidate());
-}
+  isEditMode.value = true;
+  resetBudgetForm();
+
+  const formatedStartDate = item.startDate ? new Date(item.startDate).toISOString().slice(0, 10) : null;
+  const formatedEndDate = item.endDate ? new Date(item.endDate).toISOString().slice(0, 10) : null;
+
+  Object.assign(budgetForm, {
+    projectId: item.project?.id,
+    startDate: formatedStartDate,
+    endDate: formatedEndDate,
+    items: [{
+      id: item.id,
+      budgetType: item.budgetType,
+      totalAmount: item.totalAmount,
+      description: item.description
+    }]
+  });
+
+  budgetDialogVisible.value = true;
+};
+
+const addBudgetItem = () => {
+  budgetForm.items.push({
+    budgetType: '',
+    totalAmount: 0,
+    description: ''
+  });
+};
+
+const removeBudgetItem = (index) => {
+  budgetForm.items.splice(index, 1);
+};
 
 const submitBudgetForm = async () => {
-  if (!budgetFormRef.value) return
+  if (!budgetFormRef.value) return;
   await budgetFormRef.value.validate(async (valid) => {
     if (valid) {
-      submittingBudget.value = true
-      try {
-        const payload = { ...budgetForm }
-        if (payload.id) {
-          await api.put(`/api/budgets/${payload.id}`, payload)
-          ElMessage.success('预算更新成功')
-        } else {
-          await api.post('/api/budgets', payload)
-          ElMessage.success('预算创建成功')
+      if (budgetForm.items.length === 0) {
+        ElMessage.error('请至少添加一个预算项');
+        return;
+      }
+
+      // 在非编辑模式下检查重复
+      if (!isEditMode.value) {
+        const budgetTypes = budgetForm.items.map(item => item.budgetType);
+        const uniqueBudgetTypes = new Set(budgetTypes);
+        if (uniqueBudgetTypes.size !== budgetTypes.length) {
+          ElMessage.error('预算类型不能重复');
+          return;
         }
-        budgetDialogVisible.value = false
-        fetchBudgets() // Use the new paginated fetchBudgets method
+      }
+
+      submittingBudget.value = true;
+      try {
+        if (isEditMode.value) {
+          // Logic for editing a single budget
+          const budgetItem = budgetForm.items[0];
+          const project = projectOptions.value.find(p => p.id === budgetForm.projectId);
+          const payload = {
+            id: budgetItem.id,
+            name: `${project?.name || ''} - ${budgetItem.budgetType}`,
+            project: { id: budgetForm.projectId },
+            budgetType: budgetItem.budgetType,
+            totalAmount: budgetItem.totalAmount,
+            description: budgetItem.description,
+            startDate: budgetForm.startDate,
+            endDate: budgetForm.endDate,
+            status: 'ACTIVE' // Or get it from the original item if status can be edited
+          };
+          await api.put(`/api/budgets/${budgetItem.id}`, payload);
+          ElMessage.success('预算更新成功');
+        } else {
+          // Logic for bulk creation
+          await api.post('/api/budgets/bulk', budgetForm);
+          ElMessage.success('批量预算创建成功');
+        }
+        
+        budgetDialogVisible.value = false;
+        fetchBudgets(); // Refresh the budget list
       } catch (error) {
-        ElMessage.error('操作失败: ' + error.message)
+        ElMessage.error('操作失败: ' + (error.response?.data?.message || error.message));
       } finally {
-        submittingBudget.value = false
+        submittingBudget.value = false;
       }
     }
-  })
-}
+  });
+};
 
 const handleDeleteBudget = async (item) => {
   try {

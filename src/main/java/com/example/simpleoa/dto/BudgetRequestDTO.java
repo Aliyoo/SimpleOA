@@ -8,6 +8,7 @@ import java.util.Date;
 public class BudgetRequestDTO {
     private Long id;
     private String name;
+    private String budgetType;
     private Long projectId;  // 前端发送的项目ID
     private Double totalAmount;
     private Double usedAmount;

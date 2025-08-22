@@ -1,6 +1,8 @@
 package com.example.simpleoa.controller;
 
 import com.example.simpleoa.dto.BudgetRequestDTO;
+import com.example.simpleoa.dto.BulkBudgetCreateRequestDTO;
+import com.example.simpleoa.dto.BulkBudgetItemDTO;
 import com.example.simpleoa.dto.BudgetExpenseRequestDTO;
 import com.example.simpleoa.dto.BudgetSearchDTO;
 import com.example.simpleoa.dto.PagedResponse;
@@ -96,6 +98,36 @@ public class BudgetController {
         }
         
         return budgetService.createBudget(budget);
+    }
+
+    @PostMapping("/bulk")
+    @PreAuthorize("hasAnyAuthority('budget:edit:all') or hasAnyRole('ADMIN', 'FINANCE', 'MANAGER')")
+    public void createBulkBudgets(@RequestBody BulkBudgetCreateRequestDTO request) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+
+        boolean hasCreateAllPermission = auth.getAuthorities().contains(new SimpleGrantedAuthority("budget:edit:all")) ||
+                                        auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")) ||
+                                        auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_FINANCE"));
+
+        User currentUser = (User) userService.loadUserByUsername(username);
+        boolean isManager = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_MANAGER".equals(role.getName()));
+
+        if (!hasCreateAllPermission && isManager) {
+            if (currentUser != null && request.getProjectId() != null) {
+                Project project = projectService.getProjectById(request.getProjectId());
+                if (project == null || !currentUser.getId().equals(project.getManager().getId())) {
+                    throw new RuntimeException("您只能为自己管理的项目创建预算");
+                }
+            } else {
+                throw new RuntimeException("必须为项目创建预算，且您只能为自己管理的项目创建预算");
+            }
+        } else if (!hasCreateAllPermission) {
+            throw new RuntimeException("您没有权限创建预算");
+        }
+
+        budgetService.createBulkBudgets(request, currentUser);
     }
 
     @PutMapping("/{id}")

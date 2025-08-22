@@ -24,6 +24,9 @@ public class Budget {
     @Column(nullable = false)
     private String name;
 
+    @Column
+    private String budgetType;
+
     @Column(nullable = false)
     private Double totalAmount;
 

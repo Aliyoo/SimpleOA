@@ -263,7 +263,7 @@ html.theme-light {
   /* Element Plus CSS 变量覆盖 */
   --el-bg-color: var(--oa-bg-white);
   --el-bg-color-page: var(--oa-bg-primary);
-  --el-bg-color-overlay: var(--oa-bg-overlay);
+  --el-bg-color-overlay: var(--oa-bg-white);
   --el-text-color-primary: var(--oa-text-primary);
   --el-text-color-regular: var(--oa-text-regular);
   --el-text-color-secondary: var(--oa-text-secondary);

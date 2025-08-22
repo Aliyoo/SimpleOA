@@ -63,7 +63,13 @@
                 </el-table-column>
                 <el-table-column label="费用类别" width="120" align="left">
                   <template #default="{ row, $index }">
-                    <el-select v-model="row.itemCategory" placeholder="选择费用类别" size="small" style="width: 100%">
+                    <el-select
+                      v-model="row.itemCategory"
+                      placeholder="选择费用类别"
+                      size="small"
+                      style="width: 100%"
+                      @change="onItemCategoryChange(row, $index)"
+                    >
                       <el-option label="劳务费" value="劳务费" />
                       <el-option label="房屋费" value="房屋费" />
                       <el-option label="差旅费" value="差旅费" />
@@ -96,7 +102,7 @@
                       @change="onBudgetChange(row, $index)"
                     >
                       <el-option
-                        v-for="budget in availableBudgets"
+                        v-for="budget in availableBudgetsFiltered(row)"
                         :key="budget.id"
                         :label="`${budget.name} (余额: ¥${budget.remainingAmount})`"
                         :value="budget.id"
@@ -115,7 +121,7 @@
                       :disabled="!row.budgetId"
                     >
                       <el-option
-                        v-for="item in getBudgetItems(row.budgetId)"
+                        v-for="item in getFilteredBudgetItems(row)"
                         :key="item.id"
                         :label="`${item.category} (余额: ¥${item.remainingAmount})`"
                         :value="item.id"
@@ -1112,10 +1118,61 @@ const getBudgetItems = (budgetId) => {
   return budgetItems.value.filter((item) => item.budget && item.budget.id === budgetId)
 }
 
+// 过滤后的预算：仅展示与当前行费用类别匹配的预算类型
+const availableBudgetsFiltered = (row) => {
+  if (!row || !row.itemCategory) return availableBudgets.value
+  return (availableBudgets.value || []).filter((b) => b && b.budgetType === row.itemCategory)
+}
+
+// 过滤后的预算明细：同预算且与费用类别一致
+const getFilteredBudgetItems = (row) => {
+  if (!row || !row.budgetId) return []
+  const all = getBudgetItems(row.budgetId)
+  if (!row.itemCategory) return all
+  return all.filter((it) => it && it.category === row.itemCategory)
+}
+
 const onBudgetChange = (row, index) => {
   // 清空预算明细选择
   row.budgetItemId = null
   // 可以在这里添加预算可用性检查
+  validateBudgetAmount(row)
+}
+
+// 费用类别变化后，自动关联预算及预算明细（若唯一匹配）
+const onItemCategoryChange = (row, index) => {
+  // 变更类别后，先清空已有选择
+  row.budgetItemId = null
+
+  // 无项目或无类别时，不做自动匹配，仅恢复预算候选
+  if (!reimbursementForm.projectId || !row.itemCategory) {
+    row.budgetId = null
+    return
+  }
+
+  const candidates = availableBudgetsFiltered(row)
+  if (!candidates || candidates.length === 0) {
+    row.budgetId = null
+    ElMessage.info(`当前项目下无“${row.itemCategory}”类别的预算，请联系项目经理创建`)
+    return
+  }
+
+  if (candidates.length === 1) {
+    row.budgetId = candidates[0].id
+
+    // 在唯一预算下尝试匹配唯一预算明细
+    const items = getFilteredBudgetItems(row)
+    if (items.length === 1) {
+      row.budgetItemId = items[0].id
+    }
+  } else {
+    // 存在多个同类预算：不自动选择，仅过滤下拉供用户确认
+    // 可选策略：也可以选择余额最大的预算作为默认
+    row.budgetId = null
+    ElMessage.info(`存在多个“${row.itemCategory}”类别预算，请选择具体预算`)
+  }
+
+  // 进行金额校验提示
   validateBudgetAmount(row)
 }
 

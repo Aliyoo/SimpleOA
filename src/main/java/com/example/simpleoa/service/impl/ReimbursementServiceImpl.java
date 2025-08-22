@@ -269,7 +269,7 @@ public class ReimbursementServiceImpl implements ReimbursementService {
     }
 
     @Transactional
-    private void processReimbursementBudgetDeduction(ReimbursementRequest request) {
+    public void processReimbursementBudgetDeduction(ReimbursementRequest request) {
         if (request.getProject() == null || request.getItems() == null || request.getItems().isEmpty()) {
             logger.info("Reimbursement request {} has no project or items, skipping budget deduction", request.getId());
             return;
@@ -432,10 +432,46 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         for (ReimbursementItemDTO item : dto.getItems()) {
             if (item.getBudgetId() != null) {
                 Budget budget = budgetRepository.findById(item.getBudgetId()).orElse(null);
-                if (budget == null || !budgetService.checkBudgetAvailability(dto.getProjectId(), item.getAmount().doubleValue())) {
+                if (budget == null) {
+                    return false;
+                }
+
+                // 校验预算归属项目一致
+                if (budget.getProject() == null || !budget.getProject().getId().equals(dto.getProjectId())) {
+                    return false;
+                }
+
+                // 校验费用类别与预算类型一致（如果前端传了类别）
+                if (item.getItemCategory() != null && budget.getBudgetType() != null && !budget.getBudgetType().equals(item.getItemCategory())) {
+                    return false;
+                }
+
+                // 预算余额校验
+                if (!budgetService.checkBudgetAvailability(dto.getProjectId(), item.getAmount().doubleValue())) {
                     return false;
                 }
             } else if (item.getBudgetItemId() != null) {
+                BudgetItem budgetItem = budgetItemRepository.findById(item.getBudgetItemId()).orElse(null);
+                if (budgetItem == null) {
+                    return false;
+                }
+
+                Budget parentBudget = budgetItem.getBudget();
+                if (parentBudget == null || parentBudget.getProject() == null || !parentBudget.getProject().getId().equals(dto.getProjectId())) {
+                    return false;
+                }
+
+                if (item.getItemCategory() != null) {
+                    String category = item.getItemCategory();
+                    String itemCategory = budgetItem.getCategory();
+                    String parentType = parentBudget.getBudgetType();
+                    boolean matchItem = itemCategory != null && itemCategory.equals(category);
+                    boolean matchParent = parentType != null && parentType.equals(category);
+                    if (!matchItem && !matchParent) {
+                        return false;
+                    }
+                }
+
                 if (!budgetService.checkBudgetItemAvailability(item.getBudgetItemId(), item.getAmount().doubleValue())) {
                     return false;
                 }

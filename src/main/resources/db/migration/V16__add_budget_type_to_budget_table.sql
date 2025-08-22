@@ -1,0 +1,1 @@
+ALTER TABLE budget ADD COLUMN budget_type VARCHAR(255);

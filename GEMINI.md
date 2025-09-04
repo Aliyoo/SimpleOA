@@ -17,15 +17,10 @@
     -   **Web:** Spring Web (for RESTful APIs)
     -   **数据访问:** Spring Data JPA
     -   **安全:** Spring Security (集成 JWT for token-based authentication)
-    -   **监控:** Spring Boot Actuator
 -   **数据库:** MySQL
 -   **数据库迁移:** Flyway (`src/main/resources/db/migration`)
 -   **构建工具:** Maven (`pom.xml`)
--   **核心依赖:**
-    -   `mysql-connector-java`: MySQL 驱动
-    -   `jjwt`: JSON Web Token 支持
-    -   `lombok`: 减少样板代码
-    -   `poi`: 处理 Excel 文件
+-   **核心依赖:** `mysql-connector-java`, `jjwt`, `lombok`, `poi-ooxml`
 
 ### 前端 (`web` 目录)
 
@@ -36,49 +31,51 @@
 -   **路由:** Vue Router (`web/src/router/index.js`)
 -   **状态管理:** Pinia (`web/src/stores`)
 -   **HTTP客户端:** Axios (`web/src/utils/axios.js`)
--   **代码规范:** ESLint 和 Prettier
--   **测试:** Vitest
 
 ---
 
 ## 架构与约定
 
-### 前后端交互
+-   **前后端交互:**
+    -   后端 API 运行于 `8080` 端口。
+    -   前端 Vite 开发服务器通过代理将 `/api` 请求转发至 `http://localhost:8080`。
+    -   认证机制为 JWT，由前端在请求头中携带。
+-   **后端代码结构:**
+    -   `com.example.simpleoa.controller`: API 控制器
+    -   `com.example.simpleoa.service`: 业务逻辑
+    -   `com.example.simpleoa.repository`: 数据访问 (Spring Data JPA)
+    -   `com.example.simpleoa.model`/`entity`: JPA 实体
+    -   `com.example.simpleoa.config`: Spring Boot 配置
+-   **前端代码结构:**
+    -   `web/src/views`: 页面组件
+    -   `web/src/stores`: Pinia 状态管理
+    -   `web/src/router`: 路由配置
+    -   `web/src/utils`: 工具模块 (如 `axios.js`)
 
--   后端在 `8080` 端口上提供 RESTful API。
--   前端开发服务器通过 Vite 代理将 `/api` 前缀的请求转发到后端的 `http://localhost:8080`。
--   API 请求路径重写：前端的 `/api/users` 会被转发到后端的 `/users`。
--   认证机制：使用 JWT。前端在登录后保存 token，并在后续请求的 Header 中携带。
+---
 
-### 后端代码结构
+## 重要文件和目录
 
--   遵循标准的 Spring Boot 项目结构。
--   预计包含以下包：
-    -   `com.example.simpleoa.controller`: API 入口，处理 HTTP 请求。
-    -   `com.example.simpleoa.service`: 业务逻辑层。
-    -   `com.example.simpleoa.repository`: 数据访问层，使用 Spring Data JPA。
-    -   `com.example.simpleoa.model` 或 `com.example.simpleoa.entity`: JPA 实体类。
-    -   `com.example.simpleoa.config`: 应用配置，如安全配置。
-    -   `com.example.simpleoa.security`: JWT 相关工具和过滤器。
+-   `pom.xml`: 定义后端所有依赖和构建配置。
+-   `web/package.json`: 定义前端所有依赖和脚本命令 (`dev`, `build`, `test`)。
+-   `src/main/resources/application.yml`: Spring Boot 核心配置文件。
+-   `src/main/resources/db/migration`: Flyway 管理的数据库版本迁移脚本。
+-   **根目录 `.sql` 文件**: 用于数据初始化 (`insert_*.sql`)、修复 (`fix_*.sql`) 和验证 (`verify_*.sql`) 的辅助脚本。
+-   **根目录 `.md` 文件**: 包含需求、设计、报告等重要项目文档。
+-   **根目录 `.sh` 文件**: 用于执行特定功能模块的自动化测试脚本 (例如 `test-reimbursement-approval.sh`)。
+-   `postman-approval-api-test.json`: Postman 集合，用于 API 测试。
 
-### 前端代码结构
+## 开发与测试
 
--   `web/src/main.js`: 应用入口。
--   `web/src/App.vue`: 根组件。
--   `web/src/router/index.js`: 定义所有页面路由和导航守卫。导航守卫会检查用户权限。
--   `web/src/stores`: Pinia 状态管理模块，例如 `user.js` 用于管理用户登录状态、信息和权限。
--   `web/src/views`: 页面级组件，每个 `.vue` 文件对应一个页面。
--   `web/src/layouts`: 布局组件，如 `MainLayout.vue` 包含通用的头部和侧边栏。
--   `web/src/utils`: 通用工具模块，如封装的 `axios.js`。
--   `web/src/components`: 可复用的基础组件（如果存在）。
+-   **后端启动**: 通过 Maven 运行 Spring Boot 应用。
+-   **前端启动**: 在 `web` 目录下执行 `npm install` 和 `npm run dev`。
+-   **测试**:
+    -   使用根目录的 `.sh` 脚本对特定场景进行集成测试。
+    -   使用 `postman-*.json` 文件导入 Postman 进行接口测试。
+    -   前端单元测试可在 `web` 目录下执行 `npm run test`。
 
 ## 通用指令
 
 -   请遵循现有的代码风格和约定。
--   从现有测试中推断测试策略。
 -   进行后端开发时，请遵循 Controller -> Service -> Repository 的分层架构。
 -   进行前端开发时，请善用 Pinia store 进行状态管理，并通过 `axios` 实例与后端交互。
-
-## 交互指南
-
--   **语言:** 请始终使用中文回复。

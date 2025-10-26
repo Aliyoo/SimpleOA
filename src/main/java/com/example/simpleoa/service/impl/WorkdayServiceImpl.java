@@ -9,8 +9,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -45,11 +43,7 @@ public class WorkdayServiceImpl implements WorkdayService {
 
     @Override
     public List<Workday> getWorkdaysByDateRange(LocalDate startDate, LocalDate endDate) {
-        // 使用固定的上海时区，避免系统时区差异
-        ZoneId shanghaiZone = ZoneId.of("Asia/Shanghai");
-        Date start = Date.from(startDate.atStartOfDay(shanghaiZone).toInstant());
-        Date end = Date.from(endDate.atStartOfDay(shanghaiZone).toInstant());
-        return workdayRepository.findByDateBetweenOrderByDate(start, end);
+        return workdayRepository.findByDateBetweenOrderByDate(startDate, endDate);
     }
 
     @Override
@@ -58,7 +52,7 @@ public class WorkdayServiceImpl implements WorkdayService {
     }
 
     @Override
-    public Optional<Workday> getWorkdayByDate(Date date) {
+    public Optional<Workday> getWorkdayByDate(LocalDate date) {
         return workdayRepository.findByDate(date);
     }
 
@@ -77,7 +71,7 @@ public class WorkdayServiceImpl implements WorkdayService {
         List<LocalDate> workdayDates = generateWorkdayDatesForMonth(year, month);
         List<Workday> workdays = workdayDates.stream().map(date -> {
             Workday workday = new Workday();
-            workday.setDate(Date.from(date.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant()));
+            workday.setDate(date);
             workday.setDescription(description);
             workday.setWorkType("NORMAL");
             return workday;
@@ -87,13 +81,12 @@ public class WorkdayServiceImpl implements WorkdayService {
 
     @Override
     public List<Workday> generateWorkdaysForRange(int startYear, int startMonth, int endYear, int endMonth, String description) {
-        // 使用流生成指定范围的所有工作日
         List<Workday> workdays = Stream.iterate(LocalDate.of(startYear, startMonth, 1), date -> date.plusMonths(1))
                 .limit(endYear * 12 + endMonth - (startYear * 12 + startMonth) + 1)
                 .flatMap(date -> generateWorkdayDatesForMonth(date.getYear(), date.getMonthValue()).stream())
                 .map(date -> {
                     Workday workday = new Workday();
-                    workday.setDate(Date.from(date.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant()));
+                    workday.setDate(date);
                     workday.setDescription(description);
                     workday.setWorkType("NORMAL");
                     return workday;
@@ -109,23 +102,21 @@ public class WorkdayServiceImpl implements WorkdayService {
 
     @Override
     public boolean isWorkday(LocalDate date) {
-        Date javaDate = Date.from(date.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant());
-        return !holidayRepository.existsByDate(javaDate) &&
+        return !holidayRepository.existsByDate(date) &&
                (date.getDayOfWeek() != DayOfWeek.SATURDAY && date.getDayOfWeek() != DayOfWeek.SUNDAY ||
-                workdayRepository.existsByDate(javaDate));
+                workdayRepository.existsByDate(date));
     }
 
     @Override
     public boolean isHoliday(LocalDate date) {
-        Date javaDate = Date.from(date.atStartOfDay(ZoneId.of("Asia/Shanghai")).toInstant());
-        return holidayRepository.existsByDate(javaDate);
+        return holidayRepository.existsByDate(date);
     }
 
     @Override
     public List<LocalDate> getWorkdayDatesForMonth(int year, int month) {
         return workdayRepository.findByYearAndMonth(year, month)
                 .stream()
-                .map(workday -> workday.getDate().toInstant().atZone(ZoneId.of("Asia/Shanghai")).toLocalDate())
+                .map(Workday::getDate)
                 .collect(Collectors.toList());
     }
 
@@ -134,7 +125,7 @@ public class WorkdayServiceImpl implements WorkdayService {
         LocalDate start = LocalDate.of(year, month, 1);
         LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
         return start.datesUntil(end.plusDays(1))
-                .filter(date -> isWorkday(date))
+                .filter(this::isWorkday)
                 .collect(Collectors.toList());
     }
 
@@ -157,4 +148,3 @@ public class WorkdayServiceImpl implements WorkdayService {
         return workdayRepository.findByWorkTypeOrderByDate(workType);
     }
 }
-

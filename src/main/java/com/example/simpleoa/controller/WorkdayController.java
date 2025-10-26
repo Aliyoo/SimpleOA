@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -80,7 +79,7 @@ public class WorkdayController {
      */
     @GetMapping("/by-date")
     public ResponseEntity<Workday> getWorkdayByDate(
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") Date date) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         Optional<Workday> workday = workdayService.getWorkdayByDate(date);
         return workday.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());

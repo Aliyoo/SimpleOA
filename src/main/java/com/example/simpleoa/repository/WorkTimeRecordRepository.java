@@ -108,14 +108,81 @@ public interface WorkTimeRecordRepository extends JpaRepository<WorkTimeRecord, 
     
     // 按审批状态统计记录数
     long countByApproved(Boolean approved);
-    
+
     // 按审批状态和日期范围统计记录数
     @Query("SELECT COUNT(w) FROM WorkTimeRecord w WHERE w.approved = :approved AND w.date BETWEEN :startDate AND :endDate")
     long countByApprovedAndDateRange(@Param("approved") Boolean approved, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
-    
+
     // 按日期范围统计总工时
     @Query("SELECT SUM(w.hours) FROM WorkTimeRecord w WHERE w.date BETWEEN :startDate AND :endDate")
     Double sumHoursByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    // ========== 批量填报考勤页面性能优化查询方法 ==========
+
+    // 批量查询多个项目的工时记录，使用IN子句避免循环查询
+    @Query(value = """
+        SELECT
+            wtr.id as id,
+            wtr.project_id as projectId,
+            wtr.user_id as userId,
+            wtr.date as date,
+            wtr.hours as hours,
+            wtr.approved as approved,
+            wtr.work_type as workType,
+            wtr.description as description,
+            wtr.created_at as createdAt,
+            wtr.updated_at as updatedAt
+        FROM work_time_record wtr
+        WHERE wtr.project_id IN (:projectIds)
+          AND wtr.date BETWEEN :startDate AND :endDate
+        ORDER BY wtr.project_id, wtr.user_id, wtr.date
+        """, nativeQuery = true)
+    List<Object[]> findWorkTimeRecordsBatchNative(@Param("projectIds") List<Long> projectIds,
+                                                   @Param("startDate") java.sql.Date startDate,
+                                                   @Param("endDate") java.sql.Date endDate);
+
+    // JPA方式批量查询（使用实体映射）
+    @Query("SELECT w FROM WorkTimeRecord w " +
+           "LEFT JOIN FETCH w.user " +
+           "LEFT JOIN FETCH w.project " +
+           "WHERE w.project.id IN :projectIds " +
+           "AND w.date BETWEEN :startDate AND :endDate " +
+           "ORDER BY w.project.id, w.user.id, w.date")
+    List<WorkTimeRecord> findWorkTimeRecordsBatch(@Param("projectIds") List<Long> projectIds,
+                                                   @Param("startDate") LocalDate startDate,
+                                                   @Param("endDate") LocalDate endDate);
+
+    // 部分字段投影查询，减少数据传输量
+    @Query("SELECT w.project.id, w.user.id, w.date, w.hours, w.approved " +
+           "FROM WorkTimeRecord w " +
+           "WHERE w.project.id IN :projectIds " +
+           "AND w.date BETWEEN :startDate AND :endDate")
+    List<Object[]> findWorkTimeRecordMinimal(@Param("projectIds") List<Long> projectIds,
+                                              @Param("startDate") LocalDate startDate,
+                                              @Param("endDate") LocalDate endDate);
+
+    // 带用户信息的批量查询，避免N+1问题
+    @Query(value = """
+        SELECT
+            p.id as projectId,
+            p.name as projectName,
+            u.id as userId,
+            u.username as username,
+            u.real_name as realName,
+            wtr.date as workDate,
+            wtr.hours as hours,
+            wtr.approved as approved
+        FROM work_time_record wtr
+        JOIN project p ON wtr.project_id = p.id
+        JOIN user u ON wtr.user_id = u.id
+        WHERE wtr.project_id IN (:projectIds)
+          AND wtr.date
+          BETWEEN :startDate AND :endDate
+        ORDER BY p.id, u.id, wtr.date
+        """, nativeQuery = true)
+    List<Object[]> findWorkTimeRecordsWithUserInfo(@Param("projectIds") List<Long> projectIds,
+                                                     @Param("startDate") java.sql.Date startDate,
+                                                     @Param("endDate") java.sql.Date endDate);
     
     // 优化的聚合统计查询
     @Query("SELECT w.project.id, SUM(w.hours) as totalHours " +

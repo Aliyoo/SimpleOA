@@ -702,6 +702,75 @@ public class WorkTimeService {
     }
     
     /**
+     * 获取用户在日期范围内每天的总工时（排除指定项目列表）
+     * 用于一键填写时的冲突检测
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Double> getUserDailyTotals(
+            Long userId, LocalDate startDate, LocalDate endDate, List<Long> excludeProjectIds) {
+        
+        User user = new User();
+        user.setId(userId);
+        
+        // 获取用户在日期范围内的所有工时记录
+        List<WorkTimeRecord> records = workTimeRecordRepository.findByUserAndDateBetween(user, startDate, endDate);
+        
+        // 转换为Set便于快速查找
+        Set<Long> excludeSet = excludeProjectIds != null ? new HashSet<>(excludeProjectIds) : new HashSet<>();
+        
+        // 按日期汇总工时，排除指定项目
+        Map<String, Double> dailyTotals = new HashMap<>();
+        for (WorkTimeRecord record : records) {
+            // 如果项目在排除列表中，则跳过
+            if (record.getProject() != null && excludeSet.contains(record.getProject().getId())) {
+                continue;
+            }
+            
+            String dateKey = record.getDate().toString();
+            dailyTotals.merge(dateKey, record.getHours(), Double::sum);
+        }
+        
+        return dailyTotals;
+    }
+
+    /**
+     * 获取用户在日期范围内每天的详细项目工时分布（排除指定项目列表）
+     * 返回格式：{ date: [ { projectId, projectName, hours } ] }
+     */
+    @Transactional(readOnly = true)
+    public Map<String, List<Map<String, Object>>> getUserDailyProjectDetails(
+            Long userId, LocalDate startDate, LocalDate endDate, List<Long> excludeProjectIds) {
+        
+        User user = new User();
+        user.setId(userId);
+        
+        // 获取用户在日期范围内的所有工时记录
+        List<WorkTimeRecord> records = workTimeRecordRepository.findByUserAndDateBetween(user, startDate, endDate);
+        
+        // 转换为Set便于快速查找
+        Set<Long> excludeSet = excludeProjectIds != null ? new HashSet<>(excludeProjectIds) : new HashSet<>();
+        
+        // 按日期分组，记录每个项目的工时
+        Map<String, List<Map<String, Object>>> dailyDetails = new HashMap<>();
+        for (WorkTimeRecord record : records) {
+            // 如果项目在排除列表中，则跳过
+            if (record.getProject() != null && excludeSet.contains(record.getProject().getId())) {
+                continue;
+            }
+            
+            String dateKey = record.getDate().toString();
+            Map<String, Object> projectDetail = new HashMap<>();
+            projectDetail.put("projectId", record.getProject().getId());
+            projectDetail.put("projectName", record.getProject().getName());
+            projectDetail.put("hours", record.getHours());
+            
+            dailyDetails.computeIfAbsent(dateKey, k -> new ArrayList<>()).add(projectDetail);
+        }
+        
+        return dailyDetails;
+    }
+
+    /**
      * 高性能项目统计查询
      * 
      * @param projectIds 项目ID列表

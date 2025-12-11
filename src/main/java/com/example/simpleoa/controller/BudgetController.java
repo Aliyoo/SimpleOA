@@ -938,4 +938,93 @@ public class BudgetController {
                 .filter(item -> item.getRemainingAmount() != null && item.getRemainingAmount() > 0)
                 .toList();
     }
+
+    // ==================== 报销场景预算查询接口 ====================
+    // 这些接口允许项目成员（不仅仅是项目经理）查询预算，用于报销申请时选择预算来源
+
+    /**
+     * 获取项目可用预算列表（报销场景专用）
+     * 允许项目成员、项目经理、管理员、财务访问
+     */
+    @GetMapping("/project/{projectId}/reimbursement-budgets")
+    public List<Budget> getAvailableBudgetsForReimbursement(@PathVariable Long projectId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        User currentUser = (User) userService.loadUserByUsername(username);
+
+        // 检查权限：管理员、财务可以直接访问
+        boolean hasAdminRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_ADMIN".equals(role.getName()) || role.getName().contains("管理员"));
+        boolean hasFinanceRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()) || role.getName().contains("财务"));
+
+        if (hasAdminRole || hasFinanceRole) {
+            return budgetService.getAvailableBudgetsForProject(projectId);
+        }
+
+        // 检查是否是该项目的成员或项目经理
+        Project project = projectService.getProjectById(projectId);
+        if (project == null) {
+            throw new RuntimeException("项目不存在");
+        }
+
+        // 检查是否是项目经理
+        boolean isProjectManager = project.getManager() != null &&
+                currentUser.getId().equals(project.getManager().getId());
+
+        // 检查是否是项目成员
+        boolean isProjectMember = project.getMembers() != null &&
+                project.getMembers().stream().anyMatch(member -> member.getId().equals(currentUser.getId()));
+
+        if (isProjectManager || isProjectMember) {
+            return budgetService.getAvailableBudgetsForProject(projectId);
+        }
+
+        throw new RuntimeException("您不是该项目的成员，无法查看项目预算");
+    }
+
+    /**
+     * 获取项目预算明细列表（报销场景专用）
+     * 允许项目成员、项目经理、管理员、财务访问
+     */
+    @GetMapping("/project/{projectId}/reimbursement-budget-items")
+    public List<BudgetItem> getAvailableBudgetItemsForReimbursement(@PathVariable Long projectId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        User currentUser = (User) userService.loadUserByUsername(username);
+
+        // 检查权限：管理员、财务可以直接访问
+        boolean hasAdminRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_ADMIN".equals(role.getName()) || role.getName().contains("管理员"));
+        boolean hasFinanceRole = currentUser.getRoles() != null && currentUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()) || role.getName().contains("财务"));
+
+        if (hasAdminRole || hasFinanceRole) {
+            return budgetService.getBudgetItemsByProject(projectId).stream()
+                    .filter(item -> item.getRemainingAmount() != null && item.getRemainingAmount() > 0)
+                    .toList();
+        }
+
+        // 检查是否是该项目的成员或项目经理
+        Project project = projectService.getProjectById(projectId);
+        if (project == null) {
+            throw new RuntimeException("项目不存在");
+        }
+
+        // 检查是否是项目经理
+        boolean isProjectManager = project.getManager() != null &&
+                currentUser.getId().equals(project.getManager().getId());
+
+        // 检查是否是项目成员
+        boolean isProjectMember = project.getMembers() != null &&
+                project.getMembers().stream().anyMatch(member -> member.getId().equals(currentUser.getId()));
+
+        if (isProjectManager || isProjectMember) {
+            return budgetService.getBudgetItemsByProject(projectId).stream()
+                    .filter(item -> item.getRemainingAmount() != null && item.getRemainingAmount() > 0)
+                    .toList();
+        }
+
+        throw new RuntimeException("您不是该项目的成员，无法查看项目预算明细");
+    }
 }

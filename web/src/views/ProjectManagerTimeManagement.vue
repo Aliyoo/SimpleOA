@@ -47,9 +47,28 @@
               </div>
             </div>
 
+            <!-- 日期显示控件 -->
+            <div v-if="batchDates.length > 0" class="date-pagination">
+              <el-button size="small" @click="toggleDateDisplayMode">
+                {{ dateDisplayMode === 'all' ? '切换按周显示' : '显示全部日期' }}
+              </el-button>
+              <span class="date-range-info">
+                共 {{ batchDates.length }} 天，当前显示 {{ visibleDates.length }} 天
+              </span>
+              <template v-if="dateDisplayMode === 'week'">
+                <el-button :disabled="datePageIndex === 0" size="small" @click="datePageIndex--">
+                  ← 上一周
+                </el-button>
+                <span class="week-info">第 {{ datePageIndex + 1 }}/{{ totalDatePages }} 周</span>
+                <el-button :disabled="datePageIndex >= totalDatePages - 1" size="small" @click="datePageIndex++">
+                  下一周 →
+                </el-button>
+              </template>
+            </div>
+
             <div v-loading="batchLoading" class="batch-projects-container">
-              <!-- 项目列表 -->
-              <div v-for="project in displayProjects" :key="project.id" class="project-section">
+              <!-- 项目列表（只渲染可见项目） -->
+              <div v-for="project in visibleProjects" :key="project.id" class="project-section">
                 <div class="project-header">
                   <h3>{{ project.name }}</h3>
                   <div class="project-actions">
@@ -85,9 +104,9 @@
                   <el-table-column prop="username" label="用户名" width="120" fixed="left" />
                   <el-table-column prop="realName" label="姓名" width="120" fixed="left" />
 
-                  <!-- 动态日期列 -->
+                  <!-- 动态日期列（只渲染可见日期，提升性能） -->
                   <el-table-column
-                    v-for="date in batchDates"
+                    v-for="date in visibleDates"
                     :key="date"
                     :label="formatDateLabel(date)"
                     :prop="date"
@@ -128,16 +147,26 @@
                   </el-table-column>
 
                   <!-- 操作列 -->
-                  <el-table-column label="操作" width="100" fixed="right" v-if="isProjectManager(project)">
+                  <el-table-column label="操作" width="130" fixed="right" v-if="isProjectManager(project)">
                     <template #default="scope">
-                      <el-button 
-                        size="small" 
-                        type="primary" 
-                        @click="quickFillMemberRow(scope.row, project.id)"
-                        :disabled="batchLoading"
-                      >
-                        一键填写
-                      </el-button>
+                      <div class="operation-buttons">
+                        <el-button 
+                          size="small" 
+                          type="primary" 
+                          @click="quickFillMemberRow(scope.row, project.id)"
+                          :disabled="batchLoading"
+                        >
+                          一键填
+                        </el-button>
+                        <el-button 
+                          size="small" 
+                          type="success" 
+                          @click="openCalendarFill(scope.row, project.id)"
+                          :disabled="batchLoading"
+                        >
+                          日历填
+                        </el-button>
+                      </div>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -365,12 +394,86 @@
         </div>
       </div>
     </div>
+
+    <!-- 日历填写对话框 -->
+    <el-dialog
+      v-model="calendarDialogVisible"
+      title="日历填写工时"
+      width="650px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <div v-loading="calendarLoading" class="calendar-fill-container">
+        <div class="calendar-header">
+          <div class="member-info">
+            <span class="label">成员：</span>
+            <span class="value">{{ calendarMember?.realName || calendarMember?.username }}</span>
+          </div>
+          <div class="fill-hours-input">
+            <span class="label">工时：</span>
+            <el-input-number
+              v-model="calendarFillHours"
+              :min="0"
+              :max="8"
+              :step="1"
+              :precision="0"
+              size="small"
+              style="width: 80px"
+            />
+            <span class="unit">h/天</span>
+          </div>
+          <div class="selected-info">
+            已选 <span class="count">{{ selectedDates.length }}</span> 天
+          </div>
+        </div>
+
+        <div class="calendar-tips">
+          <span class="tip-text">💡 点击日期选择/取消，灰色为不可选</span>
+        </div>
+
+        <el-calendar v-model="calendarValue" class="custom-calendar">
+          <template #date-cell="{ data }">
+            <el-tooltip
+              :content="getDateOccupationTooltip(data.day)"
+              placement="top"
+              :disabled="!shouldShowTooltip(data.day)"
+              raw-content
+            >
+              <div
+                :class="[
+                  'calendar-day',
+                  {
+                    'is-selected': isDateSelected(data.day),
+                    'is-disabled': isDateDisabled(data.day),
+                    'is-workday': isDateWorkday(data.day),
+                    'is-in-range': isDateInRange(data.day)
+                  }
+                ]"
+                @click="toggleDateSelection(data.day)"
+              >
+                <div class="day-number">{{ data.day.split('-')[2] }}</div>
+                <div v-if="getDateAvailableHours(data.day) < 8 && getDateAvailableHours(data.day) > 0" class="available-hours">
+                  {{ getDateAvailableHours(data.day) }}h
+                </div>
+              </div>
+            </el-tooltip>
+          </template>
+        </el-calendar>
+      </div>
+
+      <template #footer>
+        <el-button @click="calendarDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmCalendarFill" :disabled="selectedDates.length === 0">
+          确认填写 ({{ selectedDates.length }}天)
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { APP_CONFIG } from '../utils/config.js'
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '../utils/axios.js'
 import optimizedApi from '../utils/optimizedApi.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -393,6 +496,53 @@ const displayProjects = ref([])
 const batchDateRange = ref([])
 const batchDates = ref([])
 const batchLoading = ref(false)
+
+// ========== 日历填写相关 ==========
+const calendarDialogVisible = ref(false)
+const calendarLoading = ref(false)
+const calendarMember = ref(null)
+const calendarProjectId = ref(null)
+const calendarValue = ref(new Date())
+const calendarFillHours = ref(8) // 默认填写8小时
+const selectedDates = ref([]) // 已选择的日期列表
+const dateAvailableHoursMap = ref(new Map()) // 日期可用工时映射
+const hiddenProjectsHoursMap = ref(new Map()) // 未展示项目的工时映射
+const dateProjectDetailsMap = ref(new Map()) // 日期项目占用详情映射：date -> [{projectName, hours}]
+
+// ========== 性能优化：日期显示模式 ==========
+const dateDisplayMode = ref('all') // 'all' 显示所有日期, 'week' 按周分页
+const visibleDateCount = 7 // 按周模式每页显示7天
+const datePageIndex = ref(0) // 当前日期页索引
+
+// 计算可见日期
+const visibleDates = computed(() => {
+  if (dateDisplayMode.value === 'all') {
+    return batchDates.value // 显示所有日期
+  }
+  // 按周分页模式
+  const start = datePageIndex.value * visibleDateCount
+  return batchDates.value.slice(start, start + visibleDateCount)
+})
+
+// 计算总日期页数
+const totalDatePages = computed(() => {
+  return Math.ceil(batchDates.value.length / visibleDateCount)
+})
+
+// 切换日期显示模式
+const toggleDateDisplayMode = () => {
+  if (dateDisplayMode.value === 'all') {
+    dateDisplayMode.value = 'week'
+    datePageIndex.value = 0
+  } else {
+    dateDisplayMode.value = 'all'
+  }
+}
+
+// 所有项目都显示，不做虚拟滚动限制
+const visibleProjects = computed(() => {
+  return displayProjects.value
+})
 
 // 统计报表相关数据
 const statsDateRange = ref([])
@@ -476,7 +626,7 @@ const fetchAllProjects = async () => {
   }
 }
 
-// 更新显示的项目列表
+// 更新显示的项目列表（优化版：使用批量API获取成员，避免N+1问题）
 const updateDisplayProjects = async () => {
   try {
     // 根据开关状态决定显示哪些项目
@@ -488,56 +638,66 @@ const updateDisplayProjects = async () => {
       return
     }
 
-    // 为每个项目获取成员并初始化工时数据
-    const projectsWithMembers = []
+    const startTime = Date.now()
+    
+    // 收集所有项目ID
+    const projectIds = projects.map(p => p.id)
+    console.log('批量获取项目成员，项目ID列表:', projectIds)
 
-    for (const project of projects) {
-      try {
-        // 获取项目成员
-        const response = await api.get(`/api/projects/${project.id}/members`)
-        const members = response.data
-
-        // 为每个成员初始化工时数据和原始数据记录
-        const membersWithHours = members.map((member) => {
-          const hours = {}
-          const userKey = `${project.id}_${member.id}`
-          const userOriginalData = {}
-
-          batchDates.value.forEach((date) => {
-            hours[date] = 0
-            userOriginalData[date] = 0 // 初始化原始数据也为0
-          })
-
-          // 存储用户的原始数据
-          originalWorkTimeData.value.set(userKey, userOriginalData)
-
-          return {
-            ...member,
-            hours
-          }
-        })
-
-        // 添加到项目列表
-        projectsWithMembers.push({
-          ...project,
-          members: membersWithHours
-        })
-      } catch (error) {
-        console.error(`获取项目 ${project.id} 成员列表失败:`, error)
-        // 添加到项目列表，但成员为空
-        projectsWithMembers.push({
-          ...project,
-          members: []
-        })
-      }
+    // 使用批量API一次性获取所有项目的成员
+    const response = await api.post('/api/projects/batch/members', { projectIds })
+    
+    // 处理返回的数据：{ code, message, data: { projectId: [members] } }
+    let batchMembersData = {}
+    if (response.data && response.data.data) {
+      batchMembersData = response.data.data
+    } else if (response.data && typeof response.data === 'object') {
+      batchMembersData = response.data
     }
+
+    const loadTime = Date.now() - startTime
+    console.log(`批量获取成员完成，耗时 ${loadTime}ms`)
+
+    // 为每个项目构建成员数据
+    const projectsWithMembers = projects.map(project => {
+      // 获取该项目的成员（注意：JSON序列化后key会变成字符串）
+      const members = batchMembersData[project.id] || batchMembersData[String(project.id)] || []
+      
+      // 为每个成员初始化工时数据和原始数据记录
+      const membersWithHours = members.map((member) => {
+        const hours = {}
+        const userKey = `${project.id}_${member.id}`
+        const userOriginalData = {}
+
+        batchDates.value.forEach((date) => {
+          hours[date] = 0
+          userOriginalData[date] = 0 // 初始化原始数据也为0
+        })
+
+        // 存储用户的原始数据
+        originalWorkTimeData.value.set(userKey, userOriginalData)
+
+        return {
+          ...member,
+          hours
+        }
+      })
+
+      return {
+        ...project,
+        members: membersWithHours
+      }
+    })
 
     // 更新显示的项目列表
     displayProjects.value = projectsWithMembers
-    console.log('更新显示的项目列表:', displayProjects.value)
+    console.log('更新显示的项目列表:', displayProjects.value.length, '个项目')
 
     // 加载已提交的工时数据
     loadSubmittedWorkTime()
+  } catch (error) {
+    console.error('更新项目列表失败:', error)
+    ElMessage.error('更新项目列表失败: ' + (error.response?.data?.message || error.message))
   } finally {
     batchLoading.value = false
   }
@@ -804,7 +964,7 @@ const isWorkdayForDate = (date) => {
   return day !== 0 && day !== 6
 }
 
-// 加载已提交的工时数据
+// 加载已提交的工时数据（优化版：使用批量查询API，避免N+1问题）
 const loadSubmittedWorkTime = async () => {
   if (!batchDateRange.value || batchDateRange.value.length !== 2) {
     console.warn('批量填写日期范围无效，无法加载已提交工时')
@@ -818,99 +978,100 @@ const loadSubmittedWorkTime = async () => {
 
   try {
     batchLoading.value = true
+    const startTime = Date.now()
     console.log('加载已提交工时，日期范围:', batchDateRange.value[0], '至', batchDateRange.value[1])
 
-    // 基本查询参数
-    const baseParams = {
+    // 收集所有项目ID
+    const projectIds = displayProjects.value.map(p => p.id)
+    console.log('批量查询项目ID列表:', projectIds)
+
+    // 使用批量查询API，一次性获取所有项目的工时数据
+    const response = await api.post('/api/worktime/projects/batch', {
+      projectIds,
       startDate: batchDateRange.value[0],
-      endDate: batchDateRange.value[1],
-      _t: new Date().getTime(), // 添加时间戳参数，避免浏览器缓存
-      size: 1000 // 设置较大的分页大小，确保能获取到所有记录
+      endDate: batchDateRange.value[1]
+    })
+
+    // 处理返回的数据：{ code, message, data: { projectId: [records] } }
+    let batchData = {}
+    if (response.data && response.data.data) {
+      batchData = response.data.data
+    } else if (response.data && typeof response.data === 'object') {
+      // 兼容直接返回数据的情况
+      batchData = response.data
     }
 
-    // 为每个项目获取工时记录
+    const loadTime = Date.now() - startTime
+    console.log(`批量查询完成，耗时 ${loadTime}ms，获取到 ${Object.keys(batchData).length} 个项目的数据`)
+
+    // 遍历每个项目，填充工时数据
     for (const project of displayProjects.value) {
-      try {
-        // 构建查询参数
-        const params = {
-          ...baseParams,
-          projectId: project.id
-        }
+      // 获取该项目的工时记录（注意：JSON序列化后key会变成字符串）
+      const workTimeRecords = batchData[project.id] || batchData[String(project.id)] || []
+      console.log(`项目 ${project.id} (${project.name}) 工时记录:`, workTimeRecords.length, '条')
 
-        // 调用API获取工时记录
-        const response = await api.get('/api/worktime/project/range', { params })
+      if (workTimeRecords.length > 0) {
+        // 创建一个映射，用于存储已提交的工时记录
+        const submittedHoursMap = {}
 
-        // 处理返回的数据
-        let workTimeRecords = []
-        if (Array.isArray(response.data)) {
-          workTimeRecords = response.data
-        } else if (response.data && response.data.content) {
-          workTimeRecords = response.data.content
-        }
+        // 处理已提交的工时记录
+        workTimeRecords.forEach((record) => {
+          const userId = record.user?.id
+          const date = record.date
+          const hours = record.hours
 
-        console.log(`获取到项目 ${project.id} 工时记录:`, workTimeRecords.length, '条')
-
-        // 将已提交的工时数据填充到项目成员表格中
-        if (workTimeRecords.length > 0) {
-          // 创建一个映射，用于存储已提交的工时记录
-          const submittedHoursMap = {}
-
-          // 处理已提交的工时记录
-          workTimeRecords.forEach((record) => {
-            const userId = record.user?.id
-            const date = record.date
-            const hours = record.hours
-
-            if (userId && date && hours !== undefined) {
-              if (!submittedHoursMap[userId]) {
-                submittedHoursMap[userId] = {}
-              }
-              submittedHoursMap[userId][date] = hours
+          if (userId && date && hours !== undefined) {
+            if (!submittedHoursMap[userId]) {
+              submittedHoursMap[userId] = {}
             }
+            submittedHoursMap[userId][date] = hours
+          }
+        })
+
+        // 填充已提交的工时数据，并记录原始数据
+        project.members.forEach((member) => {
+          const userId = member.id
+          const submittedHours = submittedHoursMap[userId] || {}
+
+          // 创建用户原始数据映射的key
+          const userKey = `${project.id}_${userId}`
+          const userOriginalData = {}
+
+          batchDates.value.forEach((date) => {
+            // 记录原始工时数据（包括0值）
+            const originalHours = submittedHours[date] || 0
+            userOriginalData[date] = originalHours
+
+            // 更新界面显示的工时数据
+            member.hours[date] = originalHours
           })
 
-          // 填充已提交的工时数据，并记录原始数据
-          project.members.forEach((member) => {
-            const userId = member.id
-            const submittedHours = submittedHoursMap[userId] || {}
+          // 存储用户的原始数据
+          originalWorkTimeData.value.set(userKey, userOriginalData)
+        })
+      } else {
+        // 如果没有已提交的工时记录，也需要记录原始数据（全为0）
+        project.members.forEach((member) => {
+          const userId = member.id
+          const userKey = `${project.id}_${userId}`
+          const userOriginalData = {}
 
-            // 创建用户原始数据映射的key
-            const userKey = `${project.id}_${userId}`
-            const userOriginalData = {}
-
-            batchDates.value.forEach((date) => {
-              // 记录原始工时数据（包括0值）
-              const originalHours = submittedHours[date] || 0
-              userOriginalData[date] = originalHours
-
-              // 更新界面显示的工时数据
-              member.hours[date] = originalHours
-            })
-
-            // 存储用户的原始数据
-            originalWorkTimeData.value.set(userKey, userOriginalData)
+          batchDates.value.forEach((date) => {
+            userOriginalData[date] = 0
           })
-        } else {
-          // 如果没有已提交的工时记录，也需要记录原始数据（全为0）
-          project.members.forEach((member) => {
-            const userId = member.id
-            const userKey = `${project.id}_${userId}`
-            const userOriginalData = {}
 
-            batchDates.value.forEach((date) => {
-              userOriginalData[date] = 0
-            })
-
-            originalWorkTimeData.value.set(userKey, userOriginalData)
-          })
-        }
-      } catch (error) {
-        console.error(`获取项目 ${project.id} 工时记录失败:`, error)
+          originalWorkTimeData.value.set(userKey, userOriginalData)
+        })
       }
     }
+
+    console.log(`工时数据加载完成，共处理 ${displayProjects.value.length} 个项目`)
+    
+    // 重建跨项目工时缓存
+    rebuildCrossProjectCache()
   } catch (error) {
     console.error('加载已提交工时失败:', error)
-    ElMessage.error('加载已提交工时失败: ' + error.message)
+    ElMessage.error('加载已提交工时失败: ' + (error.response?.data?.message || error.message))
   } finally {
     batchLoading.value = false
   }
@@ -1073,40 +1234,59 @@ const calculateTotalHours = (hoursObj) => {
   return Object.values(hoursObj).reduce((sum, val) => sum + (val || 0), 0)
 }
 
-// 计算成员跨项目每天的总工时
+// ========== 性能优化：使用缓存Map避免重复计算 ==========
+// 成员跨项目工时缓存：memberId -> { total, dailyHours: { date -> hours } }
+const memberCrossProjectCache = ref(new Map())
+
+// 重建跨项目工时缓存（在数据变化时调用）
+const rebuildCrossProjectCache = () => {
+  const cache = new Map()
+  
+  displayProjects.value.forEach((project) => {
+    project.members.forEach((member) => {
+      if (!cache.has(member.id)) {
+        cache.set(member.id, { total: 0, dailyHours: {} })
+      }
+      const memberCache = cache.get(member.id)
+      
+      Object.entries(member.hours).forEach(([date, hours]) => {
+        const h = hours || 0
+        memberCache.total += h
+        memberCache.dailyHours[date] = (memberCache.dailyHours[date] || 0) + h
+      })
+    })
+  })
+  
+  memberCrossProjectCache.value = cache
+}
+
+// 计算成员跨项目每天的总工时（使用缓存）
 const getMemberDailyHours = (memberId, date) => {
-  let totalHours = 0
-  displayProjects.value.forEach((project) => {
-    const member = project.members.find((m) => m.id === memberId)
-    if (member) {
-      totalHours += member.hours[date] || 0
-    }
-  })
-  return totalHours
+  const cache = memberCrossProjectCache.value.get(memberId)
+  return cache?.dailyHours[date] || 0
 }
 
-// 获取成员跨项目的最高单日工时
+// 获取成员跨项目的最高单日工时（使用缓存）
 const getMaxDailyHours = (memberId) => {
-  let maxHours = 0
-  batchDates.value.forEach((date) => {
-    const dailyHours = getMemberDailyHours(memberId, date)
-    if (dailyHours > maxHours) {
-      maxHours = dailyHours
-    }
-  })
-  return maxHours
+  const cache = memberCrossProjectCache.value.get(memberId)
+  if (!cache) return 0
+  return Math.max(0, ...Object.values(cache.dailyHours))
 }
 
-// 获取成员跨所有项目的工时总合计
+// 获取成员跨所有项目的工时总合计（使用缓存）
 const getMemberCrossProjectTotal = (memberId) => {
-  let totalHours = 0
-  displayProjects.value.forEach((project) => {
-    const member = project.members.find((m) => m.id === memberId)
-    if (member) {
-      totalHours += calculateTotalHours(member.hours)
-    }
-  })
-  return totalHours
+  const cache = memberCrossProjectCache.value.get(memberId)
+  return cache?.total || 0
+}
+
+// 更新单个成员的缓存（工时变化时增量更新）
+const updateMemberCache = (memberId, date, oldHours, newHours) => {
+  const cache = memberCrossProjectCache.value.get(memberId)
+  if (cache) {
+    const diff = (newHours || 0) - (oldHours || 0)
+    cache.total += diff
+    cache.dailyHours[date] = (cache.dailyHours[date] || 0) + diff
+  }
 }
 
 // 获取每日总工时的样式类
@@ -1853,58 +2033,348 @@ const exportStatisticalReportData = async () => {
   }
 }
 
-// 一键填写成员工时
-const quickFillMemberRow = (member, projectId) => {
-  console.log('一键填写成员工时:', member.realName || member.username, '项目ID:', projectId)
+// 一键填写成员工时（前端优先 + 后端校验：结合已展示数据和未展示项目数据）
+const quickFillMemberRow = async (member, projectId) => {
+  const memberName = member.realName || member.username
+  console.log('一键填写成员工时:', memberName, '项目ID:', projectId)
   
   if (!batchDates.value || batchDates.value.length === 0) {
     ElMessage.warning('没有可填写的日期')
     return
   }
 
-  let filledCount = 0
+  if (!batchDateRange.value || batchDateRange.value.length !== 2) {
+    ElMessage.warning('日期范围无效')
+    return
+  }
+
+  try {
+    batchLoading.value = true
+    
+    // 1. 收集当前页面已展示项目的ID
+    const displayedProjectIds = displayProjects.value.map(p => p.id)
+    
+    // 2. 调用后端API获取该用户在【未展示项目】的每日工时总计
+    // 排除所有已展示的项目，只获取未展示项目的数据
+    const response = await api.get(`/api/worktime/user/${member.id}/daily-totals`, {
+      params: {
+        startDate: batchDateRange.value[0],
+        endDate: batchDateRange.value[1],
+        excludeProjectIds: displayedProjectIds.join(',') // 排除所有已展示项目
+      }
+    })
+
+    // 解析后端返回的【未展示项目】每日工时数据
+    let hiddenProjectsDailyHours = {}
+    if (response.data && response.data.data) {
+      hiddenProjectsDailyHours = response.data.data
+    }
+
+    console.log('用户在未展示项目的每日工时:', hiddenProjectsDailyHours)
+
+    let filledCount = 0
+    let skippedCount = 0
+    
+    // 遍历所有日期，只填写工作日
+    batchDates.value.forEach((date) => {
+      if (isWorkdayForDate(date)) {
+        // 3. 计算前端已展示项目（排除当前项目）的当日工时
+        let displayedOtherHours = 0
+        displayProjects.value.forEach((project) => {
+          if (project.id !== projectId) {
+            const projectMember = project.members.find((m) => m.id === member.id)
+            if (projectMember) {
+              displayedOtherHours += projectMember.hours[date] || 0
+            }
+          }
+        })
+        
+        // 4. 获取后端返回的未展示项目当日工时
+        const hiddenHours = hiddenProjectsDailyHours[date] || 0
+        
+        // 5. 总的其他项目工时 = 前端已展示 + 后端未展示
+        const totalOtherHours = displayedOtherHours + hiddenHours
+        
+        // 6. 计算当前项目可以填写的最大工时（保证总工时不超过8小时）
+        const maxAllowedHours = Math.max(0, 8 - totalOtherHours)
+        
+        if (maxAllowedHours > 0) {
+          member.hours[date] = maxAllowedHours
+          filledCount++
+          
+          if (maxAllowedHours < 8) {
+            console.log(`${date}: 已展示项目${displayedOtherHours}h + 未展示项目${hiddenHours}h = ${totalOtherHours}h，本项目填写${maxAllowedHours}h`)
+          }
+        } else {
+          skippedCount++
+          console.log(`${date}: 总工时已满${totalOtherHours}h，跳过`)
+        }
+      }
+    })
+    
+    // 更新跨项目缓存
+    rebuildCrossProjectCache()
+    
+    if (filledCount > 0) {
+      let msg = `已为 "${memberName}" 填写 ${filledCount} 个工作日的工时`
+      if (skippedCount > 0) {
+        msg += `，${skippedCount} 天因工时已满而跳过`
+      }
+      ElMessage.success(msg)
+    } else {
+      ElMessage.info(`"${memberName}" 没有可填写的工作日或当天工时已满`)
+    }
+  } catch (error) {
+    console.error('一键填写失败:', error)
+    ElMessage.error('一键填写失败: ' + (error.response?.data?.message || error.message))
+  } finally {
+    batchLoading.value = false
+  }
+}
+
+// ========== 日历填写相关方法 ==========
+
+// 打开日历填写对话框
+const openCalendarFill = async (member, projectId) => {
+  calendarMember.value = member
+  calendarProjectId.value = projectId
+  calendarFillHours.value = 8
+  selectedDates.value = []
+  dateAvailableHoursMap.value.clear()
+  hiddenProjectsHoursMap.value.clear()
   
-  // 遍历所有日期，只填写工作日
-  batchDates.value.forEach((date) => {
-    // 检查是否是工作日
-    if (isWorkdayForDate(date)) {
-      // 计算该成员在指定日期跨所有项目的总工时
-      let totalHours = 0
+  calendarDialogVisible.value = true
+  
+  // 加载数据
+  await loadCalendarData()
+}
+
+// 加载日历数据（计算每天可用工时）
+const loadCalendarData = async () => {
+  if (!calendarMember.value || !batchDateRange.value || batchDateRange.value.length !== 2) {
+    return
+  }
+
+  try {
+    calendarLoading.value = true
+    
+    // 收集已展示项目ID
+    const displayedProjectIds = displayProjects.value.map(p => p.id)
+    
+    // 并行获取：1. 未展示项目的每日工时总计  2. 未展示项目的详细分布
+    const [totalsResponse, detailsResponse] = await Promise.all([
+      api.get(`/api/worktime/user/${calendarMember.value.id}/daily-totals`, {
+        params: {
+          startDate: batchDateRange.value[0],
+          endDate: batchDateRange.value[1],
+          excludeProjectIds: displayedProjectIds.join(',')
+        }
+      }),
+      api.get(`/api/worktime/user/${calendarMember.value.id}/daily-project-details`, {
+        params: {
+          startDate: batchDateRange.value[0],
+          endDate: batchDateRange.value[1],
+          excludeProjectIds: displayedProjectIds.join(',')
+        }
+      })
+    ])
+
+    let hiddenHours = {}
+    if (totalsResponse.data && totalsResponse.data.data) {
+      hiddenHours = totalsResponse.data.data
+    }
+
+    let hiddenProjectDetails = {}
+    if (detailsResponse.data && detailsResponse.data.data) {
+      hiddenProjectDetails = detailsResponse.data.data
+    }
+
+    // 计算每天的可用工时和项目占用详情
+    batchDates.value.forEach((date) => {
+      const projectDetails = []
       
+      // 1. 收集前端已展示项目（排除当前项目）的工时
+      let displayedOtherHours = 0
       displayProjects.value.forEach((project) => {
-        const projectMember = project.members.find((m) => m.id === member.id)
-        if (projectMember) {
-          if (project.id === projectId) {
-            // 当前项目先不计算，因为我们要填写8小时
-            totalHours += 0
-          } else {
-            // 其他项目使用现有工时值
-            totalHours += projectMember.hours[date] || 0
+        if (project.id !== calendarProjectId.value) {
+          const projectMember = project.members.find((m) => m.id === calendarMember.value.id)
+          if (projectMember && projectMember.hours[date]) {
+            const hours = projectMember.hours[date]
+            displayedOtherHours += hours
+            projectDetails.push({
+              projectName: project.name,
+              hours: hours
+            })
           }
         }
       })
       
-      // 计算当前项目可以填写的最大工时（保证总工时不超过8小时）
-      const maxAllowedHours = Math.max(0, 8 - totalHours)
+      // 2. 收集未展示项目的工时详情
+      const hiddenProjectHours = hiddenHours[date] || 0
+      const hiddenDetails = hiddenProjectDetails[date] || []
+      hiddenDetails.forEach(detail => {
+        projectDetails.push({
+          projectName: detail.projectName,
+          hours: detail.hours
+        })
+      })
       
-      if (maxAllowedHours > 0) {
-        // 填写工时，最多8小时
-        const hoursToFill = Math.min(8, maxAllowedHours)
-        member.hours[date] = hoursToFill
-        filledCount++
-      } else {
-        // 如果当天已经有8小时工时，则不填写
-        console.log(`${date} 当天 ${member.realName || member.username} 已有工时 ${totalHours} 小时，无法添加更多工时`)
+      // 3. 计算总的其他项目工时和可用工时
+      const totalOtherHours = displayedOtherHours + hiddenProjectHours
+      const availableHours = Math.max(0, 8 - totalOtherHours)
+      
+      dateAvailableHoursMap.value.set(date, availableHours)
+      hiddenProjectsHoursMap.value.set(date, hiddenProjectHours)
+      dateProjectDetailsMap.value.set(date, projectDetails)
+    })
+    
+    console.log('日历数据加载完成，可用工时映射:', Object.fromEntries(dateAvailableHoursMap.value))
+  } catch (error) {
+    console.error('加载日历数据失败:', error)
+    ElMessage.error('加载日历数据失败: ' + (error.response?.data?.message || error.message))
+  } finally {
+    calendarLoading.value = false
+  }
+}
+
+// 判断日期是否在选择范围内
+const isDateInRange = (dateStr) => {
+  if (!batchDateRange.value || batchDateRange.value.length !== 2) return false
+  return dateStr >= batchDateRange.value[0] && dateStr <= batchDateRange.value[1]
+}
+
+// 判断日期是否为工作日
+const isDateWorkday = (dateStr) => {
+  return isWorkdayForDate(dateStr)
+}
+
+// 判断日期是否被禁用（非工作日或工时已满）
+const isDateDisabled = (dateStr) => {
+  if (!isDateInRange(dateStr)) return true
+  if (!isDateWorkday(dateStr)) return true
+  
+  const availableHours = dateAvailableHoursMap.value.get(dateStr)
+  return availableHours === 0
+}
+
+// 判断日期是否已选择
+const isDateSelected = (dateStr) => {
+  return selectedDates.value.includes(dateStr)
+}
+
+// 获取日期的可用工时
+const getDateAvailableHours = (dateStr) => {
+  return dateAvailableHoursMap.value.get(dateStr) || 0
+}
+
+// 判断是否应该显示tooltip（禁用日期或有项目占用的日期）
+const shouldShowTooltip = (dateStr) => {
+  // 禁用的日期显示tooltip
+  if (isDateDisabled(dateStr)) {
+    return true
+  }
+  
+  // 有项目占用的日期也显示tooltip
+  const projectDetails = dateProjectDetailsMap.value.get(dateStr) || []
+  return projectDetails.length > 0
+}
+
+// 获取日期的项目占用详情（用于tooltip）
+const getDateOccupationTooltip = (dateStr) => {
+  if (!isDateInRange(dateStr)) {
+    return '不在选择范围内'
+  }
+  
+  if (!isDateWorkday(dateStr)) {
+    return '非工作日'
+  }
+  
+  const projectDetails = dateProjectDetailsMap.value.get(dateStr) || []
+  if (projectDetails.length === 0) {
+    return '无项目占用，可填写8小时'
+  }
+  
+  const lines = ['已占用项目：']
+  projectDetails.forEach(detail => {
+    lines.push(`• ${detail.projectName}: ${detail.hours}h`)
+  })
+  
+  const totalOccupied = projectDetails.reduce((sum, d) => sum + d.hours, 0)
+  const available = 8 - totalOccupied
+  lines.push(`\n总计: ${totalOccupied}h / 8h`)
+  lines.push(`剩余: ${available}h`)
+  
+  return lines.join('\n')
+}
+
+// 切换日期选择状态
+const toggleDateSelection = (dateStr) => {
+  if (isDateDisabled(dateStr)) {
+    return
+  }
+  
+  const index = selectedDates.value.indexOf(dateStr)
+  if (index > -1) {
+    selectedDates.value.splice(index, 1)
+  } else {
+    selectedDates.value.push(dateStr)
+  }
+}
+
+// 确认日历填写
+const confirmCalendarFill = () => {
+  if (selectedDates.value.length === 0) {
+    ElMessage.warning('请选择要填写的日期')
+    return
+  }
+
+  const memberName = calendarMember.value?.realName || calendarMember.value?.username
+  
+  // 找到当前项目和成员
+  const project = displayProjects.value.find(p => p.id === calendarProjectId.value)
+  if (!project) {
+    ElMessage.error('项目不存在')
+    return
+  }
+  
+  const member = project.members.find(m => m.id === calendarMember.value.id)
+  if (!member) {
+    ElMessage.error('成员不存在')
+    return
+  }
+
+  let filledCount = 0
+  let adjustedCount = 0
+  
+  // 遍历选中的日期进行填写
+  selectedDates.value.forEach((date) => {
+    const availableHours = dateAvailableHoursMap.value.get(date) || 0
+    
+    if (availableHours > 0) {
+      // 填写工时，不超过可用工时
+      const hoursToFill = Math.min(calendarFillHours.value, availableHours)
+      member.hours[date] = hoursToFill
+      filledCount++
+      
+      if (hoursToFill < calendarFillHours.value) {
+        adjustedCount++
+        console.log(`${date}: 可用${availableHours}h，填写${hoursToFill}h（自动调整）`)
       }
     }
   })
   
-  const memberName = member.realName || member.username
-  if (filledCount > 0) {
-    ElMessage.success(`已为 "${memberName}" 填写 ${filledCount} 个工作日的工时`)
-  } else {
-    ElMessage.info(`"${memberName}" 没有可填写的工作日或当天工时已满`)
+  // 更新跨项目缓存
+  rebuildCrossProjectCache()
+  
+  // 关闭对话框
+  calendarDialogVisible.value = false
+  
+  // 提示消息
+  let msg = `已为 "${memberName}" 填写 ${filledCount} 天的工时`
+  if (adjustedCount > 0) {
+    msg += `，其中 ${adjustedCount} 天因工时限制自动调整`
   }
+  ElMessage.success(msg)
 }
 
 onMounted(async () => {
@@ -2271,5 +2741,175 @@ h1 {
   font-size: 10px;
   color: #909399;
   font-weight: normal;
+}
+
+/* 日期显示控件样式 */
+.date-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 15px;
+  margin-bottom: 10px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.date-range-info {
+  font-size: 13px;
+  color: #606266;
+}
+
+.week-info {
+  font-size: 13px;
+  color: #409eff;
+  font-weight: 500;
+}
+
+/* 操作按钮样式 */
+.operation-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+.operation-buttons .el-button {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+/* 日历填写对话框样式 */
+.calendar-fill-container {
+  min-height: 350px;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.member-info,
+.fill-hours-input,
+.selected-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.member-info .label,
+.fill-hours-input .label {
+  font-weight: 500;
+  color: #606266;
+  font-size: 13px;
+}
+
+.member-info .value {
+  color: #409eff;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.fill-hours-input .unit {
+  color: #909399;
+  font-size: 12px;
+}
+
+.selected-info {
+  color: #606266;
+  font-size: 13px;
+}
+
+.selected-info .count {
+  color: #409eff;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.calendar-tips {
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  background: #f0f9ff;
+  border-radius: 4px;
+  border-left: 3px solid #409eff;
+}
+
+.tip-text {
+  font-size: 12px;
+  color: #606266;
+}
+
+.custom-calendar {
+  border-radius: 4px;
+}
+
+.custom-calendar :deep(.el-calendar__header) {
+  padding: 8px;
+}
+
+.custom-calendar :deep(.el-calendar__body) {
+  padding: 8px;
+}
+
+.calendar-day {
+  width: 100%;
+  height: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.calendar-day:hover:not(.is-disabled) {
+  background: #ecf5ff;
+  transform: scale(1.05);
+}
+
+.calendar-day.is-selected {
+  background: #409eff;
+  color: white;
+}
+
+.calendar-day.is-disabled {
+  background: #f5f7fa;
+  color: #c0c4cc;
+  cursor: not-allowed;
+}
+
+.calendar-day.is-workday:not(.is-disabled):not(.is-selected) {
+  background: #f0f9ff;
+}
+
+.calendar-day:not(.is-in-range) {
+  opacity: 0.3;
+}
+
+.day-number {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+
+.available-hours {
+  font-size: 10px;
+  color: #67c23a;
+  font-weight: 500;
+}
+
+.calendar-day.is-selected .available-hours {
+  color: white;
+}
+
+.calendar-day.is-disabled .available-hours {
+  color: #c0c4cc;
 }
 </style>

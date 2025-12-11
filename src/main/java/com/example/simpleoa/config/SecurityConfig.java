@@ -49,6 +49,7 @@ public class    SecurityConfig {
                 .requestMatchers("/api/approval/**").authenticated()
                 .requestMatchers("/api/budget/**").authenticated()
                 .requestMatchers("/api/performance/**").authenticated()
+                        .requestMatchers("/api/files/**").authenticated()
                 // 所有其他请求也需要认证
                 .anyRequest().authenticated()
             )
@@ -64,13 +65,20 @@ public class    SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // 明确指定允许的域名，而不是使用通配符
+        // 明确指定允许的域名（同时支持 HTTP 和 HTTPS）
         configuration.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:*",
-            "http://127.0.0.1:*",
-            "http://192.168.*.*:*",
-            "http://10.*.*.*:*",
-            "http://www.cqxhr.top:*"
+                "https://localhost:*",
+                    "http://127.0.0.1:*",
+                "https://127.0.0.1:*",
+                    "http://192.168.*.*:*",
+                "https://192.168.*.*:*",
+                    "http://10.*.*.*:*",
+                "https://10.*.*.*:*",
+                "http://www.cqxhr.top:*",
+                "https://www.cqxhr.top:*",
+                "http://www.cqxhr.top",
+                "https://www.cqxhr.top"
         ));
         
         // 允许的HTTP方法

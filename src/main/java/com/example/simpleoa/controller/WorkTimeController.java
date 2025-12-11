@@ -19,6 +19,7 @@ import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/api/worktime")
+@CrossOrigin(origins = "*")
 public class WorkTimeController {
     private static final Logger log = LoggerFactory.getLogger(WorkTimeController.class);
     private final WorkTimeService workTimeService;
@@ -762,10 +763,28 @@ public class WorkTimeController {
     @PostMapping("/projects/batch")
     public Map<String, Object> getBatchWorkTimeByProjects(@RequestBody Map<String, Object> requestBody) {
         try {
-            @SuppressWarnings("unchecked")
-            List<Long> projectIds = (List<Long>) requestBody.get("projectIds");
+            // 安全地转换projectIds，处理Integer/Long类型兼容问题
+            Object idsObj = requestBody.get("projectIds");
+            List<Long> projectIds = new ArrayList<>();
+            if (idsObj instanceof List<?>) {
+                for (Object o : (List<?>) idsObj) {
+                    if (o == null) continue;
+                    if (o instanceof Number) {
+                        projectIds.add(((Number) o).longValue());
+                    } else if (o instanceof String) {
+                        try {
+                            projectIds.add(Long.parseLong((String) o));
+                        } catch (NumberFormatException nfe) {
+                            log.warn("无法解析项目ID: {}", o);
+                        }
+                    }
+                }
+            }
+            
             String startDate = (String) requestBody.get("startDate");
             String endDate = (String) requestBody.get("endDate");
+            
+            log.info("批量查询工时数据: projectIds={}, startDate={}, endDate={}", projectIds, startDate, endDate);
 
             Map<Long, List<WorkTimeRecord>> batchData = workTimeService.getBatchWorkTimeByProjects(
                     projectIds,
@@ -778,6 +797,7 @@ public class WorkTimeController {
             response.put("data", batchData);
             return response;
         } catch (Exception e) {
+            log.error("获取批量工时数据失败", e);
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("code", 500);
             errorResponse.put("message", "获取批量工时数据失败: " + e.getMessage());
@@ -1079,6 +1099,102 @@ public class WorkTimeController {
             return errorResponse;
         }
     }
+    /**
+     * 获取用户在日期范围内每天的总工时（用于一键填写时的冲突检测）
+     * 返回格式：{ date: totalHours }
+     * @param excludeProjectIds 逗号分隔的要排除的项目ID列表
+     */
+    @GetMapping("/user/{userId}/daily-totals")
+    public Map<String, Object> getUserDailyTotals(
+            @PathVariable Long userId,
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @RequestParam(required = false) String excludeProjectIds) {
+        try {
+            // 解析要排除的项目ID列表
+            List<Long> excludeIds = new ArrayList<>();
+            if (excludeProjectIds != null && !excludeProjectIds.isEmpty()) {
+                for (String idStr : excludeProjectIds.split(",")) {
+                    try {
+                        excludeIds.add(Long.parseLong(idStr.trim()));
+                    } catch (NumberFormatException e) {
+                        // 忽略无效ID
+                    }
+                }
+            }
+            
+            log.info("获取用户每日工时总计: userId={}, startDate={}, endDate={}, excludeProjectIds={}", 
+                    userId, startDate, endDate, excludeIds);
+            
+            Map<String, Double> dailyTotals = workTimeService.getUserDailyTotals(
+                    userId,
+                    LocalDate.parse(startDate),
+                    LocalDate.parse(endDate),
+                    excludeIds);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 200);
+            response.put("message", "获取用户每日工时成功");
+            response.put("data", dailyTotals);
+            return response;
+        } catch (Exception e) {
+            log.error("获取用户每日工时失败", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("code", 500);
+            errorResponse.put("message", "获取用户每日工时失败: " + e.getMessage());
+            errorResponse.put("data", null);
+            return errorResponse;
+        }
+    }
+
+    /**
+     * 获取用户在日期范围内每天的详细项目工时分布
+     * 返回格式：{ date: [ { projectId, projectName, hours } ] }
+     * @param excludeProjectIds 逗号分隔的要排除的项目ID列表
+     */
+    @GetMapping("/user/{userId}/daily-project-details")
+    public Map<String, Object> getUserDailyProjectDetails(
+            @PathVariable Long userId,
+            @RequestParam String startDate,
+            @RequestParam String endDate,
+            @RequestParam(required = false) String excludeProjectIds) {
+        try {
+            // 解析要排除的项目ID列表
+            List<Long> excludeIds = new ArrayList<>();
+            if (excludeProjectIds != null && !excludeProjectIds.isEmpty()) {
+                for (String idStr : excludeProjectIds.split(",")) {
+                    try {
+                        excludeIds.add(Long.parseLong(idStr.trim()));
+                    } catch (NumberFormatException e) {
+                        // 忽略无效ID
+                    }
+                }
+            }
+            
+            log.info("获取用户每日项目工时详情: userId={}, startDate={}, endDate={}, excludeProjectIds={}", 
+                    userId, startDate, endDate, excludeIds);
+            
+            Map<String, List<Map<String, Object>>> dailyDetails = workTimeService.getUserDailyProjectDetails(
+                    userId,
+                    LocalDate.parse(startDate),
+                    LocalDate.parse(endDate),
+                    excludeIds);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 200);
+            response.put("message", "获取用户每日项目工时详情成功");
+            response.put("data", dailyDetails);
+            return response;
+        } catch (Exception e) {
+            log.error("获取用户每日项目工时详情失败", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("code", 500);
+            errorResponse.put("message", "获取用户每日项目工时详情失败: " + e.getMessage());
+            errorResponse.put("data", null);
+            return errorResponse;
+        }
+    }
+
     // ==================== 辅助方法 ====================
     private LocalDate parseDateOrBadRequest(String dateStr) {
         try {

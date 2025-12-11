@@ -199,4 +199,38 @@ public class ProjectService {
 //                 project.getMembers().stream().toList() :
 //                 new ArrayList<>();
 //     }
+
+    /**
+     * 批量获取多个项目的成员列表（优化N+1查询）
+     * @param projectIds 项目ID列表
+     * @return Map<projectId, Set<User>>
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, Set<User>> getBatchProjectMembers(List<Long> projectIds) {
+        logger.info("批量获取项目成员: projectIds={}", projectIds);
+        
+        if (projectIds == null || projectIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        
+        // 一次性查询所有项目（包含成员关系）
+        List<Project> projects = projectRepository.findAllById(projectIds);
+        
+        // 构建结果Map
+        Map<Long, Set<User>> result = new HashMap<>();
+        for (Project project : projects) {
+            Set<User> members = project.getMembers();
+            result.put(project.getId(), members != null ? members : new HashSet<>());
+        }
+        
+        // 对于不存在的项目ID，返回空Set
+        for (Long projectId : projectIds) {
+            if (!result.containsKey(projectId)) {
+                result.put(projectId, new HashSet<>());
+            }
+        }
+        
+        logger.info("批量获取项目成员完成: 共{}个项目", result.size());
+        return result;
+    }
 }

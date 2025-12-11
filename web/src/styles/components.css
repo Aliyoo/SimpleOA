@@ -468,15 +468,28 @@
 
 .el-tabs__header {
   background-color: var(--oa-bg-secondary);
-  margin: 0;
+  margin: 0 0 15px 0;
   border-bottom: 1px solid var(--oa-border-light);
 }
 
+.el-tabs__nav-wrap::after {
+  height: 1px;
+}
 .el-tabs__item {
   color: var(--oa-text-regular);
   font-weight: var(--oa-font-weight-medium);
   transition: all var(--oa-transition-fast);
-  padding: var(--oa-spacing-base) var(--oa-spacing-lg);
+  padding: 0 16px !important;
+    height: 40px;
+    line-height: 40px;
+  }
+  
+  .el-tabs__item:first-child {
+    padding-left: 16px !important;
+  }
+  
+  .el-tabs__item:last-child {
+    padding-right: 16px !important;
 }
 
 .el-tabs__item:hover {
@@ -488,6 +501,9 @@
   background-color: var(--oa-bg-white);
 }
 
+.el-tabs__active-bar {
+  height: 2px;
+}
 .el-tabs__content {
   padding: var(--oa-spacing-lg);
 }

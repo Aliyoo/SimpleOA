@@ -20,12 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
-import java.time.LocalDateTime;
-import java.time.Year;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.time.LocalDate;
-import java.time.DayOfWeek;
 import java.sql.Date;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -503,7 +500,8 @@ public class LeaveServiceCompleteImpl implements LeaveService {
         Date sqlEndDate = Date.valueOf(endDate);
         List<Holiday> holidays = holidayRepository.findByDateBetweenOrderByDate(sqlStartDate, sqlEndDate);
         Set<LocalDate> holidayDates = holidays.stream()
-            .map(holiday -> holiday.getDate().toLocalDate())
+                // Date转LocalDate
+            .map(holiday -> holiday.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate())
             .collect(Collectors.toSet());
 
         double workingDays = 0;
@@ -546,7 +544,7 @@ public class LeaveServiceCompleteImpl implements LeaveService {
         flow.setLeaveRequest(leaveRequest);
         flow.setRequestType("LEAVE");
         flow.setStatus("PENDING");
-        flow.setCreateTime(new Date());
+        flow.setCreateTime(java.sql.Date.valueOf(LocalDate.now()));
 
         // 设置审批人（这里需要根据实际业务逻辑设置）
         // 例如：找到申请人的部门经理
@@ -565,7 +563,7 @@ public class LeaveServiceCompleteImpl implements LeaveService {
             if ("PENDING".equals(flow.getStatus())) {
                 flow.setStatus(status);
                 flow.setComment(comment);
-                flow.setApprovalTime(new Date());
+                flow.setApprovalTime(java.sql.Date.valueOf(LocalDate.now()));
                 approvalFlowRepository.save(flow);
                 break;
             }

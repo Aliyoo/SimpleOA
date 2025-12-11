@@ -1,25 +1,18 @@
 <template>
   <div class="time-management-container">
-    <h1>我的工时</h1>
+    <div class="page-header">
+      <h1>我的工时</h1>
+    </div>
 
-    <!-- 自定义 Tab 导航 -->
-    <div class="custom-tabs">
-      <div class="custom-tabs-header">
-        <div
-          v-for="tab in tabs"
-          :key="tab.name"
-          :class="['custom-tab', { active: activeTab === tab.name }]"
-          @click="activeTab = tab.name"
-        >
-          {{ tab.label }}
-        </div>
-      </div>
-
-      <!-- Tab 内容区域 -->
-      <div class="custom-tabs-content">
-        <!-- 工时填报 Tab -->
-        <div v-show="activeTab === 'report'" class="tab-pane">
-          <el-form :model="timeReportForm" label-width="100px" class="report-form">
+    <el-tabs v-model="activeTab">
+      <el-tab-pane label="工时填报" name="report">
+        <div class="tab-content">
+          <div class="form-section">
+            <div class="section-header">
+              <h3>填报信息</h3>
+            </div>
+            <div class="form-content">
+              <el-form :model="timeReportForm" label-width="100px" class="report-form">
             <el-form-item label="项目名称" prop="project">
               <el-select v-model="timeReportForm.project.id" placeholder="请选择项目">
                 <el-option v-for="project in projectList" :key="project.id" :label="project.name" :value="project.id" />
@@ -67,10 +60,13 @@
               <el-button type="primary" @click="submitTimeReport">提交</el-button>
             </el-form-item>
           </el-form>
+            </div>
+          </div>
         </div>
+      </el-tab-pane>
 
-        <!-- 工时列表 Tab -->
-        <div v-show="activeTab === 'approval'" class="tab-pane">
+      <el-tab-pane label="工时列表" name="approval">
+        <div class="tab-content">
           <div class="approval-container">
             <!-- 搜索和筛选区域 -->
             <div class="search-bar">
@@ -235,9 +231,10 @@
             </el-dialog>
           </div>
         </div>
+      </el-tab-pane>
 
-        <!-- 批量填写 Tab -->
-        <div v-show="activeTab === 'batch'" class="tab-pane">
+      <el-tab-pane label="批量填写" name="batch">
+        <div class="tab-content">
           <div class="batch-container">
             <div class="batch-header">
               <el-date-picker
@@ -367,9 +364,10 @@
             </div>
           </div>
         </div>
+      </el-tab-pane>
 
-        <!-- 统计报表 Tab -->
-        <div v-show="activeTab === 'statistics'" class="tab-pane">
+      <el-tab-pane label="统计报表" name="statistics">
+        <div class="tab-content">
           <div class="statistics-container">
             <div class="statistics-header">
               <div class="statistics-filters">
@@ -465,8 +463,8 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -2084,11 +2082,43 @@ watch(activeTab, async (newTab) => {
   overflow-x: auto;
 }
 
-h1 {
+.page-header {
   margin-bottom: 20px;
+}
+
+.page-header h1 {
+  margin: 0;
   font-size: 24px;
-  color: #333;
-  text-align: center;
+  color: #303133;
+  font-weight: 600;
+}
+
+.tab-content {
+  padding: 20px;
+}
+
+.form-section {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f2f5;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #303133;
+  font-weight: 600;
+}
+
+.form-content {
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
 }
 
 .report-form {
@@ -2233,37 +2263,7 @@ h1 {
   cursor: not-allowed;
 }
 
-/* 自定义 Tab 样式 */
-.custom-tabs {
-  margin-bottom: 20px;
-}
-
-.custom-tabs-header {
-  display: flex;
-  border-bottom: 2px solid #e4e7ed;
-  margin-bottom: 15px;
-}
-
-.custom-tab {
-  padding: 10px 20px;
-  margin-right: 5px;
-  cursor: pointer;
-  transition: all 0.3s;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  font-size: 14px;
-  color: #606266;
-}
-
-.custom-tab:hover {
-  color: #409eff;
-}
-
-.custom-tab.active {
-  color: #409eff;
-  border-bottom: 2px solid #409eff;
-}
-
+/* Tab 内容样式 */
 .tab-pane {
   padding: 10px 0;
 }

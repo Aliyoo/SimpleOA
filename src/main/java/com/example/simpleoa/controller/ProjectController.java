@@ -173,14 +173,46 @@ public class ProjectController {
         return projectService.getProjectsByManagerId(managerId);
     }
 
-    // /**
-    //  * 获取项目成员列表
-    //  * @param projectId 项目ID
-    //  * @return 项目成员列表
-    //  */
-    // @GetMapping("/{projectId}/members")
-    // public List<User> getProjectMembers(@PathVariable Long projectId) {
-    //     logger.info("Getting members for project ID: {}", projectId);
-    //     return projectService.getProjectMembers(projectId);
-    // }
+    /**
+     * 批量获取多个项目的成员列表（优化N+1查询）
+     * @param requestBody 包含projectIds的请求体
+     * @return Map<projectId, List<User>>
+     */
+    @PostMapping("/batch/members")
+    public ResponseEntity<?> getBatchProjectMembers(@RequestBody Map<String, Object> requestBody) {
+        try {
+            Object idsObj = requestBody.get("projectIds");
+            List<Long> projectIds = new java.util.ArrayList<>();
+            if (idsObj instanceof List<?>) {
+                for (Object o : (List<?>) idsObj) {
+                    if (o == null) continue;
+                    if (o instanceof Number) {
+                        projectIds.add(((Number) o).longValue());
+                    } else if (o instanceof String) {
+                        try {
+                            projectIds.add(Long.parseLong((String) o));
+                        } catch (NumberFormatException nfe) {
+                            logger.warn("无法解析项目ID: {}", o);
+                        }
+                    }
+                }
+            }
+            
+            logger.info("批量获取项目成员: projectIds={}", projectIds);
+            
+            Map<Long, Set<User>> result = projectService.getBatchProjectMembers(projectIds);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 200);
+            response.put("message", "获取项目成员成功");
+            response.put("data", result);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("批量获取项目成员失败", e);
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "批量获取项目成员失败");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
 }

@@ -1,10 +1,18 @@
 <template>
   <div class="leave-management-container">
-    <h1>请假管理</h1>
+    <div class="page-header">
+      <h1>请假管理</h1>
+    </div>
 
     <el-tabs v-model="activeTab">
       <el-tab-pane label="请假申请" name="apply">
-        <el-form ref="leaveFormRef" :model="leaveForm" :rules="leaveFormRules" label-width="100px" class="apply-form">
+        <div class="tab-content">
+          <div class="form-section">
+            <div class="section-header">
+              <h3>申请信息</h3>
+            </div>
+            <div class="form-content">
+              <el-form ref="leaveFormRef" :model="leaveForm" :rules="leaveFormRules" label-width="100px" class="apply-form">
           <el-form-item label="请假类型" prop="leaveType">
             <el-select v-model="leaveForm.leaveType" placeholder="请选择请假类型" @change="onLeaveTypeChange">
               <el-option
@@ -53,9 +61,13 @@
             <el-button type="primary" @click="submitLeave">提交申请</el-button>
           </el-form-item>
         </el-form>
+            </div>
+          </div>
+        </div>
       </el-tab-pane>
 
       <el-tab-pane label="请假列表" name="myApplications">
+        <div class="tab-content">
         <el-table :data="myApplicationsList" style="width: 100%">
           <el-table-column prop="leaveType" label="请假类型" width="120">
             <template #default="scope">
@@ -74,9 +86,11 @@
           </el-table-column>
           <el-table-column prop="applyDate" label="申请时间" width="180" />
         </el-table>
+        </div>
       </el-tab-pane>
 
       <el-tab-pane label="请假余额" name="balance">
+        <div class="tab-content">
         <div class="balance-container">
           <h3>{{ new Date().getFullYear() }}年请假余额</h3>
           <el-row :gutter="20">
@@ -109,10 +123,12 @@
             </el-col>
           </el-row>
         </div>
+        </div>
       </el-tab-pane>
 
       <el-tab-pane label="统计报表" name="statistics">
-        <div class="statistics-container">
+        <div class="tab-content">
+          <div class="statistics-container">
           <div class="filter-container">
             <el-date-picker
               v-model="statisticsDateRange"
@@ -172,6 +188,7 @@
               <div id="leaveStatisticsChart" style="width: 100%; height: 400px"></div>
             </div>
           </div>
+        </div>
         </div>
       </el-tab-pane>
     </el-tabs>
@@ -379,6 +396,45 @@ onMounted(async () => {
   padding: 20px;
 }
 
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #303133;
+  font-weight: 600;
+}
+
+.tab-content {
+  padding: 20px;
+}
+
+.form-section {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f2f5;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #303133;
+  font-weight: 600;
+}
+
+.form-content {
+  background: #fafafa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e4e7ed;
+}
+
 .balance-container {
   padding: 20px 0;
 }
@@ -421,8 +477,8 @@ onMounted(async () => {
 }
 
 .apply-form {
-  max-width: 800px;
-  margin-top: 20px;
+  max-width: 700px;
+  margin: 0 auto;
 }
 
 .statistics-container {

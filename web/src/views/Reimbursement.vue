@@ -171,9 +171,10 @@
             <div class="form-content">
               <el-upload
                 v-model:file-list="fileList"
-                action="/api/files/upload"
+                :http-request="customUpload"
                 multiple
                 :on-success="handleUploadSuccess"
+                :on-error="handleUploadError"
                 list-type="picture-card"
               >
                 <el-icon><Plus /></el-icon>
@@ -453,9 +454,10 @@
         <el-divider>凭证上传</el-divider>
         <el-upload
           v-model:file-list="fileList"
-          action="/api/files/upload"
+          :http-request="customUpload"
           multiple
           :on-success="handleUploadSuccess"
+          :on-error="handleUploadError"
           list-type="picture-card"
         >
           <el-icon><Plus /></el-icon>
@@ -491,6 +493,35 @@ import { formatMoney, formatDate, formatReimbursementStatus, getReimbursementSta
 const userStore = useUserStore()
 const router = useRouter()
 const currentUser = computed(() => userStore.user)
+
+// Custom upload function using global api instance to ensure correct auth headers/cookies
+const customUpload = async (options) => {
+  const { file, onSuccess, onError } = options
+  
+  const formData = new FormData()
+  formData.append('file', file)
+  
+  try {
+    const response = await api.post('/api/files/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    // Call Element Plus success callback with the response data
+    // api.post returns the full response object, we need to pass response.data to onSuccess
+    // or whatever format the handleUploadSuccess expects. 
+    // Looking at existing code, handleUploadSuccess expects (response, file, fileList)
+    // The default el-upload passes the parsed JSON body as the first arg.
+    // Our api interceptor might return the full response or just data depending on config.
+    // Let's check api.interceptors.response in axios.js: it returns 'response' (full object).
+    // So response.data is the actual payload.
+    onSuccess(response.data, file)
+  } catch (error) {
+    console.error('File upload failed:', error)
+    onError(error)
+  }
+}
 
 // 详情对话框相关状态
 const detailDialogVisible = ref(false)
@@ -605,7 +636,7 @@ const fetchProjects = async () => {
   }
 }
 
-// 获取可用预算
+// 获取可用预算（报销场景专用接口，允许项目成员访问）
 const fetchAvailableBudgets = async (projectId) => {
   if (!projectId) {
     availableBudgets.value = []
@@ -614,11 +645,12 @@ const fetchAvailableBudgets = async (projectId) => {
   }
 
   try {
-    const response = await api.get(`/api/budgets/project/${projectId}/available-budgets`)
+    // 使用报销场景专用接口，允许项目成员访问预算信息
+    const response = await api.get(`/api/budgets/project/${projectId}/reimbursement-budgets`)
     availableBudgets.value = response.data.data || response.data || []
 
     // 获取预算明细
-    const itemsResponse = await api.get(`/api/budgets/project/${projectId}/budget-items`)
+    const itemsResponse = await api.get(`/api/budgets/project/${projectId}/reimbursement-budget-items`)
     budgetItems.value = itemsResponse.data.data || itemsResponse.data || []
   } catch (error) {
     console.error('获取预算信息失败:', error)
@@ -1078,9 +1110,10 @@ const deleteReimbursement = async (row) => {
 }
 
 // 处理文件上传成功
+// 注意: v-model:file-list 双向绑定，el-upload 会自动更新 fileList，不需要手动 push
 const handleReimbursementUploadSuccess = (response, file) => {
-  reimbursementForm.attachments.push(response.data?.url || response.url)
-  fileList.value.push({ name: file.name, url: response.data?.url || response.url })
+  const url = response.data?.url || response.url
+  reimbursementForm.attachments.push(url)
 }
 
 // 修正原有函数中的一些问题
@@ -1107,9 +1140,16 @@ const handleUploadSuccess = (response, file) => {
     handleReimbursementUploadSuccess(response, file)
   } else {
     // 原有的弹窗上传处理
-    formData.value.attachments.push(response.data?.url || response.url)
-    fileList.value.push({ name: file.name, url: response.data?.url || response.url })
+    // v-model:file-list 双向绑定会自动更新 fileList，只需更新业务数据
+    const url = response.data?.url || response.url
+    formData.value.attachments.push(url)
   }
+}
+
+// 处理文件上传错误
+const handleUploadError = (error, file, fileList) => {
+  console.error('文件上传失败:', error)
+  ElMessage.error(`文件 ${file.name} 上传失败`)
 }
 
 // 预算相关方法

@@ -1,7 +1,8 @@
 package com.example.simpleoa.model;
 
 import jakarta.persistence.*;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 节假日模型 - 用于定义哪些日子是节假日
@@ -14,32 +15,30 @@ public class Holiday {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(nullable = false)
-    private Date date;
-    
+    private LocalDate date;
+
     @Column(nullable = false)
     private String name;
-    
+
     // 节假日类型：PUBLIC(法定节假日), COMPANY(公司节假日), OTHER(其他)
     @Column(columnDefinition = "VARCHAR(50) DEFAULT 'PUBLIC'")
     private String type = "PUBLIC";
-    
+
     // 节假日描述
     private String description;
-    
-    @Column(name = "created_at")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt;
-    
+
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
     @Column(name = "updated_at")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date updatedAt;
+    private LocalDateTime updatedAt;
 
     // 构造函数
     public Holiday() {}
-    
-    public Holiday(Date date, String name, String type) {
+
+    public Holiday(LocalDate date, String name, String type) {
         this.date = date;
         this.name = name;
         this.type = type;
@@ -54,11 +53,11 @@ public class Holiday {
         this.id = id;
     }
 
-    public Date getDate() {
+    public LocalDate getDate() {
         return date;
     }
 
-    public void setDate(Date date) {
+    public void setDate(LocalDate date) {
         this.date = date;
     }
 
@@ -77,39 +76,39 @@ public class Holiday {
     public void setType(String type) {
         this.type = type;
     }
-    
+
     public String getDescription() {
         return description;
     }
-    
+
     public void setDescription(String description) {
         this.description = description;
     }
-    
-    public Date getCreatedAt() {
+
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
-    
-    public void setCreatedAt(Date createdAt) {
+
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
-    
-    public Date getUpdatedAt() {
+
+    public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
-    
-    public void setUpdatedAt(Date updatedAt) {
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
-    
+
     @PrePersist
     protected void onCreate() {
-        createdAt = new Date();
-        updatedAt = new Date();
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
-    
+
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = new Date();
+        updatedAt = LocalDateTime.now();
     }
 }

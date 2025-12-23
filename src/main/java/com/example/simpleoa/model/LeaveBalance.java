@@ -39,4 +39,9 @@ public class LeaveBalance {
     public void calculateRemainingDays() {
         this.remainingDays = this.totalDays - this.usedDays;
     }
+    
+    // 获取用户ID的便捷方法
+    public Long getUserId() {
+        return user != null ? user.getId() : null;
+    }
 }

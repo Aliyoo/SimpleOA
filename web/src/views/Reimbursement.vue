@@ -7,13 +7,14 @@
     <el-tabs v-model="activeTab">
       <el-tab-pane label="报销申请" name="apply">
         <div class="tab-content">
-          <!-- 基本信息区域 -->
-          <div class="form-section">
-            <div class="section-header">
-              <h3>基本信息</h3>
-            </div>
-            <div class="form-content">
-              <el-form ref="reimbursementFormRef" :model="reimbursementForm" :rules="formRules" label-width="120px">
+          <!-- 表单区域 -->
+          <el-form ref="reimbursementFormRef" :model="reimbursementForm" :rules="formRules" label-width="120px">
+            <!-- 基本信息区域 -->
+            <div class="form-section">
+              <div class="section-header">
+                <h3>基本信息</h3>
+              </div>
+              <div class="form-content">
                 <el-row :gutter="20">
                   <el-col :span="12">
                     <el-form-item label="报销标题" prop="title">
@@ -38,132 +39,144 @@
                     </el-form-item>
                   </el-col>
                 </el-row>
-              </el-form>
-            </div>
-          </div>
-
-          <!-- 费用明细区域 -->
-          <div class="form-section">
-            <div class="section-header">
-              <h3>费用明细</h3>
-            </div>
-            <div class="form-content">
-              <el-table :data="reimbursementForm.items" size="small" style="margin-bottom: 20px">
-                <el-table-column label="费用日期" width="150" align="left">
-                  <template #default="{ row, $index }">
-                    <el-date-picker
-                      v-model="row.expenseDate"
-                      type="date"
-                      value-format="YYYY-MM-DD"
-                      placeholder="选择费用日期"
-                      size="small"
-                      style="width: 100%"
-                    />
-                  </template>
-                </el-table-column>
-                <el-table-column label="费用类别" width="120" align="left">
-                  <template #default="{ row, $index }">
-                    <el-select
-                      v-model="row.itemCategory"
-                      placeholder="选择费用类别"
-                      size="small"
-                      style="width: 100%"
-                      @change="onItemCategoryChange(row, $index)"
-                    >
-                      <el-option label="劳务费" value="劳务费" />
-                      <el-option label="房屋费" value="房屋费" />
-                      <el-option label="差旅费" value="差旅费" />
-                      <el-option label="交通费" value="交通费" />
-                      <el-option label="办公费" value="办公费" />
-                      <el-option label="通信费" value="通信费" />
-                      <el-option label="车辆费" value="车辆费" />
-                      <el-option label="货运费" value="货运费" />
-                      <el-option label="物料消耗费" value="物料消耗费" />
-                      <el-option label="评审验收费" value="评审验收费" />
-                      <el-option label="加班餐费" value="加班餐费" />
-                      <el-option label="质保维护费(不含人工)" value="质保维护费(不含人工)" />
-                      <el-option label="业务招待费" value="业务招待费" />
-                    </el-select>
-                  </template>
-                </el-table-column>
-                <el-table-column label="费用说明" align="left">
-                  <template #default="{ row, $index }">
-                    <el-input v-model="row.description" placeholder="请输入费用说明" size="small" />
-                  </template>
-                </el-table-column>
-                <el-table-column label="预算来源" width="180" align="left">
-                  <template #default="{ row, $index }">
-                    <el-select
-                      v-model="row.budgetId"
-                      placeholder="选择预算"
-                      size="small"
-                      style="width: 100%"
-                      clearable
-                      @change="onBudgetChange(row, $index)"
-                    >
-                      <el-option
-                        v-for="budget in availableBudgetsFiltered(row)"
-                        :key="budget.id"
-                        :label="`${budget.name} (余额: ¥${budget.remainingAmount})`"
-                        :value="budget.id"
-                      />
-                    </el-select>
-                  </template>
-                </el-table-column>
-                <el-table-column label="预算明细" width="180" align="left">
-                  <template #default="{ row, $index }">
-                    <el-select
-                      v-model="row.budgetItemId"
-                      placeholder="选择预算明细"
-                      size="small"
-                      style="width: 100%"
-                      clearable
-                      :disabled="!row.budgetId"
-                    >
-                      <el-option
-                        v-for="item in getFilteredBudgetItems(row)"
-                        :key="item.id"
-                        :label="`${item.category} (余额: ¥${item.remainingAmount})`"
-                        :value="item.id"
-                      />
-                    </el-select>
-                  </template>
-                </el-table-column>
-                <el-table-column label="金额" width="120" align="left">
-                  <template #default="{ row, $index }">
-                    <el-input-number
-                      v-model="row.amount"
-                      :precision="2"
-                      :min="0"
-                      size="small"
-                      style="width: 100%"
-                      @change="validateBudgetAmount(row)"
-                    />
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" width="80" align="left">
-                  <template #default="{ $index }">
-                    <el-button type="danger" size="small" @click="removeItem($index)">删除</el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-              <div class="table-actions">
-                <el-button type="primary" plain @click="addItem">添加明细</el-button>
               </div>
-
-              <el-form :model="reimbursementForm" label-width="120px" style="margin-top: 20px">
-                <el-row :gutter="20">
-                  <el-col :span="12">
-                    <el-form-item label="总金额">
-                      <el-input-number v-model="totalAmount" :precision="2" disabled style="width: 100%" />
-                    </el-form-item>
-                  </el-col>
-                </el-row>
-              </el-form>
             </div>
-          </div>
 
-          <!-- 凭证上传区域 -->
+            <!-- 费用明细区域 -->
+            <div class="form-section">
+              <div class="section-header">
+                <h3>费用明细</h3>
+              </div>
+              <div class="form-content">
+                <el-table :data="reimbursementForm.items" style="margin-bottom: 20px" class="detail-table">
+                  <el-table-column label="费用日期" width="160" align="left">
+                    <template #default="{ row, $index }">
+                      <el-form-item 
+                        :prop="'items.' + $index + '.expenseDate'" 
+                        :rules="{ required: true, message: '请选择日期', trigger: 'change' }"
+                        class="table-form-item"
+                      >
+                        <el-date-picker
+                          v-model="row.expenseDate"
+                          type="date"
+                          value-format="YYYY-MM-DD"
+                          placeholder="选择日期"
+                          style="width: 100%"
+                        />
+                      </el-form-item>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="费用类别" width="140" align="left">
+                    <template #default="{ row, $index }">
+                      <el-form-item 
+                        :prop="'items.' + $index + '.itemCategory'" 
+                        :rules="{ required: true, message: '请选择类别', trigger: 'change' }"
+                        class="table-form-item"
+                      >
+                        <el-select
+                          v-model="row.itemCategory"
+                          placeholder="选择类别"
+                          style="width: 100%"
+                          @change="onItemCategoryChange(row, $index)"
+                        >
+                          <el-option label="劳务费" value="劳务费" />
+                          <el-option label="房屋费" value="房屋费" />
+                          <el-option label="差旅费" value="差旅费" />
+                          <el-option label="交通费" value="交通费" />
+                          <el-option label="办公费" value="办公费" />
+                          <el-option label="通信费" value="通信费" />
+                          <el-option label="车辆费" value="车辆费" />
+                          <el-option label="货运费" value="货运费" />
+                          <el-option label="物料消耗费" value="物料消耗费" />
+                          <el-option label="评审验收费" value="评审验收费" />
+                          <el-option label="加班餐费" value="加班餐费" />
+                          <el-option label="质保维护费(不含人工)" value="质保维护费(不含人工)" />
+                          <el-option label="业务招待费" value="业务招待费" />
+                        </el-select>
+                      </el-form-item>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="费用说明" align="left" min-width="150">
+                    <template #default="{ row, $index }">
+                      <el-input v-model="row.description" placeholder="费用说明" />
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="预算来源" width="200" align="left">
+                    <template #default="{ row, $index }">
+                      <el-select
+                        v-model="row.budgetId"
+                        placeholder="选择预算"
+                        style="width: 100%"
+                        clearable
+                        @change="onBudgetChange(row, $index)"
+                      >
+                        <el-option
+                          v-for="budget in availableBudgetsFiltered(row)"
+                          :key="budget.id"
+                          :label="`${budget.name} (余额: ¥${budget.remainingAmount})`"
+                          :value="budget.id"
+                        />
+                      </el-select>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="预算明细" width="200" align="left">
+                    <template #default="{ row, $index }">
+                      <el-select
+                        v-model="row.budgetItemId"
+                        placeholder="明细"
+                        style="width: 100%"
+                        clearable
+                        :disabled="!row.budgetId"
+                      >
+                        <el-option
+                          v-for="item in getFilteredBudgetItems(row)"
+                          :key="item.id"
+                          :label="`${item.category} (余额: ¥${item.remainingAmount})`"
+                          :value="item.id"
+                        />
+                      </el-select>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="金额" width="140" align="left">
+                    <template #default="{ row, $index }">
+                      <el-form-item 
+                        :prop="'items.' + $index + '.amount'" 
+                        :rules="{ required: true, message: '请输入金额', trigger: 'blur' }"
+                        class="table-form-item"
+                      >
+                        <el-input-number
+                          v-model="row.amount"
+                          :precision="2"
+                          :min="0.01"
+                          style="width: 100%"
+                          @change="validateBudgetAmount(row)"
+                        />
+                      </el-form-item>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="80" align="left">
+                    <template #default="{ $index }">
+                      <el-button type="danger" icon="Delete" circle @click="removeItem($index)" />
+                    </template>
+                  </el-table-column>
+                </el-table>
+                <div class="table-actions">
+                  <el-button type="primary" plain icon="Plus" @click="addItem">添加明细</el-button>
+                </div>
+
+                <div style="margin-top: 20px">
+                  <el-row :gutter="20">
+                    <el-col :span="12">
+                      <el-form-item label="总金额">
+                        <el-input-number v-model="totalAmount" :precision="2" disabled style="width: 100%" />
+                      </el-form-item>
+                    </el-col>
+                  </el-row>
+                </div>
+              </div>
+            </div>
+          </el-form>
+
           <div class="form-section">
             <div class="section-header">
               <h3>凭证上传</h3>
@@ -172,13 +185,80 @@
               <el-upload
                 v-model:file-list="fileList"
                 :http-request="customUpload"
+                :auto-upload="true"
+                :limit="10"
                 multiple
                 :on-success="handleUploadSuccess"
                 :on-error="handleUploadError"
-                list-type="picture-card"
+                :on-exceed="handleExceed"
+                :show-file-list="false"
+                accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.zip"
               >
-                <el-icon><Plus /></el-icon>
+                <el-button type="primary">
+                  <el-icon><Upload /></el-icon>
+                  <span>上传附件</span>
+                </el-button>
+                <template #tip>
+                  <div class="el-upload__tip">
+                    支持图片、PDF、Word、Excel、ZIP 等格式,单个文件不超过 50MB,最多 10 个文件
+                  </div>
+                </template>
               </el-upload>
+              
+              <!-- 自定义文件列表 -->
+              <div v-if="fileList.length > 0" class="file-list-container">
+                <div
+                  v-for="file in fileList"
+                  :key="file.uid"
+                  class="file-card"
+                  :class="{ 'uploading': file.status === 'uploading' }"
+                >
+                  <!-- 文件预览/图标 -->
+                  <div class="file-preview">
+                    <el-image
+                      v-if="isImage(file)"
+                      :src="file.url"
+                      fit="cover"
+                      class="preview-image"
+                      :preview-src-list="getImagePreviewList()"
+                      :initial-index="getImageIndex(file)"
+                      :preview-teleported="true"
+                      :hide-on-click-modal="true"
+                      :z-index="9999"
+                      @click.stop
+                    />
+                    <el-icon v-else :size="48" :color="getFileIconColor(file)">
+                      <component :is="getFileIcon(file)" />
+                    </el-icon>
+                  </div>
+
+                  <!-- 文件信息 -->
+                  <div class="file-info">
+                    <div class="file-name" :title="file.name">{{ file.name }}</div>
+                    <div class="file-size">{{ formatFileSize(file.size) }}</div>
+                  </div>
+
+                  <!-- 上传进度 -->
+                  <el-progress
+                    v-if="file.status === 'uploading' && file.percentage"
+                    :percentage="file.percentage"
+                    :show-text="false"
+                    class="file-progress"
+                  />
+
+                  <!-- 操作按钮 -->
+                  <div class="file-actions">
+                    <el-button
+                      v-if="file.status === 'success'"
+                      type="danger"
+                      :icon="Delete"
+                      circle
+                      size="small"
+                      @click="handleRemoveFile(file)"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -458,9 +538,18 @@
           multiple
           :on-success="handleUploadSuccess"
           :on-error="handleUploadError"
-          list-type="picture-card"
+          list-type="text"
+          :show-file-list="true"
         >
-          <el-icon><Plus /></el-icon>
+          <el-button type="primary">
+            <el-icon><Upload /></el-icon>
+            <span>上传附件</span>
+          </el-button>
+          <template #tip>
+            <div class="el-upload__tip">
+              支持图片、PDF、Word、Excel、ZIP 等格式,单个文件不超过 50MB
+            </div>
+          </template>
         </el-upload>
       </el-form>
       <template #footer>
@@ -484,7 +573,7 @@ import { ref, onMounted, computed, reactive, watch, defineAsyncComponent } from 
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import api from '../utils/axios.js'
-import { Plus, Search } from '@element-plus/icons-vue'
+import { Plus, Search, Upload, Delete, Document, Grid, Folder } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import * as echarts from 'echarts'
 import { APP_CONFIG } from '../utils/config.js'
@@ -578,6 +667,9 @@ const formRules = {
   title: [
     { required: true, message: '请输入报销标题', trigger: 'blur' },
     { min: 2, max: 100, message: '报销标题长度在2到100个字符', trigger: 'blur' }
+  ],
+  projectId: [
+    { required: true, message: '请选择关联项目', trigger: 'change' }
   ]
 }
 
@@ -1000,13 +1092,22 @@ const saveDraftReimbursement = async () => {
 
 // 提交审批
 const submitReimbursement = async () => {
+  if (!reimbursementFormRef.value) return
+
   try {
-    // 首先保存草稿（如果需要）
+    // 全表单校验
+    await reimbursementFormRef.value.validate()
+
+    // 检查是否有费用明细（saveDraft也会检查，但这里双重保证）
+    if (!reimbursementForm.items.length) {
+      ElMessage.error('请至少添加一项费用明细')
+      return
+    }
+
+    // 首先保存当前修改为草稿（确保数据库数据是最新的）
+    await saveDraftReimbursement()
     if (!reimbursementForm.id) {
-      await saveDraftReimbursement()
-      if (!reimbursementForm.id) {
-        return // 如果保存草稿失败，不继续提交
-      }
+      return // 保存失败
     }
 
     // 预算验证
@@ -1110,10 +1211,29 @@ const deleteReimbursement = async (row) => {
 }
 
 // 处理文件上传成功
-// 注意: v-model:file-list 双向绑定，el-upload 会自动更新 fileList，不需要手动 push
+// 注意: v-model:file-list 双向绑定,但使用 customUpload 时需要手动更新状态
 const handleReimbursementUploadSuccess = (response, file) => {
-  const url = response.data?.url || response.url
+  // response 可能是 { data: { url: ... } } 或直接是 { url: ... }
+  const url = response?.data?.url || response?.url
+  
+  if (!url) {
+    console.error('上传成功但未获取到文件URL:', response)
+    return
+  }
+  
+  // 更新业务数据
   reimbursementForm.attachments.push(url)
+  
+  // 手动更新 fileList,将上传中的文件标记为成功
+  const fileIndex = fileList.value.findIndex(f => f.uid === file.uid)
+  if (fileIndex !== -1) {
+    fileList.value[fileIndex] = {
+      ...fileList.value[fileIndex],
+      status: 'success',
+      url: url,
+      response: response
+    }
+  }
 }
 
 // 修正原有函数中的一些问题
@@ -1144,6 +1264,79 @@ const handleUploadSuccess = (response, file) => {
     const url = response.data?.url || response.url
     formData.value.attachments.push(url)
   }
+}
+
+// 判断是否为图片
+const isImage = (file) => {
+  if (file.url) {
+    const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+    return imageExts.some(ext => file.name.toLowerCase().endsWith(ext))
+  }
+  return file.type?.startsWith('image/')
+}
+
+// 获取文件类型图标组件名
+const getFileIcon = (file) => {
+  const name = file.name.toLowerCase()
+  
+  if (name.endsWith('.pdf')) return Document
+  if (name.endsWith('.doc') || name.endsWith('.docx')) return Document
+  if (name.endsWith('.xls') || name.endsWith('.xlsx')) return Grid
+  if (name.endsWith('.zip')) return Folder
+  
+  return Document
+}
+
+// 获取文件图标颜色
+const getFileIconColor = (file) => {
+  const name = file.name.toLowerCase()
+  
+  if (name.endsWith('.pdf')) return '#F40F02'
+  if (name.endsWith('.doc') || name.endsWith('.docx')) return '#2B579A'
+  if (name.endsWith('.xls') || name.endsWith('.xlsx')) return '#217346'
+  if (name.endsWith('.zip')) return '#FFB900'
+  
+  return '#909399'
+}
+
+// 格式化文件大小
+const formatFileSize = (bytes) => {
+  if (!bytes) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+// 获取所有图片的预览列表
+const getImagePreviewList = () => {
+  return fileList.value
+    .filter(file => file.status === 'success' && isImage(file))
+    .map(file => file.url)
+}
+
+// 获取图片在预览列表中的索引
+const getImageIndex = (file) => {
+  const imageList = getImagePreviewList()
+  return imageList.indexOf(file.url)
+}
+
+// 删除文件
+const handleRemoveFile = (file) => {
+  const index = fileList.value.findIndex(f => f.uid === file.uid)
+  if (index !== -1) {
+    fileList.value.splice(index, 1)
+    // 同时从业务数据中移除
+    const urlIndex = reimbursementForm.attachments.indexOf(file.url)
+    if (urlIndex !== -1) {
+      reimbursementForm.attachments.splice(urlIndex, 1)
+    }
+  }
+}
+
+// 处理文件超出数量限制
+const handleExceed = (files, fileList) => {
+  ElMessage.warning(`最多只能上传 10 个文件,当前已选择 ${fileList.length} 个文件,试图添加 ${files.length} 个文件`)
 }
 
 // 处理文件上传错误
@@ -1409,6 +1602,99 @@ const submitReimbursementForApproval = async (row) => {
   line-height: 1.2;
 }
 
+/* 附件列表样式优化 */
+.file-list-container {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 16px !important;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.file-card {
+  position: relative;
+  width: 120px !important;
+  height: 160px !important; /* 固定高度 */
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  padding: 8px;
+  box-sizing: border-box; /* 确保 padding 不增加宽度 */
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.file-card:hover {
+  border-color: #409eff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.file-preview {
+  width: 100px !important;
+  height: 100px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  overflow: hidden; /* 关键：防止图片溢出 */
+  flex-shrink: 0;   /* 防止被挤压 */
+}
+
+/* 强制图片填满容器 */
+.file-preview :deep(.el-image),
+.file-preview .preview-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.file-preview :deep(.el-image__inner) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover !important;
+}
+
+.file-info {
+  width: 100%;
+  text-align: center;
+}
+
+.file-name {
+  font-size: 12px;
+  color: #606266;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.file-size {
+  font-size: 11px;
+  color: #909399;
+  line-height: 1;
+}
+
+.file-actions {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 10;
+}
+
+.file-card:hover .file-actions {
+  opacity: 1;
+}
+
 /* 通用样式优化 */
 .el-table {
   --el-table-border-color: #e4e7ed;
@@ -1498,5 +1784,50 @@ const submitReimbursementForApproval = async (row) => {
 
 .approval-section .el-table {
   margin-bottom: 16px;
+}
+
+/* 上传进度 */
+.file-progress {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  right: 12px;
+}
+
+/* 操作按钮 */
+.file-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.file-card:hover .file-actions {
+  opacity: 1;
+}
+
+/* 表格内表单项样式 */
+.table-form-item {
+  margin-bottom: 0 !important;
+}
+
+:deep(.detail-table .el-table__cell) {
+  padding: 12px 0 !important;
+}
+
+:deep(.table-form-item .el-form-item__content) {
+  margin-left: 0 !important;
+}
+
+:deep(.table-form-item .el-form-item__error) {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  background: white;
+  padding: 0 4px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 </style>

@@ -302,6 +302,15 @@
           </el-table>
         </div>
       </el-tab-pane>
+
+      <!-- 统计总览Tab - 仅对ADMIN和FINANCE角色可见 -->
+      <el-tab-pane 
+        v-if="canViewStatistics" 
+        label="统计总览" 
+        name="statistics"
+      >
+        <BudgetOverviewStatistics />
+      </el-tab-pane>
     </el-tabs>
 
     <!-- Budget Form Dialog -->
@@ -424,6 +433,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '../utils/axios.js'
 import { useUserStore } from '@/stores/user'
+import BudgetOverviewStatistics from './BudgetOverviewStatistics.vue'
 
 // --- Refs and Reactive Variables ---
 
@@ -524,6 +534,22 @@ const canCreateBudget = computed(() => {
 
   // 其他用户不能创建预算
   return false
+})
+
+// 判断用户是否可以查看统计总览
+const canViewStatistics = computed(() => {
+  if (!userStore.user) {
+    return false
+  }
+
+  const userInfo = userStore.user
+  const roles = userInfo.roles || []
+
+  // 只有管理员和财务可以查看统计总览
+  const isAdmin = roles.some((role) => role.name === 'ROLE_ADMIN')
+  const isFinance = roles.some((role) => role.name === 'ROLE_FINANCE')
+
+  return isAdmin || isFinance
 })
 
 // --- Validation Rules ---

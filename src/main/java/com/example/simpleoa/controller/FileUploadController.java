@@ -30,9 +30,9 @@ public class FileUploadController {
                 return ApiResponse.error("文件不能为空");
             }
 
-            // 检查文件大小（限制为10MB）
-            if (file.getSize() > 10 * 1024 * 1024) {
-                return ApiResponse.error("文件大小不能超过10MB");
+            // 检查文件大小（限制为50MB）
+            if (file.getSize() > 50 * 1024 * 1024) {
+                return ApiResponse.error("文件大小不能超过50MB");
             }
 
             // 检查文件类型
@@ -81,6 +81,8 @@ public class FileUploadController {
                contentType.equals("application/msword") ||
                contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
                contentType.equals("application/vnd.ms-excel") ||
-               contentType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                contentType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") ||
+                contentType.equals("application/zip") ||
+                contentType.equals("application/x-zip-compressed");
     }
 }

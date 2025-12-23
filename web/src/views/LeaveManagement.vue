@@ -6,68 +6,68 @@
 
     <el-tabs v-model="activeTab">
       <el-tab-pane label="请假申请" name="apply">
-        <div class="tab-content">
+        <div class="tab-content" v-if="activeTab === 'apply'">
           <div class="form-section">
             <div class="section-header">
               <h3>申请信息</h3>
             </div>
             <div class="form-content">
               <el-form ref="leaveFormRef" :model="leaveForm" :rules="leaveFormRules" label-width="100px" class="apply-form">
-          <el-form-item label="请假类型" prop="leaveType">
-            <el-select v-model="leaveForm.leaveType" placeholder="请选择请假类型" @change="onLeaveTypeChange">
-              <el-option
-                v-for="type in leaveTypes"
-                :key="type.value"
-                :label="`${type.label} (剩余: ${getLeaveBalance(type.value)}天)`"
-                :value="type.value"
-              />
-            </el-select>
-          </el-form-item>
+                <el-form-item label="请假类型" prop="leaveType">
+                  <el-select v-model="leaveForm.leaveType" placeholder="请选择请假类型" @change="onLeaveTypeChange">
+                    <el-option
+                      v-for="type in leaveTypes"
+                      :key="type.value"
+                      :label="`${type.label} (剩余: ${getLeaveBalance(type.value)}天)`"
+                      :value="type.value"
+                    />
+                  </el-select>
+                </el-form-item>
 
-          <!-- 显示当前选择类型的余额信息 -->
-          <el-form-item v-if="leaveForm.leaveType && currentBalance" label="余额信息">
-            <el-tag type="info">
-              {{ getCurrentLeaveTypeLabel() }}: 总共{{ currentBalance.totalDays }}天，已用{{
-                currentBalance.usedDays
-              }}天，剩余{{ currentBalance.remainingDays }}天
-            </el-tag>
-          </el-form-item>
+                <!-- 显示当前选择类型的余额信息 -->
+                <el-form-item v-if="leaveForm.leaveType && currentBalance" label="余额信息">
+                  <el-tag type="info">
+                    {{ getCurrentLeaveTypeLabel() }}: 总共{{ currentBalance.totalDays }}天，已用{{
+                      currentBalance.usedDays
+                    }}天，剩余{{ currentBalance.remainingDays }}天
+                  </el-tag>
+                </el-form-item>
 
-          <el-form-item label="开始时间" prop="startDate">
-            <el-date-picker
-              v-model="leaveForm.startDate"
-              type="datetime"
-              placeholder="选择开始时间"
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DD HH:mm"
-            />
-          </el-form-item>
+                <el-form-item label="开始时间" prop="startDate">
+                  <el-date-picker
+                    v-model="leaveForm.startDate"
+                    type="datetime"
+                    placeholder="选择开始时间"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                  />
+                </el-form-item>
 
-          <el-form-item label="结束时间" prop="endDate">
-            <el-date-picker
-              v-model="leaveForm.endDate"
-              type="datetime"
-              placeholder="选择结束时间"
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DD HH:mm"
-            />
-          </el-form-item>
+                <el-form-item label="结束时间" prop="endDate">
+                  <el-date-picker
+                    v-model="leaveForm.endDate"
+                    type="datetime"
+                    placeholder="选择结束时间"
+                    format="YYYY-MM-DD HH:mm"
+                    value-format="YYYY-MM-DD HH:mm"
+                  />
+                </el-form-item>
 
-          <el-form-item label="请假原因" prop="reason">
-            <el-input v-model="leaveForm.reason" type="textarea" :rows="4" placeholder="请输入请假原因" />
-          </el-form-item>
+                <el-form-item label="请假原因" prop="reason">
+                  <el-input v-model="leaveForm.reason" type="textarea" :rows="4" placeholder="请输入请假原因" />
+                </el-form-item>
 
-          <el-form-item>
-            <el-button type="primary" @click="submitLeave">提交申请</el-button>
-          </el-form-item>
-        </el-form>
+                <el-form-item>
+                  <el-button type="primary" @click="submitLeave">提交申请</el-button>
+                </el-form-item>
+              </el-form>
             </div>
           </div>
         </div>
       </el-tab-pane>
 
       <el-tab-pane label="请假列表" name="myApplications">
-        <div class="tab-content">
+        <div class="tab-content" v-if="activeTab === 'myApplications'">
         <el-table :data="myApplicationsList" style="width: 100%">
           <el-table-column prop="leaveType" label="请假类型" width="120">
             <template #default="scope">
@@ -90,7 +90,7 @@
       </el-tab-pane>
 
       <el-tab-pane label="请假余额" name="balance">
-        <div class="tab-content">
+        <div class="tab-content" v-if="activeTab === 'balance'">
         <div class="balance-container">
           <h3>{{ new Date().getFullYear() }}年请假余额</h3>
           <el-row :gutter="20">
@@ -127,7 +127,7 @@
       </el-tab-pane>
 
       <el-tab-pane label="统计报表" name="statistics">
-        <div class="tab-content">
+        <div class="tab-content" v-if="activeTab === 'statistics'">
           <div class="statistics-container">
           <div class="filter-container">
             <el-date-picker
@@ -196,9 +196,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
-import api from '../utils/axios.js'
+import { ref, reactive, onMounted, watch, nextTick, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import api from '../utils/axios.js'
 import * as echarts from 'echarts'
 import { APP_CONFIG } from '../utils/config.js'
 
@@ -229,6 +229,7 @@ const statisticsDateRange = ref([])
 const leaveFormRef = ref()
 const leaveBalances = ref([])
 const currentBalance = ref(null)
+let chartInstance = null
 
 // 表单验证规则
 const leaveFormRules = {
@@ -261,7 +262,13 @@ const fetchStatisticsData = async () => {
     })
     statisticsData.value = response.data.details || []
     statisticsSummary.value = response.data.summary || {}
-    renderChart()
+    
+    // Only render chart if the tab is active
+    if (activeTab.value === 'statistics') {
+      nextTick(() => {
+        renderChart()
+      })
+    }
   } catch (error) {
     ElMessage.error('获取统计数据失败: ' + error.message)
   }
@@ -271,7 +278,11 @@ const renderChart = () => {
   const chartDom = document.getElementById('leaveStatisticsChart')
   if (!chartDom) return
 
-  const myChart = echarts.init(chartDom)
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
+  
+  chartInstance = echarts.init(chartDom)
   const option = {
     tooltip: {
       trigger: 'item'
@@ -300,7 +311,7 @@ const renderChart = () => {
     ]
   }
 
-  myChart.setOption(option)
+  chartInstance.setOption(option)
 }
 
 const submitLeave = async () => {
@@ -355,14 +366,25 @@ const fetchLeaveBalances = async () => {
     const response = await api.get('/api/leave/balance', {
       params: { year: new Date().getFullYear() }
     })
-    leaveBalances.value = response.data
+    // 确保返回的数据是数组
+    if (Array.isArray(response.data)) {
+      leaveBalances.value = response.data
+    } else {
+      console.warn('请假余额数据格式错误，期望数组但收到:', response.data)
+      leaveBalances.value = []
+    }
   } catch (error) {
     console.error('获取请假余额失败:', error)
+    leaveBalances.value = [] // 失败时设为空数组
   }
 }
 
 // 获取指定类型的余额
 const getLeaveBalance = (leaveType) => {
+  // 防御性检查：确保 leaveBalances.value 是数组
+  if (!Array.isArray(leaveBalances.value)) {
+    return 0
+  }
   const balance = leaveBalances.value.find((b) => b.leaveType === leaveType)
   return balance ? balance.remainingDays : 0
 }
@@ -388,6 +410,30 @@ onMounted(async () => {
   // 从全局配置获取默认日期范围
   statisticsDateRange.value = APP_CONFIG.DEFAULT_DATE_RANGE.getRange()
   fetchStatisticsData()
+  
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
+})
+
+const handleResize = () => {
+  if (chartInstance) {
+    chartInstance.resize()
+  }
+}
+
+// 监听 tab 切换，当切换到统计 tab 时重新渲染图表
+watch(activeTab, (newVal) => {
+  if (newVal === 'statistics') {
+    nextTick(() => {
+      renderChart()
+    })
+  }
 })
 </script>
 
@@ -408,7 +454,7 @@ onMounted(async () => {
 }
 
 .tab-content {
-  padding: 20px;
+  /* padding: 20px; Removed to avoid double padding with global styles */
 }
 
 .form-section {

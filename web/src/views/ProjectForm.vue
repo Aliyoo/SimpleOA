@@ -40,8 +40,8 @@
       </el-form-item>
       <el-form-item label="项目状态" prop="status">
         <el-select v-model="projectForm.status" placeholder="请选择项目状态">
-          <!-- <el-option label="规划中" :value="'PLANNING'"></el-option>
-          <el-option label="进行中" :value="'IN_PROGRESS'"></el-option> -->
+          <el-option label="规划中" :value="'PLANNING'"></el-option>
+          <el-option label="进行中" :value="'IN_PROGRESS'"></el-option>
           <el-option label="需求阶段" :value="'REQUIREMENT'"></el-option>
           <el-option label="设计阶段" :value="'DESIGN'"></el-option>
           <el-option label="开发阶段" :value="'DEVELOPMENT'"></el-option>

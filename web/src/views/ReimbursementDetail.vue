@@ -48,38 +48,49 @@
 
         <el-divider>附件</el-divider>
         <div v-if="reimbursementData.attachments && reimbursementData.attachments.length > 0">
-          <div
-            v-for="(attachment, index) in reimbursementData.attachments"
-            :key="index"
-            style="display: inline-block; margin-right: 10px; margin-bottom: 10px"
-          >
-            <template v-if="isImage(attachment)">
-              <el-image
-                :src="attachment"
-                style="width: 100px; height: 100px"
-                fit="cover"
-                :preview-src-list="getImageAttachments()"
-                :initial-index="getImageIndex(attachment)"
-              >
-                <template #placeholder>
-                  <div class="image-slot">图片加载中...</div>
-                </template>
-                <template #error>
-                  <div class="image-slot">
-                    <el-icon><Picture /></el-icon>
-                  </div>
-                </template>
-              </el-image>
-            </template>
-            <template v-else>
-              <div class="file-attachment">
-                <el-link :href="attachment" target="_blank" type="primary">{{ getFileName(attachment) }}</el-link>
+          <div class="file-list-container">
+            <div
+              v-for="(attachment, index) in reimbursementData.attachments"
+              :key="index"
+              class="file-card"
+            >
+              <!-- 文件预览/图标 -->
+              <div class="file-preview">
+                <el-image
+                  v-if="isImage(attachment)"
+                  :src="attachment"
+                  fit="cover"
+                  class="preview-image"
+                  :preview-src-list="getImageAttachments()"
+                  :initial-index="getImageIndex(attachment)"
+                  :preview-teleported="true"
+                  :hide-on-click-modal="true"
+                  :z-index="9999"
+                  @click.stop
+                />
+                <el-icon v-else :size="48" :color="getFileIconColor(attachment)">
+                  <component :is="getFileIcon(attachment)" />
+                </el-icon>
               </div>
-            </template>
+
+              <!-- 文件信息 -->
+              <div class="file-info">
+                <div class="file-name" :title="getFileName(attachment)">
+                  <el-link 
+                    :href="attachment" 
+                    target="_blank" 
+                    :underline="false"
+                    class="file-link"
+                  >
+                    {{ getFileName(attachment) }}
+                  </el-link>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div v-else>
-          <el-empty description="暂无附件" />
+          <el-empty description="暂无附件" :image-size="60" />
         </div>
       </div>
       <div v-else-if="!loading" style="text-align: center; color: #999; padding: 40px">无数据</div>
@@ -93,7 +104,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Picture } from '@element-plus/icons-vue'
+import { Picture, Document, Grid, Folder } from '@element-plus/icons-vue'
 import api from '../utils/axios.js'
 import { formatMoney, formatDate, formatReimbursementStatus, getReimbursementStatusTagType } from '../utils/format.js'
 
@@ -188,7 +199,7 @@ function getFileName(url) {
   return url.substring(url.lastIndexOf('/') + 1)
 }
 
-// 获取图片附件
+// 获取图片附件列表
 function getImageAttachments() {
   if (!reimbursementData.value?.attachments) return []
   return reimbursementData.value.attachments.filter((attachment) => isImage(attachment))
@@ -200,6 +211,26 @@ function getImageIndex(url) {
   return imageAttachments.indexOf(url)
 }
 
+// 获取文件类型图标
+const getFileIcon = (url) => {
+  const name = url.toLowerCase()
+  if (name.endsWith('.pdf')) return Document
+  if (name.endsWith('.doc') || name.endsWith('.docx')) return Document
+  if (name.endsWith('.xls') || name.endsWith('.xlsx')) return Grid
+  if (name.endsWith('.zip')) return Folder
+  return Document
+}
+
+// 获取文件图标颜色
+const getFileIconColor = (url) => {
+  const name = url.toLowerCase()
+  if (name.endsWith('.pdf')) return '#F40F02'
+  if (name.endsWith('.doc') || name.endsWith('.docx')) return '#2B579A'
+  if (name.endsWith('.xls') || name.endsWith('.xlsx')) return '#217346'
+  if (name.endsWith('.zip')) return '#FFB900'
+  return '#909399'
+}
+
 // Handle close action
 const handleClose = () => {
   dialogVisible.value = false
@@ -208,30 +239,87 @@ const handleClose = () => {
 </script>
 
 <style scoped>
-.image-slot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100px;
-  background: #f2f2f2;
+/* 附件列表样式优化 */
+.file-list-container {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 16px !important;
+  margin-top: 16px;
+  width: 100%;
 }
 
-.file-attachment {
+.file-card {
+  position: relative;
+  width: 120px !important;
+  height: 160px !important; /* 固定高度 */
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  padding: 8px;
+  box-sizing: border-box; 
+  transition: all 0.3s;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 100px;
-  height: 100px;
-  border: 1px dashed #dcdfe6;
-  border-radius: 6px;
-  background: #fafafa;
-  text-align: center;
-  word-break: break-all;
-  padding: 5px;
 }
 
-.file-attachment:hover {
+.file-card:hover {
   border-color: #409eff;
-  background: #f0f9ff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.file-preview {
+  width: 100px !important;
+  height: 100px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  overflow: hidden; 
+  flex-shrink: 0;
+}
+
+/* 强制图片填满容器 */
+.file-preview :deep(.el-image),
+.file-preview .preview-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.file-preview :deep(.el-image__inner) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover !important;
+}
+
+.file-info {
+  width: 100%;
+  text-align: center;
+}
+
+.file-name {
+  font-size: 12px;
+  color: #606266;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.file-link {
+  font-size: 12px;
+  color: #606266;
+  text-decoration: none;
+}
+
+.file-link:hover {
+  color: #409eff;
 }
 </style>

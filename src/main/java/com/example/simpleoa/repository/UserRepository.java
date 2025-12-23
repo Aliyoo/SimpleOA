@@ -48,6 +48,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 查询启用状态的用户
     List<User> findByEnabled(Integer enabled);
+    
+    // 查询启用状态的用户（简化方法）
+    default List<User> findByEnabledTrue() {
+        return findByEnabled(1);
+    }
 
     // 查询特定项目的成员
     //@Query("SELECT u FROM User u JOIN u.projects p WHERE p.id = :projectId")

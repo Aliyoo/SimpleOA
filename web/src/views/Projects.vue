@@ -187,6 +187,7 @@ const handleReset = () => {
 const formatStatus = (row, col, status) => {
   const statusMap = {
     PLANNING: '规划中',
+    IN_PROGRESS: '进行中',
     REQUIREMENT: '需求阶段',
     DESIGN: '设计阶段',
     DEVELOPMENT: '开发阶段',

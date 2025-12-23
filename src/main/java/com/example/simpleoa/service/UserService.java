@@ -145,4 +145,12 @@ public class UserService implements UserDetailsService {
     public User getUserById(Long id) {
         return userRepository.findById(id).orElseThrow(() -> new RuntimeException("用户不存在"));
     }
+    
+    public User getUserByUsername(String username) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new RuntimeException("用户不存在: " + username);
+        }
+        return user;
+    }
 }

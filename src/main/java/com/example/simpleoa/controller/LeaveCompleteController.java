@@ -131,8 +131,8 @@ public class LeaveCompleteController {
         return ResponseEntity.ok(statistics);
     }
 
-    // 获取请假余额
-    @GetMapping("/balance")
+    // 获取请假余额（简化版本）
+    @GetMapping("/balance/simple")
     public ResponseEntity<List<LeaveBalance>> getLeaveBalance(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) Integer year) {

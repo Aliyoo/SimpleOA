@@ -73,12 +73,75 @@ public class ProjectService {
         }
     }
 
+    @Transactional
     public Project updateProject(Project project) {
+        if (project.getId() != null) {
+            Project existingProject = projectRepository.findById(project.getId())
+                .orElseThrow(() -> new RuntimeException("项目不存在"));
+
+            // 验证状态转换是否合法
+            if (project.getStatus() != null &&
+                !isValidStatusTransition(existingProject.getStatus(), project.getStatus())) {
+                throw new RuntimeException("非法的状态转换: " +
+                    existingProject.getStatus() + " -> " + project.getStatus());
+            }
+
+            // 保留关键字段
+            project.setCreatedAt(existingProject.getCreatedAt());
+            project.setCreatedBy(existingProject.getCreatedBy());
+
+            logger.info("Updating project {} with status transition: {} -> {}",
+                project.getId(), existingProject.getStatus(), project.getStatus());
+        }
+
         return projectRepository.save(project);
     }
 
+    @Transactional
     public void deleteProject(Long id) {
-        projectRepository.deleteById(id);
+        Project project = projectRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("项目不存在"));
+
+        logger.info("Attempting to delete project {} ({})", id, project.getName());
+
+        // 检查是否有关联的预算数据
+        try {
+            // 检查工时记录
+            Double totalHours = workTimeService.getTotalHoursByProject(project);
+            if (totalHours != null && totalHours > 0) {
+                logger.warn("项目 {} 已有 {} 工时记录，执行软删除", id, totalHours);
+                // 软删除：标记项目为已取消状态
+                project.setStatus(ProjectStatus.CANCELLED);
+                projectRepository.save(project);
+                return;
+            }
+
+            // 检查任务关联
+            if (project.getTasks() != null && !project.getTasks().isEmpty()) {
+                logger.warn("项目 {} 有 {} 个任务，执行软删除", id, project.getTasks().size());
+                project.setStatus(ProjectStatus.CANCELLED);
+                projectRepository.save(project);
+                return;
+            }
+
+            // 检查活跃成员
+            if (project.getMembers() != null && !project.getMembers().isEmpty()) {
+                logger.warn("项目 {} 有 {} 个成员，执行软删除", id, project.getMembers().size());
+                project.setStatus(ProjectStatus.CANCELLED);
+                projectRepository.save(project);
+                return;
+            }
+
+            // 只有在没有关联数据时才物理删除
+            logger.info("项目 {} 没有关联数据，执行物理删除", id);
+            projectRepository.delete(project);
+
+        } catch (Exception e) {
+            logger.error("删除项目 {} 时发生错误，执行软删除", id, e);
+            // 发生错误时执行软删除
+            project.setStatus(ProjectStatus.CANCELLED);
+            projectRepository.save(project);
+        }
     }
 
     public List<Project> getAllProjects() {
@@ -116,10 +179,28 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
+    @Transactional
     public Project updateStatus(Long projectId, String status) {
-        Project project = projectRepository.findById(projectId).orElseThrow(() -> new RuntimeException("Project not found"));
-        project.setStatus(ProjectStatus.valueOf(status));
-        return projectRepository.save(project);
+        Project project = projectRepository.findById(projectId)
+            .orElseThrow(() -> new RuntimeException("项目不存在"));
+
+        ProjectStatus newStatus = ProjectStatus.valueOf(status);
+
+        // 验证状态转换是否合法
+        if (!isValidStatusTransition(project.getStatus(), newStatus)) {
+            throw new RuntimeException("非法的状态转换: " +
+                project.getStatus() + " -> " + newStatus);
+        }
+
+        ProjectStatus oldStatus = project.getStatus();
+        project.setStatus(newStatus);
+
+        Project savedProject = projectRepository.save(project);
+
+        logger.info("Project {} status updated: {} -> {}",
+            projectId, oldStatus, newStatus);
+
+        return savedProject;
     }
 
     public List<Task> getTasksByProject(Long projectId) {
@@ -232,5 +313,65 @@ public class ProjectService {
         
         logger.info("批量获取项目成员完成: 共{}个项目", result.size());
         return result;
+    }
+
+    /**
+     * 验证项目状态转换是否合法
+     * @param currentStatus 当前状态
+     * @param newStatus 新状态
+     * @return 是否为合法转换
+     */
+    private boolean isValidStatusTransition(ProjectStatus currentStatus, ProjectStatus newStatus) {
+        if (currentStatus == null) {
+            // 新项目可以从任何状态开始
+            return true;
+        }
+
+        // 已完成或已取消的项目不能再改变状态
+        if (currentStatus == ProjectStatus.COMPLETED || currentStatus == ProjectStatus.CANCELLED) {
+            return false;
+        }
+
+        // 定义合法的状态转换规则
+        switch (currentStatus) {
+            case PLANNING:
+                return newStatus == ProjectStatus.IN_PROGRESS ||
+                       newStatus == ProjectStatus.REQUIREMENT ||
+                       newStatus == ProjectStatus.DESIGN ||
+                       newStatus == ProjectStatus.CANCELLED;
+
+            case IN_PROGRESS:
+                return newStatus == ProjectStatus.REQUIREMENT ||
+                       newStatus == ProjectStatus.DESIGN ||
+                       newStatus == ProjectStatus.DEVELOPMENT ||
+                       newStatus == ProjectStatus.ACCEPTANCE ||
+                       newStatus == ProjectStatus.COMPLETED ||
+                       newStatus == ProjectStatus.CANCELLED;
+
+            case REQUIREMENT:
+                return newStatus == ProjectStatus.DESIGN ||
+                       newStatus == ProjectStatus.DEVELOPMENT ||
+                       newStatus == ProjectStatus.ACCEPTANCE ||
+                       newStatus == ProjectStatus.COMPLETED ||
+                       newStatus == ProjectStatus.CANCELLED;
+
+            case DESIGN:
+                return newStatus == ProjectStatus.DEVELOPMENT ||
+                       newStatus == ProjectStatus.ACCEPTANCE ||
+                       newStatus == ProjectStatus.COMPLETED ||
+                       newStatus == ProjectStatus.CANCELLED;
+
+            case DEVELOPMENT:
+                return newStatus == ProjectStatus.ACCEPTANCE ||
+                       newStatus == ProjectStatus.COMPLETED ||
+                       newStatus == ProjectStatus.CANCELLED;
+
+            case ACCEPTANCE:
+                return newStatus == ProjectStatus.COMPLETED ||
+                       newStatus == ProjectStatus.CANCELLED;
+
+            default:
+                return false;
+        }
     }
 }

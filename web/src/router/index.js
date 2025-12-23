@@ -152,6 +152,18 @@ const router = createRouter({
           ]
         },
         {
+          path: 'annual-leave-rules',
+          name: 'AnnualLeaveRuleManagement',
+          component: () => import('@/views/AnnualLeaveRuleManagement.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'leave-balance',
+          name: 'LeaveBalanceManagement',
+          component: () => import('@/views/LeaveBalanceManagement.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
           path: 'travel-management',
           name: 'TravelManagement',
           component: () => import('@/views/TravelManagement.vue'),
@@ -298,6 +310,8 @@ const routePermissionMap = {
   TimeManagement: 'time:view',
   ProjectManagerTime: 'manager-time:view',
   LeaveManagement: 'leave:view',
+  AnnualLeaveRuleManagement: 'annual-rule:view',
+  LeaveBalanceManagement: 'balance:view',
   TravelManagement: 'travel:view',
   Reimbursement: 'reimbursement:view',
   Approvals: 'approval:view',

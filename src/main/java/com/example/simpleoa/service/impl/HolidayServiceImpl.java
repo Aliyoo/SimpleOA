@@ -7,8 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,9 +31,8 @@ public class HolidayServiceImpl implements HolidayService {
 
     @Override
     public List<Holiday> getHolidaysByDateRange(LocalDate startDate, LocalDate endDate) {
-        Date start = Date.from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
-        Date end = Date.from(endDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
-        return holidayRepository.findByDateBetweenOrderByDate(start, end);
+        // Repository accepts LocalDate directly, no conversion needed
+        return holidayRepository.findByDateBetweenOrderByDate(startDate, endDate);
     }
 
     @Override
@@ -44,7 +41,7 @@ public class HolidayServiceImpl implements HolidayService {
     }
 
     @Override
-    public Optional<Holiday> getHolidayByDate(Date date) {
+    public Optional<Holiday> getHolidayByDate(LocalDate date) {
         return holidayRepository.findByDate(date);
     }
 
@@ -70,8 +67,8 @@ public class HolidayServiceImpl implements HolidayService {
 
     @Override
     public boolean isHoliday(LocalDate date) {
-        Date javaDate = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
-        return holidayRepository.existsByDate(javaDate);
+        // Repository accepts LocalDate directly, no conversion needed
+        return holidayRepository.existsByDate(date);
     }
 
     @Override

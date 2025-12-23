@@ -1,6 +1,9 @@
 package com.example.simpleoa.repository;
 
 import com.example.simpleoa.model.ApprovalFlow;
+import com.example.simpleoa.model.ApprovalStatus;
+import com.example.simpleoa.model.ApprovalStage;
+import com.example.simpleoa.model.EntityType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,6 +15,47 @@ import java.util.Date;
 import java.util.List;
 
 public interface ApprovalFlowRepository extends JpaRepository<ApprovalFlow, Long> {
+
+    // ========== 新架构查询方法（Phase 1+） ==========
+
+    /**
+     * 根据实体类型和实体ID查询审批流程
+     *
+     * @param entityType 实体类型
+     * @param entityId   实体ID
+     * @return 审批流程列表
+     */
+    List<ApprovalFlow> findByEntityTypeAndEntityId(EntityType entityType, Long entityId);
+
+    /**
+     * 根据实体类型、实体ID和审批状态查询
+     *
+     * @param entityType 实体类型
+     * @param entityId   实体ID
+     * @param status     审批状态
+     * @return 审批流程列表
+     */
+    List<ApprovalFlow> findByEntityTypeAndEntityIdAndApprovalStatus(
+            EntityType entityType, Long entityId, ApprovalStatus status);
+
+    /**
+     * 根据审批状态查询（使用新枚举）
+     *
+     * @param approvalStatus 审批状态
+     * @return 审批流程列表
+     */
+    List<ApprovalFlow> findByApprovalStatus(ApprovalStatus approvalStatus);
+
+    /**
+     * 根据审批阶段查询
+     *
+     * @param approvalStage 审批阶段
+     * @return 审批流程列表
+     */
+    List<ApprovalFlow> findByApprovalStage(ApprovalStage approvalStage);
+
+    // ========== 遗留查询方法（过渡期保留） ==========
+
     List<ApprovalFlow> findByWorkTimeRecordId(Long workTimeRecordId);
 
     List<ApprovalFlow> findByLeaveRequestId(Long leaveRequestId);

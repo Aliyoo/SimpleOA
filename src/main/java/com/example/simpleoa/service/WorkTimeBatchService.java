@@ -103,8 +103,9 @@ public class WorkTimeBatchService {
         log.info("查询到 {} 条工时记录", workTimeResults.size());
 
         // ========== 第四步：查询工作日数据 ==========
+        // WorkdayRepository accepts LocalDate directly, no conversion needed
         List<Workday> workdays = workdayRepository.findByDateBetweenOrderByDate(
-                sqlStartDate, sqlEndDate);
+                startDate, endDate);
 
         Set<String> workdaySet = workdays.stream()
                 .map(w -> w.getDate().toString()) // YYYY-MM-DD格式

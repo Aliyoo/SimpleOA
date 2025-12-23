@@ -3,7 +3,6 @@ package com.example.simpleoa.service;
 import com.example.simpleoa.model.Holiday;
 
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -35,7 +34,7 @@ public interface HolidayService {
     /**
      * 根据日期获取节假日
      */
-    Optional<Holiday> getHolidayByDate(Date date);
+    Optional<Holiday> getHolidayByDate(LocalDate date);
     
     /**
      * 保存节假日

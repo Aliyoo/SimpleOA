@@ -2,6 +2,8 @@ package com.example.simpleoa.controller;
 
 import com.example.simpleoa.model.*;
 import com.example.simpleoa.service.ApprovalFlowService;
+import com.example.simpleoa.service.ApprovalOrchestrationService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -21,12 +23,17 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/approval")
+@Slf4j
 public class ApprovalFlowController {
     private final ApprovalFlowService approvalFlowService;
+    private final ApprovalOrchestrationService approvalOrchestrationService;
 
     @Autowired
-    public ApprovalFlowController(ApprovalFlowService approvalFlowService) {
+    public ApprovalFlowController(
+            ApprovalFlowService approvalFlowService,
+            ApprovalOrchestrationService approvalOrchestrationService) {
         this.approvalFlowService = approvalFlowService;
+        this.approvalOrchestrationService = approvalOrchestrationService;
     }
 
     @PostMapping
@@ -63,20 +70,51 @@ public class ApprovalFlowController {
         if (!status.matches("PENDING|APPROVED|REJECTED")) {
             throw new IllegalArgumentException("Invalid status value");
         }
+
         ApprovalFlow currentFlow = approvalFlowService.getApprovalFlowById(flowId);
         if (currentFlow == null) {
             throw new IllegalArgumentException("Approval flow not found");
         }
-        if ("APPROVED".equals(currentFlow.getStatus()) || "REJECTED".equals(currentFlow.getStatus())) {
+
+        // 检查是否已最终审批
+        ApprovalStatus currentStatus = currentFlow.getUnifiedStatus();
+        if ((currentStatus != null &&
+             (ApprovalStatus.APPROVED.equals(currentStatus) ||
+              ApprovalStatus.REJECTED.equals(currentStatus))) ||
+            ("APPROVED".equals(currentFlow.getStatus()) ||
+             "REJECTED".equals(currentFlow.getStatus()))) {
             throw new IllegalStateException("Cannot update status of a finalized approval");
         }
+
         if ("PENDING".equals(currentFlow.getStatus()) && "REJECTED".equals(status)) {
             throw new IllegalStateException("Cannot directly reject a pending approval");
         }
+
         if (comment != null && comment.length() > 500) {
             throw new IllegalArgumentException("Comment cannot exceed 500 characters");
         }
-        return approvalFlowService.updateApprovalFlowStatus(flowId, status, comment);
+
+        // ========== 关键切换逻辑：新旧架构智能切换 ==========
+        // 判断是否为新架构数据（entity_type != NULL）
+        if (currentFlow.getEntityType() != null) {
+            // 使用新架构（策略模式）
+            log.info("使用新架构处理审批: flowId={}, entityType={}",
+                    flowId, currentFlow.getEntityType());
+
+            if ("APPROVED".equals(status)) {
+                return approvalOrchestrationService.approveApproval(flowId, comment);
+            } else if ("REJECTED".equals(status)) {
+                return approvalOrchestrationService.rejectApproval(flowId, comment);
+            }
+        } else {
+            // 使用旧架构（兼容遗留数据）
+            log.info("使用旧架构处理审批: flowId={}, requestType={}",
+                    flowId, currentFlow.getRequestType());
+
+            return approvalFlowService.updateApprovalFlowStatus(flowId, status, comment);
+        }
+
+        return currentFlow;
     }
 
     @GetMapping("/worktime/{workTimeRecordId}")

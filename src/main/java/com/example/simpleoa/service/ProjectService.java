@@ -79,8 +79,9 @@ public class ProjectService {
             Project existingProject = projectRepository.findById(project.getId())
                 .orElseThrow(() -> new RuntimeException("项目不存在"));
 
-            // 验证状态转换是否合法
+            // 验证状态转换是否合法（只有状态真正改变时才验证）
             if (project.getStatus() != null &&
+                !project.getStatus().equals(existingProject.getStatus()) &&
                 !isValidStatusTransition(existingProject.getStatus(), project.getStatus())) {
                 throw new RuntimeException("非法的状态转换: " +
                     existingProject.getStatus() + " -> " + project.getStatus());
@@ -186,8 +187,9 @@ public class ProjectService {
 
         ProjectStatus newStatus = ProjectStatus.valueOf(status);
 
-        // 验证状态转换是否合法
-        if (!isValidStatusTransition(project.getStatus(), newStatus)) {
+        // 验证状态转换是否合法（只有状态真正改变时才验证）
+        if (!newStatus.equals(project.getStatus()) &&
+            !isValidStatusTransition(project.getStatus(), newStatus)) {
             throw new RuntimeException("非法的状态转换: " +
                 project.getStatus() + " -> " + newStatus);
         }

@@ -498,10 +498,10 @@ public class LeaveServiceCompleteImpl implements LeaveService {
         // 获取期间内的所有节假日
         Date sqlStartDate = Date.valueOf(startDate);
         Date sqlEndDate = Date.valueOf(endDate);
-        List<Holiday> holidays = holidayRepository.findByDateBetweenOrderByDate(sqlStartDate, sqlEndDate);
+        List<Holiday> holidays = holidayRepository.findByDateBetweenOrderByDate(sqlStartDate.toLocalDate(), sqlEndDate.toLocalDate());
         Set<LocalDate> holidayDates = holidays.stream()
                 // Date转LocalDate
-            .map(holiday -> holiday.getDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate())
+            .map(holiday -> holiday.getDate())
             .collect(Collectors.toSet());
 
         double workingDays = 0;

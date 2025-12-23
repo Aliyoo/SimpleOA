@@ -104,7 +104,7 @@ public class WorkTimeBatchService {
 
         // ========== 第四步：查询工作日数据 ==========
         List<Workday> workdays = workdayRepository.findByDateBetweenOrderByDate(
-                sqlStartDate, sqlEndDate);
+                sqlStartDate.toLocalDate(), sqlEndDate.toLocalDate());
 
         Set<String> workdaySet = workdays.stream()
                 .map(w -> w.getDate().toString()) // YYYY-MM-DD格式

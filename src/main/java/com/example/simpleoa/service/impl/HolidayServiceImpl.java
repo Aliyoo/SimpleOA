@@ -33,9 +33,7 @@ public class HolidayServiceImpl implements HolidayService {
 
     @Override
     public List<Holiday> getHolidaysByDateRange(LocalDate startDate, LocalDate endDate) {
-        Date start = Date.from(startDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
-        Date end = Date.from(endDate.atStartOfDay(ZoneId.systemDefault()).toInstant());
-        return holidayRepository.findByDateBetweenOrderByDate(start, end);
+        return holidayRepository.findByDateBetweenOrderByDate(startDate, endDate);
     }
 
     @Override
@@ -45,7 +43,7 @@ public class HolidayServiceImpl implements HolidayService {
 
     @Override
     public Optional<Holiday> getHolidayByDate(Date date) {
-        return holidayRepository.findByDate(date);
+        return holidayRepository.findByDate(date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
     }
 
     @Override
@@ -71,7 +69,7 @@ public class HolidayServiceImpl implements HolidayService {
     @Override
     public boolean isHoliday(LocalDate date) {
         Date javaDate = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
-        return holidayRepository.existsByDate(javaDate);
+        return holidayRepository.existsByDate(javaDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
     }
 
     @Override

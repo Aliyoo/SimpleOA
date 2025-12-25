@@ -426,4 +426,22 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
         System.err.println("No finance user or admin found for reimbursement approval");
         return null;
     }
+
+    @Override
+    public List<ApprovalFlow> getApprovalFlowsByApproverWithFilters(
+            Long approverId, Date startDate, Date endDate,
+            String requestType, String status, Long projectId) {
+        return approvalFlowRepository.findByApproverIdWithFilters(
+                approverId, startDate, endDate, requestType, status, projectId);
+    }
+
+    @Override
+    public Page<ApprovalFlow> getApprovalFlowsByApproverWithFiltersPaged(
+            Long approverId, Date startDate, Date endDate,
+            String requestType, String status, Long projectId,
+            int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createTime"));
+        return approvalFlowRepository.findByApproverIdWithFiltersPaged(
+                approverId, startDate, endDate, requestType, status, projectId, pageable);
+    }
 }

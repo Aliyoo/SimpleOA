@@ -90,4 +90,15 @@ public interface ApprovalFlowService {
 
     // 新增：批量更新审批状态
     int batchUpdateApprovalStatus(List<Long> flowIds, String status, String comment);
+
+    // 优化：统一的动态查询方法，支持所有筛选条件组合
+    List<ApprovalFlow> getApprovalFlowsByApproverWithFilters(
+            Long approverId, Date startDate, Date endDate,
+            String requestType, String status, Long projectId);
+
+    // 优化：统一的动态分页查询方法，支持所有筛选条件组合
+    Page<ApprovalFlow> getApprovalFlowsByApproverWithFiltersPaged(
+            Long approverId, Date startDate, Date endDate,
+            String requestType, String status, Long projectId,
+            int page, int size);
 }

@@ -584,15 +584,15 @@ const filteredApprovals = computed(() => {
   return result.slice(startIndex, endIndex)
 })
 
-// 获取审批列表
+// 获取审批列表（使用后端分页）
 const fetchApprovals = async () => {
   loading.value = true
   try {
     // 构建查询参数
-    const params = {}
-
-    if (filterForm.value.requestType) {
-      params.requestType = filterForm.value.requestType
+    const params = {
+      page: currentPage.value - 1, // 后端分页从0开始
+      size: pageSize.value,
+      requestType: activeTab.value // 添加当前TAB的requestType
     }
 
     if (filterForm.value.status) {
@@ -604,32 +604,25 @@ const fetchApprovals = async () => {
       params.endDate = filterForm.value.dateRange[1]
     }
 
-    if (filterForm.value.projectId) {
+    if (filterForm.value.projectId && activeTab.value === 'WORKTIME') {
       params.projectId = filterForm.value.projectId
     }
 
-    // 获取当前用户需要审批的审批流程，带筛选条件
-    const response = await api.get('/api/approval/my-approvals', { params })
-    approvals.value = response.data
-    totalCount.value = response.data.length
-    console.log('审批数据:', response.data)
+    // 使用分页端点
+    const response = await api.get('/api/approval/my-approvals/paged', { params })
 
-    // 输出详细信息便于调试
-    if (response.data && response.data.length > 0) {
-      response.data.forEach((approval, index) => {
-        console.log(`审批 ${index + 1}:`, {
-          id: approval.id,
-          type: approval.requestType,
-          status: approval.status,
-          workTimeRecord: approval.workTimeRecord,
-          leaveRequest: approval.leaveRequest,
-          businessTripRequest: approval.businessTripRequest,
-          reimbursementRequest: approval.reimbursementRequest
-        })
-      })
-    } else {
-      console.log('没有审批数据')
-    }
+    // 更新数据
+    approvals.value = response.data.content
+    totalCount.value = response.data.totalElements
+
+    console.log('审批数据（分页）:', {
+      requestType: activeTab.value,
+      page: currentPage.value,
+      size: pageSize.value,
+      totalElements: response.data.totalElements,
+      totalPages: response.data.totalPages,
+      content: response.data.content
+    })
   } catch (error) {
     console.error('获取审批列表失败:', error)
     ElMessage.error('获取审批列表失败: ' + error.message)
@@ -874,6 +867,7 @@ const isSelectable = (row) => {
 // 筛选处理
 const handleFilter = () => {
   currentPage.value = 1 // 重置到第一页
+  fetchApprovals() // 重新获取数据
 }
 
 // 重置筛选条件
@@ -885,17 +879,20 @@ const resetFilter = () => {
     projectId: ''
   }
   currentPage.value = 1 // 重置到第一页
+  fetchApprovals() // 重新获取数据
 }
 
 // 分页大小变更
 const handleSizeChange = (val) => {
   pageSize.value = val
   currentPage.value = 1 // 重置到第一页
+  fetchApprovals() // 重新获取数据
 }
 
 // 当前页变更
 const handleCurrentChange = (val) => {
   currentPage.value = val
+  fetchApprovals() // 重新获取数据
 }
 
 // 辅助函数，用于获取审批标题
@@ -951,71 +948,17 @@ const formatDateTime = (dateTimeStr) => {
 }
 
 // TAB相关函数
-// 根据类型获取审批数据
+// 根据类型获取审批数据（使用后端分页和筛选后的数据）
 const getApprovalsByType = (type) => {
-  let result = approvals.value.filter((item) => item.requestType === type)
-
-  // 应用筛选条件
-  if (filterForm.value.status) {
-    result = result.filter((item) => item.status === filterForm.value.status)
-  }
-
-  if (filterForm.value.dateRange && filterForm.value.dateRange.length === 2) {
-    const startDate = new Date(filterForm.value.dateRange[0])
-    const endDate = new Date(filterForm.value.dateRange[1])
-    endDate.setHours(23, 59, 59, 999)
-
-    result = result.filter((item) => {
-      const createTime = new Date(item.createTime)
-      return createTime >= startDate && createTime <= endDate
-    })
-  }
-
-  if (filterForm.value.projectId && type === 'WORKTIME') {
-    result = result.filter(
-      (item) =>
-        item.workTimeRecord &&
-        item.workTimeRecord.project &&
-        item.workTimeRecord.project.id === filterForm.value.projectId
-    )
-  }
-
-  // 分页处理
-  const startIndex = (currentPage.value - 1) * pageSize.value
-  const endIndex = startIndex + pageSize.value
-  return result.slice(startIndex, endIndex)
+  // 后端已经按requestType筛选并分页，前端直接返回数据
+  // 只有当前活动TAB的数据会被加载
+  return type === activeTab.value ? approvals.value : []
 }
 
 // 获取指定类型的审批总数
 const getApprovalsTotalByType = (type) => {
-  let result = approvals.value.filter((item) => item.requestType === type)
-
-  // 应用筛选条件
-  if (filterForm.value.status) {
-    result = result.filter((item) => item.status === filterForm.value.status)
-  }
-
-  if (filterForm.value.dateRange && filterForm.value.dateRange.length === 2) {
-    const startDate = new Date(filterForm.value.dateRange[0])
-    const endDate = new Date(filterForm.value.dateRange[1])
-    endDate.setHours(23, 59, 59, 999)
-
-    result = result.filter((item) => {
-      const createTime = new Date(item.createTime)
-      return createTime >= startDate && createTime <= endDate
-    })
-  }
-
-  if (filterForm.value.projectId && type === 'WORKTIME') {
-    result = result.filter(
-      (item) =>
-        item.workTimeRecord &&
-        item.workTimeRecord.project &&
-        item.workTimeRecord.project.id === filterForm.value.projectId
-    )
-  }
-
-  return result.length
+  // 使用后端返回的总数
+  return type === activeTab.value ? totalCount.value : 0
 }
 
 // TAB切换事件
@@ -1029,12 +972,18 @@ const handleTabChange = (tabName) => {
     filterForm.value.projectId = ''
   }
 
+  // 切换TAB后重新获取数据
+  fetchApprovals()
+
   console.log('切换到TAB:', tabName)
 }
 
 onMounted(async () => {
-  await fetchApprovals() // 先获取审批列表
-  fetchProjects() // 然后获取项目列表用于筛选
+  // 并行加载审批列表和项目列表，提升页面初始化速度
+  await Promise.all([
+    fetchApprovals(),
+    fetchProjects()
+  ])
 })
 </script>
 

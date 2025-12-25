@@ -141,55 +141,9 @@ public class ApprovalFlowController {
                 throw new IllegalArgumentException("Invalid date format. Use yyyy-MM-dd");
             }
 
-            // 根据筛选条件查询
-            List<ApprovalFlow> approvals;
-
-            // 按项目ID筛选（仅适用于工时审批）
-            if (projectId != null && projectId > 0) {
-                approvals = approvalFlowService.getApprovalFlowsByProjectId(projectId);
-                // 还需要筛选当前用户的审批
-                approvals.removeIf(approval -> !approval.getApprover().getId().equals(approverId));
-            }
-            // 按日期范围、类型和状态筛选
-            else if (start != null && end != null && requestType != null && !requestType.isEmpty()
-                    && status != null && !status.isEmpty()) {
-                approvals = approvalFlowService.getApprovalFlowsByApproverAndDateRangeAndTypeAndStatus(
-                        approverId, start, end, requestType, status);
-            }
-            // 按日期范围和类型筛选
-            else if (start != null && end != null && requestType != null && !requestType.isEmpty()) {
-                approvals = approvalFlowService.getApprovalFlowsByApproverAndDateRangeAndType(
-                        approverId, start, end, requestType);
-            }
-            // 按日期范围和状态筛选
-            else if (start != null && end != null && status != null && !status.isEmpty()) {
-                approvals = approvalFlowService.getApprovalFlowsByApproverAndDateRangeAndStatus(
-                        approverId, start, end, status);
-            }
-            // 按日期范围筛选
-            else if (start != null && end != null) {
-                approvals = approvalFlowService.getApprovalFlowsByApproverAndDateRange(
-                        approverId, start, end);
-            }
-            // 按类型和状态筛选
-            else if (requestType != null && !requestType.isEmpty() && status != null && !status.isEmpty()) {
-                approvals = approvalFlowService.getApprovalFlowsByApproverAndTypeAndStatus(
-                        approverId, requestType, status);
-            }
-            // 按类型筛选
-            else if (requestType != null && !requestType.isEmpty()) {
-                approvals = approvalFlowService.getApprovalFlowsByApproverAndType(
-                        approverId, requestType);
-            }
-            // 按状态筛选
-            else if (status != null && !status.isEmpty()) {
-                approvals = approvalFlowService.getApprovalFlowsByApproverAndStatus(
-                        approverId, status);
-            }
-            // 无筛选条件，获取所有审批
-            else {
-                approvals = approvalFlowService.getApprovalFlowsByApprover(approverId);
-            }
+            // 使用统一的查询方法，处理所有筛选条件
+            List<ApprovalFlow> approvals = approvalFlowService.getApprovalFlowsByApproverWithFilters(
+                    approverId, start, end, requestType, status, projectId);
 
             // 输出调试信息
             System.out.println("Found " + approvals.size() + " approvals for user: " +
@@ -203,6 +157,11 @@ public class ApprovalFlowController {
 
     @GetMapping("/my-approvals/paged")
     public Page<ApprovalFlow> getMyApprovalsPaged(
+            @RequestParam(required = false) String requestType,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Long projectId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
@@ -210,7 +169,34 @@ public class ApprovalFlowController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof User) {
             User currentUser = (User) authentication.getPrincipal();
-            return approvalFlowService.getMyApprovalsPaged(currentUser.getId(), page, size);
+            Long approverId = currentUser.getId();
+
+            // 处理日期参数
+            Date start = null;
+            Date end = null;
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+            try {
+                if (startDate != null && !startDate.isEmpty()) {
+                    start = dateFormat.parse(startDate);
+                }
+                if (endDate != null && !endDate.isEmpty()) {
+                    end = dateFormat.parse(endDate);
+                    // 设置为当天结束时间
+                    Calendar calendar = Calendar.getInstance();
+                    calendar.setTime(end);
+                    calendar.set(Calendar.HOUR_OF_DAY, 23);
+                    calendar.set(Calendar.MINUTE, 59);
+                    calendar.set(Calendar.SECOND, 59);
+                    end = calendar.getTime();
+                }
+            } catch (ParseException e) {
+                throw new IllegalArgumentException("Invalid date format. Use yyyy-MM-dd");
+            }
+
+            // 使用统一的分页查询方法，支持所有筛选条件
+            return approvalFlowService.getApprovalFlowsByApproverWithFiltersPaged(
+                    approverId, start, end, requestType, status, projectId, page, size);
         }
 
         throw new IllegalStateException("User not authenticated");

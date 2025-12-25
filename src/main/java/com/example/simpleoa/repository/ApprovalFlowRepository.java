@@ -227,4 +227,61 @@ public interface ApprovalFlowRepository extends JpaRepository<ApprovalFlow, Long
             @Param("reimbursementRequestId") Long reimbursementRequestId,
             @Param("requestType") String requestType,
             @Param("status") String status);
+
+    // 优化：统一的动态查询方法，支持所有筛选条件组合
+    @Query("SELECT af FROM ApprovalFlow af " +
+           "LEFT JOIN FETCH af.approver " +
+           "LEFT JOIN FETCH af.workTimeRecord wtr " +
+           "LEFT JOIN FETCH wtr.user " +
+           "LEFT JOIN FETCH wtr.project " +
+           "LEFT JOIN FETCH af.leaveRequest lr " +
+           "LEFT JOIN FETCH lr.applicant " +
+           "LEFT JOIN FETCH af.businessTripRequest btr " +
+           "LEFT JOIN FETCH btr.applicant " +
+           "LEFT JOIN FETCH af.reimbursementRequest rr " +
+           "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
+           "WHERE af.approver.id = :approverId " +
+           "AND (:startDate IS NULL OR af.createTime >= :startDate) " +
+           "AND (:endDate IS NULL OR af.createTime <= :endDate) " +
+           "AND (:requestType IS NULL OR af.requestType = :requestType) " +
+           "AND (:status IS NULL OR af.status = :status) " +
+           "AND (:projectId IS NULL OR " +
+           "     (af.requestType = 'WORKTIME' AND af.workTimeRecord.project.id = :projectId))")
+    List<ApprovalFlow> findByApproverIdWithFilters(
+            @Param("approverId") Long approverId,
+            @Param("startDate") Date startDate,
+            @Param("endDate") Date endDate,
+            @Param("requestType") String requestType,
+            @Param("status") String status,
+            @Param("projectId") Long projectId);
+
+    // 优化：统一的动态分页查询方法，支持所有筛选条件组合
+    @Query("SELECT af FROM ApprovalFlow af " +
+           "LEFT JOIN FETCH af.approver " +
+           "LEFT JOIN FETCH af.workTimeRecord wtr " +
+           "LEFT JOIN FETCH wtr.user " +
+           "LEFT JOIN FETCH wtr.project " +
+           "LEFT JOIN FETCH af.leaveRequest lr " +
+           "LEFT JOIN FETCH lr.applicant " +
+           "LEFT JOIN FETCH af.businessTripRequest btr " +
+           "LEFT JOIN FETCH btr.applicant " +
+           "LEFT JOIN FETCH af.reimbursementRequest rr " +
+           "LEFT JOIN FETCH rr.applicant " +
+           "LEFT JOIN FETCH rr.project " +
+           "WHERE af.approver.id = :approverId " +
+           "AND (:startDate IS NULL OR af.createTime >= :startDate) " +
+           "AND (:endDate IS NULL OR af.createTime <= :endDate) " +
+           "AND (:requestType IS NULL OR af.requestType = :requestType) " +
+           "AND (:status IS NULL OR af.status = :status) " +
+           "AND (:projectId IS NULL OR " +
+           "     (af.requestType = 'WORKTIME' AND af.workTimeRecord.project.id = :projectId))")
+    Page<ApprovalFlow> findByApproverIdWithFiltersPaged(
+            @Param("approverId") Long approverId,
+            @Param("startDate") Date startDate,
+            @Param("endDate") Date endDate,
+            @Param("requestType") String requestType,
+            @Param("status") String status,
+            @Param("projectId") Long projectId,
+            Pageable pageable);
 }

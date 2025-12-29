@@ -6,20 +6,50 @@ import org.springframework.data.domain.Page;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * 审批流程服务接口（已废弃）
+ *
+ * <p>此接口已被 {@link ApprovalOrchestrationService} 替代
+ *
+ * @deprecated 自 1.0 版本起废弃，请使用 {@link ApprovalOrchestrationService}
+ * @see ApprovalOrchestrationService
+ */
+@Deprecated
 public interface ApprovalFlowService {
-    // 工时审批
+    /**
+     * 创建工时审批流程（已废弃）
+     * @deprecated 请使用 {@link ApprovalOrchestrationService#submitApproval(EntityType, Long, User)}
+     */
+    @Deprecated
     ApprovalFlow createApprovalFlow(WorkTimeRecord workTimeRecord, User approver);
 
-    // 请假审批
+    /**
+     * 创建请假审批流程（已废弃）
+     * @deprecated 请使用 {@link ApprovalOrchestrationService#submitApproval(EntityType, Long, User)}
+     */
+    @Deprecated
     ApprovalFlow createLeaveApproval(LeaveRequest leaveRequest, User approver);
 
-    // 出差审批
+    /**
+     * 创建出差审批流程（已废弃）
+     * @deprecated 请使用 {@link ApprovalOrchestrationService#submitApproval(EntityType, Long, User)}
+     */
+    @Deprecated
     ApprovalFlow createBusinessTripApproval(BusinessTripRequest tripRequest, User approver);
 
-    // 报销审批
+    /**
+     * 创建报销审批流程（已废弃）
+     * @deprecated 请使用 {@link ApprovalOrchestrationService#submitApproval(EntityType, Long, User)}
+     */
+    @Deprecated
     ApprovalFlow createReimbursementApproval(ReimbursementRequest reimbursementRequest, User approver);
 
-    // 更新审批状态
+    /**
+     * 更新审批状态（已废弃）
+     * @deprecated 请使用 {@link ApprovalOrchestrationService#approveApproval(Long, String)}
+     *             或 {@link ApprovalOrchestrationService#rejectApproval(Long, String)}
+     */
+    @Deprecated
     ApprovalFlow updateApprovalFlowStatus(Long flowId, String status, String comment);
 
     // 获取工时记录相关的审批流程
@@ -52,7 +82,11 @@ public interface ApprovalFlowService {
     // 获取审批历史
     List<ApprovalFlow> getApprovalHistory(Long flowId);
 
-    // 通知状态变更
+    /**
+     * 通知状态变更（已废弃）
+     * @deprecated 新架构通过领域事件自动发送通知
+     */
+    @Deprecated
     void notifyStatusChange(Long flowId, String newStatus);
 
     // 获取所有审批流程
@@ -88,6 +122,10 @@ public interface ApprovalFlowService {
     // 新增：按工时记录项目ID查询审批流程
     List<ApprovalFlow> getApprovalFlowsByProjectId(Long projectId);
 
-    // 新增：批量更新审批状态
+    /**
+     * 批量更新审批状态（已废弃）
+     * @deprecated 此方法使用 if-else 逻辑，请逐个使用新的审批服务
+     */
+    @Deprecated
     int batchUpdateApprovalStatus(List<Long> flowIds, String status, String comment);
 }

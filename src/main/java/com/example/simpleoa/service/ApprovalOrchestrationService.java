@@ -3,9 +3,15 @@ package com.example.simpleoa.service;
 import com.example.simpleoa.event.ApprovalCompletedEvent;
 import com.example.simpleoa.event.ApprovalRejectedEvent;
 import com.example.simpleoa.event.WorkTimeApprovalCompletedEvent;
+import com.example.simpleoa.event.BusinessTripApprovalCompletedEvent;
+import com.example.simpleoa.event.LeaveRequestApprovalCompletedEvent;
+import com.example.simpleoa.event.ReimbursementApprovalCompletedEvent;
 import com.example.simpleoa.model.*;
 import com.example.simpleoa.repository.ApprovalFlowRepository;
 import com.example.simpleoa.repository.WorkTimeRecordRepository;
+import com.example.simpleoa.repository.BusinessTripRequestRepository;
+import com.example.simpleoa.repository.LeaveRequestRepository;
+import com.example.simpleoa.repository.ReimbursementRequestRepository;
 import com.example.simpleoa.service.strategy.ApprovalStrategy;
 import com.example.simpleoa.service.strategy.ApprovalStrategyFactory;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +46,9 @@ public class ApprovalOrchestrationService {
     private final ApprovalStrategyFactory strategyFactory;
     private final ApplicationEventPublisher eventPublisher;
     private final WorkTimeRecordRepository workTimeRecordRepository;
+    private final BusinessTripRequestRepository businessTripRequestRepository;
+    private final LeaveRequestRepository leaveRequestRepository;
+    private final ReimbursementRequestRepository reimbursementRequestRepository;
     // 其他 repository 在需要时注入
 
     /**
@@ -166,6 +175,21 @@ public class ApprovalOrchestrationService {
                     eventPublisher.publishEvent(new WorkTimeApprovalCompletedEvent(this, flow, (WorkTimeRecord) entity));
                 }
 
+                // 如果是出差审批，发布出差专用事件
+                if (EntityType.BUSINESS_TRIP.equals(entityType)) {
+                    eventPublisher.publishEvent(new BusinessTripApprovalCompletedEvent(this, flow, (BusinessTripRequest) entity));
+                }
+
+                // 如果是请假审批，发布请假专用事件
+                if (EntityType.LEAVE_REQUEST.equals(entityType)) {
+                    eventPublisher.publishEvent(new LeaveRequestApprovalCompletedEvent(this, flow, (LeaveRequest) entity));
+                }
+
+                // 如果是报销审批，发布报销专用事件
+                if (EntityType.REIMBURSEMENT.equals(entityType)) {
+                    eventPublisher.publishEvent(new ReimbursementApprovalCompletedEvent(this, flow, (com.example.simpleoa.model.ReimbursementRequest) entity));
+                }
+
                 log.info("审批通过处理完成: entityType={}, entityId={}", entityType, flow.getEntityId());
 
             } else {
@@ -249,16 +273,25 @@ public class ApprovalOrchestrationService {
 
             // 其他类型在后续 Phase 实现
             case LEAVE_REQUEST:
-                log.warn("请假审批尚未迁移到新架构");
-                throw new UnsupportedOperationException("请假审批暂未迁移到新架构，请使用旧流程");
+                Optional<LeaveRequest> leaveRequest = leaveRequestRepository.findById(entityId);
+                if (leaveRequest.isEmpty()) {
+                    throw new IllegalArgumentException("请假申请不存在: " + entityId);
+                }
+                return leaveRequest.get();
 
             case BUSINESS_TRIP:
-                log.warn("出差审批尚未迁移到新架构");
-                throw new UnsupportedOperationException("出差审批暂未迁移到新架构，请使用旧流程");
+                Optional<BusinessTripRequest> businessTrip = businessTripRequestRepository.findById(entityId);
+                if (businessTrip.isEmpty()) {
+                    throw new IllegalArgumentException("出差申请不存在: " + entityId);
+                }
+                return businessTrip.get();
 
             case REIMBURSEMENT:
-                log.warn("报销审批尚未迁移到新架构");
-                throw new UnsupportedOperationException("报销审批暂未迁移到新架构，请使用旧流程");
+                Optional<com.example.simpleoa.model.ReimbursementRequest> reimbursement = reimbursementRequestRepository.findById(entityId);
+                if (reimbursement.isEmpty()) {
+                    throw new IllegalArgumentException("报销申请不存在: " + entityId);
+                }
+                return reimbursement.get();
 
             default:
                 throw new IllegalArgumentException("不支持的实体类型: " + entityType);

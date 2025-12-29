@@ -19,6 +19,44 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * 审批流程服务实现类（已废弃）
+ *
+ * <p>此类已被 {@link com.example.simpleoa.service.ApprovalOrchestrationService} 替代
+ * <p>请使用新的策略模式架构处理所有审批流程
+ *
+ * <h3>废弃原因</h3>
+ * <ul>
+ *   <li>使用大量 if-else 条件判断（95行），违反开闭原则</li>
+ *   <li>与各业务服务存在循环依赖</li>
+ *   <li>难以测试和扩展</li>
+ *   <li>使用 String 类型状态，缺乏类型安全</li>
+ * </ul>
+ *
+ * <h3>迁移指南</h3>
+ * <pre>
+ * 旧代码：
+ *   approvalFlowService.updateApprovalFlowStatus(flowId, "APPROVED", comment);
+ *
+ * 新代码：
+ *   approvalOrchestrationService.approveApproval(flowId, comment);
+ *   approvalOrchestrationService.rejectApproval(flowId, comment);
+ * </pre>
+ *
+ * <h3>新架构优势</h3>
+ * <ul>
+ *   <li>策略模式：每个业务类型独立策略类</li>
+ *   <li>领域事件：通过事件解除服务间循环依赖</li>
+ *   <li>类型安全：使用枚举替代 String</li>
+ *   <li>易于测试：每个策略独立测试</li>
+ *   <li>多态设计：entity_type + entity_id 替代多个外键</li>
+ * </ul>
+ *
+ * @deprecated 自 1.0 版本起废弃，请使用 {@link com.example.simpleoa.service.ApprovalOrchestrationService}
+ * @see com.example.simpleoa.service.ApprovalOrchestrationService
+ * @see com.example.simpleoa.service.strategy.ApprovalStrategy
+ */
+@Deprecated
 @Service
 public class ApprovalFlowServiceImpl implements ApprovalFlowService {
     private final ApprovalFlowRepository approvalFlowRepository;
@@ -57,6 +95,13 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
         this.reimbursementService = reimbursementService;
     }
 
+    /**
+     * 更新审批流程状态（已废弃）
+     *
+     * @deprecated 请使用 {@link com.example.simpleoa.service.ApprovalOrchestrationService#approveApproval(Long, String)}
+     *             或 {@link com.example.simpleoa.service.ApprovalOrchestrationService#rejectApproval(Long, String)}
+     */
+    @Deprecated
     @Override
     @Transactional
     public ApprovalFlow updateApprovalFlowStatus(Long flowId, String status, String comment) {
@@ -202,6 +247,13 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
         return approvalFlowRepository.findHistoryById(flowId);
     }
 
+    /**
+     * 通知状态变更（已废弃）
+     *
+     * @deprecated 新架构通过领域事件自动发送通知
+     *             请使用 {@link com.example.simpleoa.event.listener} 中的监听器
+     */
+    @Deprecated
     @Override
     public void notifyStatusChange(Long flowId, String newStatus) {
         ApprovalFlow flow = getApprovalFlowById(flowId);
@@ -359,6 +411,13 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
         return approvalFlowRepository.findByWorkTimeRecordProjectId(projectId);
     }
 
+    /**
+     * 批量更新审批状态（已废弃）
+     *
+     * @deprecated 此方法使用 if-else 逻辑，请迁移到新的策略模式架构
+     *             建议逐个使用 {@link com.example.simpleoa.service.ApprovalOrchestrationService}
+     */
+    @Deprecated
     @Override
     @Transactional
     public int batchUpdateApprovalStatus(List<Long> flowIds, String status, String comment) {

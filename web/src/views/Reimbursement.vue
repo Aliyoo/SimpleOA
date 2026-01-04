@@ -802,10 +802,14 @@ const openFormDialog = (row) => {
     formData.value = JSON.parse(JSON.stringify(row))
     // Ensure projectId is set, default to null if not present in row
     formData.value.projectId = row.projectId || null
-    fileList.value = (formData.value.attachments || []).map((path) => {
-      // Assuming path is a string URL, if it's an object, adjust accordingly
-      const name = typeof path === 'string' ? path.substring(path.lastIndexOf('/') + 1) : 'attachment'
-      return { name: name, url: path }
+    fileList.value = (formData.value.attachments || []).map((att) => {
+      // 兼容新旧格式
+      if (typeof att === 'string') {
+        const name = att.substring(att.lastIndexOf('/') + 1)
+        return { name, url: att }
+      } else {
+        return { name: att.originalName || att.url.substring(att.url.lastIndexOf('/') + 1), url: att.url }
+      }
     })
   } else {
     formData.value = initialFormData()
@@ -877,7 +881,8 @@ const goToApprovalManagement = (row) => {
 const canViewApproval = (row) => {
   return (
     row.status === 'PENDING_MANAGER_APPROVAL' ||
-    row.status === 'PENDING_FINANCE_APPROVAL' ||
+    row.status === 'PENDING_LEADER_APPROVAL' ||
+    row.status === 'PENDING_FINANCE_REVIEW' ||
     row.status === 'APPROVED' ||
     row.status === 'REJECTED'
   )
@@ -890,7 +895,8 @@ const initializeStatusOptions = () => {
   statusOptions.value = [
     { label: '草稿', value: 'DRAFT' },
     { label: '待项目经理审批', value: 'PENDING_MANAGER_APPROVAL' },
-    { label: '待财务审批', value: 'PENDING_FINANCE_APPROVAL' },
+    { label: '待领导审批', value: 'PENDING_LEADER_APPROVAL' },
+    { label: '待财务审查', value: 'PENDING_FINANCE_REVIEW' },
     { label: '已通过', value: 'APPROVED' },
     { label: '已驳回', value: 'REJECTED' }
   ]
@@ -1181,10 +1187,16 @@ const editReimbursement = (row) => {
     attachments: row.attachments || []
   })
 
-  // 设置文件列表
-  fileList.value = (row.attachments || []).map((path) => {
-    const name = typeof path === 'string' ? path.substring(path.lastIndexOf('/') + 1) : 'attachment'
-    return { name: name, url: path }
+  // 设置文件列表（兼容新旧格式）
+  fileList.value = (row.attachments || []).map((att) => {
+    if (typeof att === 'string') {
+      // 旧格式：纯字符串URL
+      const name = att.substring(att.lastIndexOf('/') + 1)
+      return { name, url: att }
+    } else {
+      // 新格式：{ url, originalName }
+      return { name: att.originalName || att.url.substring(att.url.lastIndexOf('/') + 1), url: att.url }
+    }
   })
 
   // 切换到申请页面
@@ -1213,16 +1225,17 @@ const deleteReimbursement = async (row) => {
 // 处理文件上传成功
 // 注意: v-model:file-list 双向绑定,但使用 customUpload 时需要手动更新状态
 const handleReimbursementUploadSuccess = (response, file) => {
-  // response 可能是 { data: { url: ... } } 或直接是 { url: ... }
+  // response 可能是 { data: { url: ..., originalName: ... } } 或直接是 { url: ... }
   const url = response?.data?.url || response?.url
+  const originalName = response?.data?.originalName || file.name
   
   if (!url) {
     console.error('上传成功但未获取到文件URL:', response)
     return
   }
   
-  // 更新业务数据
-  reimbursementForm.attachments.push(url)
+  // 更新业务数据（保存完整附件对象）
+  reimbursementForm.attachments.push({ url, originalName })
   
   // 手动更新 fileList,将上传中的文件标记为成功
   const fileIndex = fileList.value.findIndex(f => f.uid === file.uid)
@@ -1231,6 +1244,7 @@ const handleReimbursementUploadSuccess = (response, file) => {
       ...fileList.value[fileIndex],
       status: 'success',
       url: url,
+      name: originalName,
       response: response
     }
   }
@@ -1260,9 +1274,9 @@ const handleUploadSuccess = (response, file) => {
     handleReimbursementUploadSuccess(response, file)
   } else {
     // 原有的弹窗上传处理
-    // v-model:file-list 双向绑定会自动更新 fileList，只需更新业务数据
     const url = response.data?.url || response.url
-    formData.value.attachments.push(url)
+    const originalName = response.data?.originalName || file.name
+    formData.value.attachments.push({ url, originalName })
   }
 }
 
@@ -1326,8 +1340,10 @@ const handleRemoveFile = (file) => {
   const index = fileList.value.findIndex(f => f.uid === file.uid)
   if (index !== -1) {
     fileList.value.splice(index, 1)
-    // 同时从业务数据中移除
-    const urlIndex = reimbursementForm.attachments.indexOf(file.url)
+    // 同时从业务数据中移除（兼容新旧格式）
+    const urlIndex = reimbursementForm.attachments.findIndex(att => 
+      typeof att === 'string' ? att === file.url : att.url === file.url
+    )
     if (urlIndex !== -1) {
       reimbursementForm.attachments.splice(urlIndex, 1)
     }

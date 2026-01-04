@@ -11,6 +11,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -156,19 +158,22 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         if (!checkBudgetAvailability(id)) {
             throw new RuntimeException("预算不足，无法提交审批");
         }
-        
-        // 更改为提交状态，准备进入统一审批流程
+
+        // 更改为待项目经理审批状态（第一阶段）
         request.setStatus(ReimbursementStatus.PENDING_MANAGER_APPROVAL);
         reimbursementRequestRepository.save(request);
-        
-        // 创建统一审批流程 - 项目经理审批
-        User projectManagerApprover = findProjectManagerApprover(request);
-        if (projectManagerApprover != null) {
-            approvalFlowService.createReimbursementApproval(request, projectManagerApprover);
-            logger.info("Created project manager approval flow for reimbursement request {}", id);
+
+        // 创建项目经理审批流程（第一阶段）
+        User managerApprover = findManagerApprover(request);
+        if (managerApprover != null) {
+            approvalFlowService.createReimbursementApproval(request, managerApprover);
+            logger.info("Created manager approval flow (stage 1) for reimbursement request {}", id);
+        } else {
+            logger.error("No manager approver found for reimbursement request {}", id);
+            throw new RuntimeException("未找到项目经理审批人");
         }
-        
-        logger.info("Reimbursement request {} submitted for approval by user {}", id, submitterId);
+
+        logger.info("Reimbursement request {} submitted for approval (stage 1: manager) by user {}", id, submitterId);
         return request;
     }
 
@@ -357,34 +362,95 @@ public class ReimbursementServiceImpl implements ReimbursementService {
         }
     }
 
-    private User findProjectManagerApprover(ReimbursementRequest request) {
-        // 如果报销申请关联了项目，优先找项目经理
-        if (request.getProject() != null && request.getProject().getManager() != null) {
-            return request.getProject().getManager();
+    /**
+     * 查找项目经理（第一阶段审批人）
+     */
+    private User findManagerApprover(ReimbursementRequest request) {
+        // 优先查找 ROLE_PROJECT_MANAGER
+        User projectManager = userRepository.findFirstByRoles_Name("ROLE_PROJECT_MANAGER");
+        if (projectManager != null) {
+            logger.info("Found project manager: {}", projectManager.getUsername());
+            return projectManager;
         }
-        
-        // 如果没有项目或项目没有指定经理，则找具有经理角色的用户
-        List<User> managers = userRepository.findUsersByRole("ROLE_MANAGER");
-        if (!managers.isEmpty()) {
-            return managers.get(0);
+
+        // 备选: ROLE_MANAGER
+        User manager = userRepository.findFirstByRoles_Name("ROLE_MANAGER");
+        if (manager != null) {
+            logger.info("Using manager as project manager");
+            return manager;
         }
-        
-        // 最后备选方案是管理员
-        List<User> admins = userRepository.findUsersByRole("ROLE_ADMIN");
-        if (!admins.isEmpty()) {
-            return admins.get(0);
+
+        // 最后备选: 管理员
+        User admin = userRepository.findFirstByRoles_Name("ROLE_ADMIN");
+        if (admin != null) {
+            logger.warn("Using admin as project manager (fallback)");
+            return admin;
         }
-        
-        logger.warn("No project manager, manager or admin found for reimbursement approval");
+
+        logger.error("No project manager found for reimbursement request {}", request.getId());
         return null;
+    }
+
+    /**
+     * 创建领导审批流程（第二阶段）
+     * 当项目经理审批通过后自动调用此方法
+     */
+    private void createLeaderApprovalFlow(ReimbursementRequest request) {
+        User leaderApprover = findLeaderApprover(request);
+        if (leaderApprover != null) {
+            approvalFlowService.createReimbursementApproval(request, leaderApprover);
+            logger.info("Created leader approval flow (stage 2) for reimbursement request {}", request.getId());
+        } else {
+            logger.error("No leader approver found for reimbursement request {}", request.getId());
+            throw new RuntimeException("未找到领导审批人");
+        }
+    }
+
+    /**
+     * 根据申请人角色查找对应的领导审批人（第二阶段审批人）
+     */
+    private User findLeaderApprover(ReimbursementRequest request) {
+        User applicant = request.getApplicant();
+
+        // 获取申请人的所有角色
+        List<Role> roles = applicant.getRoles();
+        if (roles == null || roles.isEmpty()) {
+            logger.warn("Applicant {} has no roles", applicant.getId());
+            return null;
+        }
+
+        // 根据角色找对应领导
+        for (Role role : roles) {
+            String roleName = role.getName();
+
+            if ("ROLE_SOFTWARE_STAFF".equals(roleName)) {
+                User leader = userRepository.findFirstByRoles_Name("ROLE_SOFTWARE_LEADER");
+                if (leader != null) {
+                    logger.info("Found software leader for software staff: {}", leader.getUsername());
+                    return leader;
+                }
+            }
+
+            if ("ROLE_HARDWARE_STAFF".equals(roleName)) {
+                User leader = userRepository.findFirstByRoles_Name("ROLE_HARDWARE_LEADER");
+                if (leader != null) {
+                    logger.info("Found hardware leader for hardware staff: {}", leader.getUsername());
+                    return leader;
+                }
+            }
+        }
+
+        // 如果没找到对应领导，使用项目经理作为备选
+        logger.warn("No specific leader found, using project manager as fallback");
+        return findManagerApprover(request);
     }
 
     @Transactional
     public void processApprovedReimbursement(Long reimbursementId) {
         ReimbursementRequest request = getReimbursementById(reimbursementId);
         try {
-            // 先检查状态，确保是待财务审批
-            if (request.getStatus() != ReimbursementStatus.PENDING_FINANCE_APPROVAL) {
+            // 先检查状态，确保是待财务审查
+            if (request.getStatus() != ReimbursementStatus.PENDING_FINANCE_REVIEW) {
                 logger.warn("报销申请 {} 状态不正确，当前状态: {}", reimbursementId, request.getStatus());
             }
             
@@ -514,7 +580,146 @@ public class ReimbursementServiceImpl implements ReimbursementService {
             
             items.add(item);
         }
-        
+
         return items;
+    }
+
+    @Override
+    @Transactional
+    public ReimbursementRequest financeReview(Long id, String decision, String comment, Long financeUserId) {
+        ReimbursementRequest request = getReimbursementById(id);
+        User financeUser = userRepository.findById(financeUserId)
+                .orElseThrow(() -> new RuntimeException("Finance user not found"));
+
+        // 验证用户是否为财务人员
+        boolean isFinance = financeUser.getRoles().stream()
+                .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()) || "ROLE_ADMIN".equals(role.getName()));
+
+        if (!isFinance) {
+            throw new SecurityException("只有财务人员可以进行财务审查");
+        }
+
+        // 验证状态必须是待财务审查
+        if (request.getStatus() != ReimbursementStatus.PENDING_FINANCE_REVIEW) {
+            throw new IllegalStateException("报销申请状态不正确，当前状态: " + request.getStatus());
+        }
+
+        // 处理审查决定
+        if ("APPROVE".equalsIgnoreCase(decision)) {
+            // 财务审查通过，处理预算扣除
+            processReimbursementBudgetDeduction(request);
+            request.setStatus(ReimbursementStatus.APPROVED);
+            logger.info("Reimbursement request {} finance review approved, budget deducted", id);
+        } else if ("REJECT".equalsIgnoreCase(decision)) {
+            // 财务审查拒绝
+            request.setStatus(ReimbursementStatus.REJECTED);
+            request.setComment(comment);
+            logger.info("Reimbursement request {} finance review rejected: {}", id, comment);
+        } else {
+            throw new IllegalArgumentException("无效的审查决定: " + decision);
+        }
+
+        reimbursementRequestRepository.save(request);
+        return request;
+    }
+
+    @Override
+    public Page<ReimbursementRequest> getByStatus(ReimbursementStatus status, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createTime"));
+        return reimbursementRequestRepository.findByStatus(status, pageable);
+    }
+
+    @Override
+    public Page<ReimbursementRequest> getByStatuses(List<ReimbursementStatus> statuses, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createTime"));
+        return reimbursementRequestRepository.findByStatusIn(statuses, pageable);
+    }
+
+    @Override
+    public Page<ReimbursementRequest> getForFinanceReview(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createTime"));
+
+        // 查询财务需要关注的所有状态：审批中 + 待审查 + 已通过 + 已拒绝
+        List<ReimbursementStatus> financeStatuses = Arrays.asList(
+                ReimbursementStatus.PENDING_LEADER_APPROVAL,
+                ReimbursementStatus.PENDING_FINANCE_REVIEW,
+                ReimbursementStatus.APPROVED,
+                ReimbursementStatus.REJECTED
+        );
+
+        return reimbursementRequestRepository.findByStatusIn(financeStatuses, pageable);
+    }
+
+    @Override
+    public Map<String, Object> getFinanceStatistics() {
+        Map<String, Object> result = new HashMap<>();
+
+        // 使用unpaged获取所有数据
+        Pageable unpaged = Pageable.unpaged();
+
+        // 统计待财务审查
+        Page<ReimbursementRequest> pendingReviewPage = reimbursementRequestRepository.findByStatus(
+                ReimbursementStatus.PENDING_FINANCE_REVIEW, unpaged);
+        List<ReimbursementRequest> pendingReview = pendingReviewPage.getContent();
+        int pendingReviewCount = pendingReview.size();
+        BigDecimal pendingReviewAmount = pendingReview.stream()
+                .map(ReimbursementRequest::getTotalAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 统计待领导审批
+        Page<ReimbursementRequest> pendingLeaderPage = reimbursementRequestRepository.findByStatus(
+                ReimbursementStatus.PENDING_LEADER_APPROVAL, unpaged);
+        List<ReimbursementRequest> pendingLeader = pendingLeaderPage.getContent();
+        int pendingLeaderCount = pendingLeader.size();
+        BigDecimal pendingLeaderAmount = pendingLeader.stream()
+                .map(ReimbursementRequest::getTotalAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 统计已通过
+        Page<ReimbursementRequest> approvedPage = reimbursementRequestRepository.findByStatus(
+                ReimbursementStatus.APPROVED, unpaged);
+        List<ReimbursementRequest> approved = approvedPage.getContent();
+        int approvedCount = approved.size();
+        BigDecimal approvedAmount = approved.stream()
+                .map(ReimbursementRequest::getTotalAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 统计已拒绝
+        Page<ReimbursementRequest> rejectedPage = reimbursementRequestRepository.findByStatus(
+                ReimbursementStatus.REJECTED, unpaged);
+        List<ReimbursementRequest> rejected = rejectedPage.getContent();
+        int rejectedCount = rejected.size();
+        BigDecimal rejectedAmount = rejected.stream()
+                .map(ReimbursementRequest::getTotalAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 计算总计
+        int totalCount = pendingReviewCount + pendingLeaderCount + approvedCount + rejectedCount;
+        BigDecimal totalAmount = pendingReviewAmount.add(pendingLeaderAmount)
+                .add(approvedAmount).add(rejectedAmount);
+
+        // 计算平均金额
+        BigDecimal averageAmount = totalCount > 0
+                ? totalAmount.divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+
+        // 组装结果
+        result.put("pendingReviewCount", pendingReviewCount);
+        result.put("pendingReviewAmount", pendingReviewAmount);
+        result.put("pendingLeaderCount", pendingLeaderCount);
+        result.put("pendingLeaderAmount", pendingLeaderAmount);
+        result.put("approvedCount", approvedCount);
+        result.put("approvedAmount", approvedAmount);
+        result.put("rejectedCount", rejectedCount);
+        result.put("rejectedAmount", rejectedAmount);
+        result.put("totalCount", totalCount);
+        result.put("totalAmount", totalAmount);
+        result.put("averageAmount", averageAmount);
+
+        return result;
     }
 }

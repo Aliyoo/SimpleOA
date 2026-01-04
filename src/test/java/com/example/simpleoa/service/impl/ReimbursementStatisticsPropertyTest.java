@@ -64,8 +64,9 @@ class ReimbursementStatisticsPropertyTest {
                 .count();
         
         int expectedPendingCount = (int) reimbursements.stream()
-                .filter(r -> ReimbursementStatus.PENDING_MANAGER_APPROVAL.equals(r.getStatus()) 
-                        || ReimbursementStatus.PENDING_FINANCE_APPROVAL.equals(r.getStatus()))
+                .filter(r -> ReimbursementStatus.PENDING_MANAGER_APPROVAL.equals(r.getStatus())
+                        || ReimbursementStatus.PENDING_LEADER_APPROVAL.equals(r.getStatus())
+                        || ReimbursementStatus.PENDING_FINANCE_REVIEW.equals(r.getStatus()))
                 .count();
         
         int expectedApprovedCount = (int) reimbursements.stream()
@@ -272,7 +273,8 @@ class ReimbursementStatisticsPropertyTest {
                 Arbitraries.of(
                         ReimbursementStatus.DRAFT,
                         ReimbursementStatus.PENDING_MANAGER_APPROVAL,
-                        ReimbursementStatus.PENDING_FINANCE_APPROVAL,
+                        ReimbursementStatus.PENDING_LEADER_APPROVAL,
+                        ReimbursementStatus.PENDING_FINANCE_REVIEW,
                         ReimbursementStatus.APPROVED,
                         ReimbursementStatus.REJECTED
                 ),

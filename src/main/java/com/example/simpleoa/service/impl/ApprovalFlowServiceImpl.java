@@ -6,6 +6,8 @@ import com.example.simpleoa.repository.ReimbursementRequestRepository;
 import com.example.simpleoa.repository.UserRepository;
 import com.example.simpleoa.service.ApprovalFlowService;
 import com.example.simpleoa.service.WorkTimeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -21,6 +23,7 @@ import java.util.List;
 
 @Service
 public class ApprovalFlowServiceImpl implements ApprovalFlowService {
+    private static final Logger logger = LoggerFactory.getLogger(ApprovalFlowServiceImpl.class);
     private final ApprovalFlowRepository approvalFlowRepository;
     private final ReimbursementRequestRepository reimbursementRequestRepository;
     private final UserRepository userRepository;
@@ -104,44 +107,58 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
         if ("REIMBURSEMENT".equals(flow.getRequestType()) && flow.getReimbursementRequest() != null) {
             ReimbursementRequest reimbursementRequest = flow.getReimbursementRequest();
             if ("APPROVED".equals(status)) {
-                // 判断是否为财务审批（最终审批）
-                if (isFinanceApproval(flow)) {
-                    // 财务审批通过，处理预算扣除并设置最终状态
-                    if (reimbursementService != null) {
-                        try {
-                            reimbursementService.processApprovedReimbursement(reimbursementRequest.getId());
-                            System.out.println("报销申请ID " + reimbursementRequest.getId() + " 财务审批通过，预算已扣除");
-                        } catch (Exception e) {
-                            System.err.println("处理报销预算扣除失败: " + e.getMessage());
-                            throw new RuntimeException("预算扣除失败，审批回滚", e);
+                // 判断当前处于哪个审批阶段
+                ReimbursementRequest currentRequest = reimbursementRequestRepository.findById(reimbursementRequest.getId()).orElse(null);
+
+                if (currentRequest != null) {
+                    if (currentRequest.getStatus() == ReimbursementStatus.PENDING_MANAGER_APPROVAL) {
+                        // 第一阶段（项目经理）审批通过，进入第二阶段（领导审批）
+                        System.out.println("报销申请ID " + reimbursementRequest.getId() +
+                            " 项目经理审批通过，准备创建领导审批流程");
+
+                        // 查找领导审批人
+                        User leaderApprover = findLeaderApproverForReimbursement(reimbursementRequest);
+                        if (leaderApprover == null) {
+                            logger.error("未找到领导审批人，报销申请ID: {}", reimbursementRequest.getId());
+                            throw new RuntimeException("未找到领导审批人，无法继续审批流程");
                         }
-                    }
-                } else {
-                    // 项目经理审批通过，更新状态并创建财务审批流程
-                    reimbursementRequest.setStatus(ReimbursementStatus.PENDING_FINANCE_APPROVAL);
-                    reimbursementRequestRepository.save(reimbursementRequest);
-                    
-                    // 检查是否已存在财务审批流程，防止重复创建
-                    List<ApprovalFlow> existingFinanceApprovals = approvalFlowRepository
-                        .findByReimbursementRequestIdAndRequestTypeAndStatus(
-                            reimbursementRequest.getId(), "REIMBURSEMENT", "PENDING");
-                    
-                    boolean hasFinanceApproval = existingFinanceApprovals.stream()
-                        .anyMatch(af -> af.getApprover() != null && 
-                            af.getApprover().getRoles().stream()
-                                .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()) || "ROLE_ADMIN".equals(role.getName())));
-                    
-                    if (!hasFinanceApproval) {
-                        User financeApprover = findFinanceApprover();
-                        if (financeApprover != null) {
-                            createReimbursementApproval(reimbursementRequest, financeApprover);
-                            System.out.println("报销申请ID " + reimbursementRequest.getId() + " 项目经理审批通过，已创建财务审批流程");
-                        } else {
-                            System.err.println("未找到财务审批人，无法创建财务审批流程");
-                            throw new RuntimeException("未找到财务审批人");
+
+                        // 更新状态为待领导审批
+                        reimbursementRequest.setStatus(ReimbursementStatus.PENDING_LEADER_APPROVAL);
+                        reimbursementRequestRepository.save(reimbursementRequest);
+
+                        // 创建领导审批流程（第二阶段）
+                        ApprovalFlow leaderFlow = new ApprovalFlow();
+                        leaderFlow.setReimbursementRequest(reimbursementRequest);
+                        leaderFlow.setApprover(leaderApprover);
+                        leaderFlow.setStatus("PENDING");
+                        leaderFlow.setCreateTime(new Date());
+                        leaderFlow.setRequestType("REIMBURSEMENT");
+                        approvalFlowRepository.save(leaderFlow);
+
+                        System.out.println("报销申请ID " + reimbursementRequest.getId() +
+                            " 项目经理审批通过，已创建领导审批流程（第二阶段），审批人: " +
+                            leaderApprover.getUsername());
+
+                    } else if (currentRequest.getStatus() == ReimbursementStatus.PENDING_LEADER_APPROVAL) {
+                        // 第二阶段（领导）审批通过，进入财务审查
+                        reimbursementRequest.setStatus(ReimbursementStatus.PENDING_FINANCE_REVIEW);
+                        reimbursementRequestRepository.save(reimbursementRequest);
+                        System.out.println("报销申请ID " + reimbursementRequest.getId() +
+                            " 领导审批通过，进入财务审查阶段");
+
+                    } else if (currentRequest.getStatus() == ReimbursementStatus.PENDING_FINANCE_REVIEW) {
+                        // 财务审查通过，处理预算扣除并设置最终状态
+                        if (reimbursementService != null) {
+                            try {
+                                reimbursementService.processApprovedReimbursement(reimbursementRequest.getId());
+                                System.out.println("报销申请ID " + reimbursementRequest.getId() +
+                                    " 财务审查通过，预算已扣除");
+                            } catch (Exception e) {
+                                System.err.println("处理报销预算扣除失败: " + e.getMessage());
+                                throw new RuntimeException("预算扣除失败，审批回滚", e);
+                            }
                         }
-                    } else {
-                        System.out.println("报销申请ID " + reimbursementRequest.getId() + " 财务审批流程已存在，跳过创建");
                     }
                 }
             } else if ("REJECTED".equals(status)) {
@@ -410,6 +427,69 @@ public class ApprovalFlowServiceImpl implements ApprovalFlowService {
         if (flow.getApprover() == null) return false;
         return flow.getApprover().getRoles().stream()
                 .anyMatch(role -> "ROLE_FINANCE".equals(role.getName()));
+    }
+
+    /**
+     * 根据报销申请人的角色查找对应的领导审批人
+     * 用于第二阶段（领导审批）自动分配
+     */
+    private User findLeaderApproverForReimbursement(ReimbursementRequest request) {
+        // 重新查询申请人以确保加载 roles 关联
+        User applicant = userRepository.findById(request.getApplicant().getId()).orElse(null);
+        if (applicant == null) {
+            logger.error("申请人不存在，ID: {}", request.getApplicant().getId());
+            return null;
+        }
+
+        // 获取申请人的所有角色
+        List<Role> roles = applicant.getRoles();
+        if (roles == null || roles.isEmpty()) {
+            logger.warn("申请人 {} 没有分配任何角色", applicant.getUsername());
+            return null;
+        }
+
+        // 根据角色找对应领导
+        for (Role role : roles) {
+            String roleName = role.getName();
+
+            if ("ROLE_SOFTWARE_STAFF".equals(roleName)) {
+                User leader = userRepository.findFirstByRoles_Name("ROLE_SOFTWARE_LEADER");
+                if (leader != null) {
+                    logger.info("为软件员工 {} 找到软件领导: {}", applicant.getUsername(), leader.getUsername());
+                    return leader;
+                } else {
+                    logger.warn("未找到软件领导（ROLE_SOFTWARE_LEADER）");
+                }
+            }
+
+            if ("ROLE_HARDWARE_STAFF".equals(roleName)) {
+                User leader = userRepository.findFirstByRoles_Name("ROLE_HARDWARE_LEADER");
+                if (leader != null) {
+                    logger.info("为硬件员工 {} 找到硬件领导: {}", applicant.getUsername(), leader.getUsername());
+                    return leader;
+                } else {
+                    logger.warn("未找到硬件领导（ROLE_HARDWARE_LEADER）");
+                }
+            }
+        }
+
+        // 如果没找到对应侧领导，使用项目经理作为备选
+        logger.warn("为申请人 {} 未找到对应的侧领导，尝试使用项目经理作为备选", applicant.getUsername());
+        User projectManager = userRepository.findFirstByRoles_Name("ROLE_PROJECT_MANAGER");
+        if (projectManager != null) {
+            logger.info("使用项目经理 {} 作为领导审批人", projectManager.getUsername());
+            return projectManager;
+        }
+
+        // 最后备选: ROLE_MANAGER
+        User manager = userRepository.findFirstByRoles_Name("ROLE_MANAGER");
+        if (manager != null) {
+            logger.info("使用 ROLE_MANAGER {} 作为领导审批人", manager.getUsername());
+            return manager;
+        }
+
+        logger.error("无法为申请人 {} 找到任何领导审批人", applicant.getUsername());
+        return null;
     }
     
     private User findFinanceApprover() {

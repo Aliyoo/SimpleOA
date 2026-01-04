@@ -16,7 +16,7 @@ public class ReimbursementRequestDTO {
     private String title;
     private Long projectId; // New field for project association
     private List<ReimbursementItemDTO> items;
-    private List<String> attachments;
+    private List<Attachment> attachments;
 
     // Fields that might be part of a DTO but are often set/derived server-side
     // private BigDecimal totalAmount; // Usually calculated on the server

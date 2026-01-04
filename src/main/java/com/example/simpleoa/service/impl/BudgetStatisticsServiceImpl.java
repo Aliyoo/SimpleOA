@@ -402,8 +402,8 @@ public class BudgetStatisticsServiceImpl implements BudgetStatisticsService {
                 case APPROVED:
                     approvedCount++;
                     break;
-                case PENDING_MANAGER_APPROVAL:
-                case PENDING_FINANCE_APPROVAL:
+                case PENDING_LEADER_APPROVAL:
+                case PENDING_FINANCE_REVIEW:
                     pendingCount++;
                     break;
                 case REJECTED:
@@ -1069,10 +1069,10 @@ public class BudgetStatisticsServiceImpl implements BudgetStatisticsService {
         switch (status) {
             case DRAFT:
                 return "草稿";
-            case PENDING_MANAGER_APPROVAL:
-                return "待项目经理审批";
-            case PENDING_FINANCE_APPROVAL:
-                return "待财务审批";
+            case PENDING_LEADER_APPROVAL:
+                return "待领导审批";
+            case PENDING_FINANCE_REVIEW:
+                return "待财务审查";
             case APPROVED:
                 return "已通过";
             case REJECTED:

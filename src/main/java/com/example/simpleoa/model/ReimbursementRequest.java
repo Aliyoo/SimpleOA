@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,21 +17,26 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@NamedEntityGraph(name = "withApplicantAndItems",
+        attributeNodes = {
+                @NamedAttributeNode("applicant"),
+                @NamedAttributeNode("items")
+        })
 public class ReimbursementRequest {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "applicant_id", nullable = false)
     private User applicant;
 
-    @ManyToOne(fetch = FetchType.LAZY) // Assuming LAZY fetch is okay
-    @JoinColumn(name = "project_id", nullable = true) // Allow null if reimbursement is not project-specific
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id", nullable = true)
     private Project project;
 
     @Column(nullable = false)
-    private String title; // 报销标题，例如 “2025年6月差旅报销”
+    private String title; // 报销标题，例如 "2025年6月差旅报销"
 
     @Column(nullable = false)
     private BigDecimal totalAmount; // 总金额，由所有明细计算得出
@@ -42,8 +49,11 @@ public class ReimbursementRequest {
 
     @ElementCollection
     @CollectionTable(name = "reimbursement_attachments", joinColumns = @JoinColumn(name = "request_id"))
-    @Column(name = "attachment_path")
-    private List<String> attachments; // 凭证文件路径列表
+    @AttributeOverrides({
+        @AttributeOverride(name = "url", column = @Column(name = "attachment_path")),
+        @AttributeOverride(name = "originalName", column = @Column(name = "original_name"))
+    })
+    private List<Attachment> attachments; // 凭证文件列表（包含路径和原始文件名）
 
     @OneToMany(mappedBy = "reimbursementRequest", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference

@@ -41,6 +41,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 根据角色名查找用户
     List<User> findByRoles_Name(String roleName);
 
+    // 根据角色名查找第一个用户
+    User findFirstByRoles_Name(String roleName);
+
     // 根据部门和角色查找用户
     @Query("SELECT u FROM User u JOIN u.roles r WHERE u.department = :department AND r.name = :roleName")
     List<User> findByDepartmentAndRoles_Name(@org.springframework.data.repository.query.Param("department") String department,

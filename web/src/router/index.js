@@ -193,6 +193,12 @@ const router = createRouter({
           ]
         },
         {
+          path: 'reimbursement/finance-review',
+          name: 'ReimbursementFinanceReview',
+          component: () => import('@/views/ReimbursementFinanceReview.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
           path: 'approvals',
           name: 'Approvals',
           component: () => import('@/views/Approvals.vue'),
@@ -314,6 +320,7 @@ const routePermissionMap = {
   LeaveBalanceManagement: 'balance:view',
   TravelManagement: 'travel:view',
   Reimbursement: 'reimbursement:view',
+  ReimbursementFinanceReview: 'reimbursement:finance_review',
   Approvals: 'approval:view',
   UserManagement: 'user:view',
   RoleManagement: 'role:view',

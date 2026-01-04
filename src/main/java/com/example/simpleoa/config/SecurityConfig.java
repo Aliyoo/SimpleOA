@@ -46,6 +46,7 @@ public class    SecurityConfig {
                 .requestMatchers("/api/menu/**").authenticated()
                 .requestMatchers("/api/leave/**").authenticated()
                 .requestMatchers("/api/reimbursement/**").authenticated()
+                .requestMatchers("/api/oa/**").authenticated()
                 .requestMatchers("/api/approval/**").authenticated()
                 .requestMatchers("/api/budget/**").authenticated()
                 .requestMatchers("/api/performance/**").authenticated()

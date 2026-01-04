@@ -58,7 +58,7 @@
               <div class="file-preview">
                 <el-image
                   v-if="isImage(attachment)"
-                  :src="attachment"
+                  :src="getAttachmentUrl(attachment)"
                   fit="cover"
                   class="preview-image"
                   :preview-src-list="getImageAttachments()"
@@ -77,7 +77,7 @@
               <div class="file-info">
                 <div class="file-name" :title="getFileName(attachment)">
                   <el-link 
-                    :href="attachment" 
+                    :href="getAttachmentUrl(attachment)" 
                     target="_blank" 
                     :underline="false"
                     class="file-link"
@@ -189,45 +189,60 @@ watch(
 
 // 格式化函数现在从统一的格式化工具导入
 
-// 判断是否为图片
-function isImage(url) {
-  return /\.(jpg|jpeg|png|gif|bmp|webp|tiff)$/.test(url.toLowerCase())
+// 判断是否为图片（兼容新旧格式）
+function isImage(attachment) {
+  const url = getAttachmentUrl(attachment)
+  return /\.(jpg|jpeg|png|gif|bmp|webp|tiff)$/i.test(url)
 }
 
-// 获取文件名
-function getFileName(url) {
-  return url.substring(url.lastIndexOf('/') + 1)
+// 获取文件名（兼容新旧格式）
+function getFileName(attachment) {
+  if (typeof attachment === 'string') {
+    // 旧格式：纯字符串URL
+    return attachment.substring(attachment.lastIndexOf('/') + 1)
+  } else {
+    // 新格式：{ url, originalName }
+    return attachment.originalName || attachment.url.substring(attachment.url.lastIndexOf('/') + 1)
+  }
+}
+
+// 获取附件URL（兼容新旧格式）
+function getAttachmentUrl(attachment) {
+  return typeof attachment === 'string' ? attachment : attachment.url
 }
 
 // 获取图片附件列表
 function getImageAttachments() {
   if (!reimbursementData.value?.attachments) return []
-  return reimbursementData.value.attachments.filter((attachment) => isImage(attachment))
+  return reimbursementData.value.attachments
+    .filter((attachment) => isImage(attachment))
+    .map((attachment) => getAttachmentUrl(attachment))
 }
 
 // 获取图片索引
-function getImageIndex(url) {
+function getImageIndex(attachment) {
+  const url = getAttachmentUrl(attachment)
   const imageAttachments = getImageAttachments()
   return imageAttachments.indexOf(url)
 }
 
-// 获取文件类型图标
-const getFileIcon = (url) => {
-  const name = url.toLowerCase()
-  if (name.endsWith('.pdf')) return Document
-  if (name.endsWith('.doc') || name.endsWith('.docx')) return Document
-  if (name.endsWith('.xls') || name.endsWith('.xlsx')) return Grid
-  if (name.endsWith('.zip')) return Folder
+// 获取文件类型图标（兼容新旧格式）
+const getFileIcon = (attachment) => {
+  const url = getAttachmentUrl(attachment).toLowerCase()
+  if (url.endsWith('.pdf')) return Document
+  if (url.endsWith('.doc') || url.endsWith('.docx')) return Document
+  if (url.endsWith('.xls') || url.endsWith('.xlsx')) return Grid
+  if (url.endsWith('.zip')) return Folder
   return Document
 }
 
-// 获取文件图标颜色
-const getFileIconColor = (url) => {
-  const name = url.toLowerCase()
-  if (name.endsWith('.pdf')) return '#F40F02'
-  if (name.endsWith('.doc') || name.endsWith('.docx')) return '#2B579A'
-  if (name.endsWith('.xls') || name.endsWith('.xlsx')) return '#217346'
-  if (name.endsWith('.zip')) return '#FFB900'
+// 获取文件图标颜色（兼容新旧格式）
+const getFileIconColor = (attachment) => {
+  const url = getAttachmentUrl(attachment).toLowerCase()
+  if (url.endsWith('.pdf')) return '#F40F02'
+  if (url.endsWith('.doc') || url.endsWith('.docx')) return '#2B579A'
+  if (url.endsWith('.xls') || url.endsWith('.xlsx')) return '#217346'
+  if (url.endsWith('.zip')) return '#FFB900'
   return '#909399'
 }
 

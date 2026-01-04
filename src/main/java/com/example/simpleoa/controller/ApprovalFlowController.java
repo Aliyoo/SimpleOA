@@ -70,9 +70,8 @@ public class ApprovalFlowController {
         if ("APPROVED".equals(currentFlow.getStatus()) || "REJECTED".equals(currentFlow.getStatus())) {
             throw new IllegalStateException("Cannot update status of a finalized approval");
         }
-        if ("PENDING".equals(currentFlow.getStatus()) && "REJECTED".equals(status)) {
-            throw new IllegalStateException("Cannot directly reject a pending approval");
-        }
+        // 移除了不允许直接拒绝待审批的不合理限制
+        // 领导应该可以直接拒绝待审批的报销申请
         if (comment != null && comment.length() > 500) {
             throw new IllegalArgumentException("Comment cannot exceed 500 characters");
         }

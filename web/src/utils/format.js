@@ -80,7 +80,8 @@ export const formatReimbursementStatus = (status) => {
   const statusMap = {
     DRAFT: '草稿',
     PENDING_MANAGER_APPROVAL: '待项目经理审批',
-    PENDING_FINANCE_APPROVAL: '待财务审批',
+    PENDING_LEADER_APPROVAL: '待领导审批',
+    PENDING_FINANCE_REVIEW: '待财务审查',
     APPROVED: '已通过',
     REJECTED: '已驳回'
   }
@@ -96,7 +97,8 @@ export const getReimbursementStatusTagType = (status) => {
   const tagMap = {
     DRAFT: 'info',
     PENDING_MANAGER_APPROVAL: 'warning',
-    PENDING_FINANCE_APPROVAL: 'warning',
+    PENDING_LEADER_APPROVAL: 'warning',
+    PENDING_FINANCE_REVIEW: 'warning',
     APPROVED: 'success',
     REJECTED: 'danger'
   }
